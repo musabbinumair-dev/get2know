@@ -42,7 +42,7 @@ export function App() {
   const [profile, setProfile] = useState<UserProfile>({
     avatarId: 1,
     name: '',
-    color: 'pink',
+    color: 'salmon',
   });
   const [inviteCode] = useState<string>(() => generateInviteCode());
 

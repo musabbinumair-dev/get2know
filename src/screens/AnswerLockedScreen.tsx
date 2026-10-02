@@ -91,7 +91,7 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
       />
 
       {/* ---------------- MAIN RESPONSIVE CONTENT (MATCHING QUESTIONS PAGE SIZING) ---------------- */}
-      <div className="relative z-10 flex flex-col justify-between h-full overflow-y-auto overflow-x-hidden pt-6 pb-[84px] select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className="relative z-10 flex flex-col justify-between h-full overflow-y-auto overflow-x-hidden pt-9 pb-[84px] select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {/* Unified Top Bar: exact same position and size as Today's Question page */}
         <TopBar streak={12} onSettingsClick={onOpenSettings} />
 

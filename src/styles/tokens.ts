@@ -4,9 +4,9 @@
  */
 
 export const colors = {
-  cream: '#FAF6EA',       // Background canvas (sampled from mockup: #FAF6EA / #FAF5E6)
-  ink: '#1A1C22',         // Primary text and black button (#1A1C22 / #1A1A1F)
-  mutedGray: '#8A8A93',   // Tagline and subtitle (#8A8A93)
+  cream: '#FAF6EA',       // Background canvas
+  ink: '#1A1C22',         // Primary text and black button
+  mutedGray: '#8A8A93',   // Tagline and subtitle
   
   // Player & Theme Accent Colors
   pink: {
@@ -32,16 +32,18 @@ export const colors = {
 } as const;
 
 export const typography = {
-  fontFamily: 'Nunito, sans-serif',
+  fontFamily: "'Le Havre Rounded Bold', 'Le Havre Rounded', Nunito, sans-serif",
+  headingFamily: "'Proxima Soft Black', 'Proxima Soft', Nunito, sans-serif",
+  bodyFamily: "'Le Havre Rounded Bold', 'Le Havre Rounded', Nunito, sans-serif",
   weights: {
-    hero: 900,       // Huge hero titles (Black)
-    question: 800,   // Questions (ExtraBold)
-    numbers: 900,    // Large numbers and scores (Black)
-    cardTitle: 700,  // Card titles (Bold)
-    button: 700,     // Buttons (Bold)
-    label: 600,      // Labels (SemiBold)
-    body: 400,       // Body descriptions (Regular)
-    tiny: 500,       // Tiny metadata (Medium)
+    hero: 900,       // Huge hero titles (Proxima Soft Black)
+    question: 900,   // Questions (Proxima Soft Black)
+    numbers: 900,    // Large numbers and scores (Proxima Soft Black)
+    cardTitle: 900,  // Card titles (Proxima Soft Black)
+    button: 900,     // Buttons (Proxima Soft Black)
+    label: 900,      // Labels (Proxima Soft Black)
+    body: 700,       // Body descriptions (Le Havre Rounded Bold)
+    tiny: 600,       // Tiny metadata (Le Havre Rounded Medium/Bold)
   }
 } as const;
 

@@ -32,15 +32,16 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['Nunito', 'system-ui', '-apple-system', 'sans-serif'],
-        nunito: ['Nunito', 'system-ui', '-apple-system', 'sans-serif'],
+        heading: ['Nunito', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        body: ['Nunito', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        sans: ['Nunito', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
       fontWeight: {
-        body: '400',
-        medium: '500',
-        label: '600',
+        body: '700',
+        medium: '600',
+        label: '800',
         bold: '700',
-        question: '800',
+        question: '900',
         hero: '900',
       },
       borderRadius: {

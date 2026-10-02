@@ -177,22 +177,22 @@ export const JoinCodeScreen: React.FC<JoinCodeScreenProps> = ({
 
 
       {/* ---------------- MAIN CONTENT ---------------- */}
-      <div className="relative z-10 flex flex-col justify-between h-full min-h-[100dvh] px-7 pt-9 pb-8 sm:px-8 sm:pt-10 sm:pb-9 select-none">
+      <div className="relative z-10 flex flex-col justify-between h-full min-h-[100dvh] sm:min-h-0 sm:h-full px-7 pt-9 pb-8 sm:px-8 sm:pt-9 sm:pb-9 select-none">
         <div>
-          {/* Top Navigation Row: Dashed Circular Back Button */}
+          {/* Top Navigation Row: Dashed Circular Back Button (44x44) */}
           <div className="flex items-center justify-between w-full">
             <button
               type="button"
               onClick={onBack}
               aria-label="Back to welcome"
-              className="btn-press w-[42px] h-[42px] rounded-full border-[1.5px] border-dashed border-[#1A1C22]/50 flex items-center justify-center hover:bg-[#1A1C22]/5 transition-colors focus:outline-none cursor-pointer"
+              className="btn-press w-[44px] h-[44px] rounded-full border-[1.8px] border-dashed border-[#1B1D20] flex items-center justify-center hover:bg-[#1B1D20]/5 transition-colors focus:outline-none cursor-pointer"
             >
               <svg
                 width="20"
                 height="20"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#1A1C22"
+                stroke="#1B1D20"
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"

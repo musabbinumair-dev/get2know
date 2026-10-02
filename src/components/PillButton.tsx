@@ -18,7 +18,11 @@ export const PillButton: React.FC<PillButtonProps> = ({
 
   return (
     <button
-      className={`btn-press w-full h-[56px] rounded-full font-bold text-[17px] leading-tight flex items-center justify-center transition-all ${variantStyles} ${className}`}
+      className={`btn-press w-full h-[56px] rounded-full font-heading font-black text-[18px] leading-tight flex items-center justify-center transition-all ${variantStyles} ${className}`}
+      style={{
+        fontFamily: "'Proxima Soft Black', 'Proxima Soft', 'Nunito', system-ui, -apple-system, sans-serif",
+        fontWeight: 900,
+      }}
       {...props}
     >
       {children}

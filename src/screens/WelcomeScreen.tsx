@@ -1,46 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PillButton } from '../components/PillButton';
-import { colors, dimensions, typography } from '../styles/tokens';
-
-export interface SpecBox {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  centerX?: number;
-  centerY?: number;
-  anchor?: 'left' | 'right' | 'center';
-}
-
-export const layoutSpec: Record<string, SpecBox> = {
-  stage: { x: 0, y: 0, width: 390, height: 844 },
-
-  // Decorative PNGs & Hero Images (heights follow each PNG's natural aspect ratio)
-  crescentYellowTop: { x: 10, y: 29, width: 71, height: 84.7, anchor: 'left' },
-  heartPinkRight: { x: 311, y: 24, width: 79, height: 83.2, anchor: 'right' },
-  starburstBlueRight: { x: 333, y: 144, width: 57, height: 75.2, anchor: 'right' },
-  heroPair: { x: 26, y: 215, width: 343, height: 175.5, centerX: 197.5, anchor: 'center' },
-  logoDuo: { x: 163, y: 71, width: 65, height: 23.5, centerX: 195.5, anchor: 'center' },
-  starburstBlueLeft: { x: 3, y: 523, width: 75, height: 75, anchor: 'left' },
-  crossOlive: { x: 304, y: 540, width: 67, height: 67, anchor: 'right' },
-  heartPinkLeft: { x: 0, y: 640, width: 69, height: 63.4, anchor: 'left' },
-  crescentYellowBottom: { x: 329, y: 654, width: 60, height: 71.6, anchor: 'right' },
-
-  // Text & Button
-  wordmark: { x: 129, y: 96, width: 132, height: 16, centerX: 195, centerY: 104, anchor: 'center' },
-  title: { x: 27, y: 414, width: 341, height: 40, centerX: 197.5, centerY: 434, anchor: 'center' },
-  tagline: { x: 66, y: 469, width: 258, height: 22, centerX: 195, centerY: 480, anchor: 'center' },
-  getStartedButton: {
-    x: 48,
-    y: 713,
-    width: 294,
-    height: 53,
-    centerX: 195,
-    centerY: 739.5,
-    anchor: 'center',
-  },
-  joinLine: { x: 120, y: 776, width: 150, height: 18, centerX: 195, centerY: 785, anchor: 'center' },
-};
 
 interface WelcomeScreenProps {
   onGetStarted?: () => void;
@@ -53,338 +11,472 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 }) => {
   const stageRef = useRef<HTMLDivElement | null>(null);
 
-  const [viewport, setViewport] = useState<{ width: number; height: number }>(() => {
-    if (typeof window !== 'undefined') {
-      return { width: window.innerWidth, height: window.innerHeight };
-    }
-    return { width: dimensions.mobileWidth, height: dimensions.mobileHeight };
-  });
+  // Safe area insets probe
+  const [safeArea, setSafeArea] = useState({ top: 0, bottom: 0 });
 
   useEffect(() => {
-    const updateSize = () => {
-      setViewport({
-        width: window.innerWidth,
-        height: window.innerHeight,
+    const probeTop = document.createElement('div');
+    probeTop.style.cssText =
+      'position:fixed;top:0;left:0;width:0;height:env(safe-area-inset-top, 0px);pointer-events:none;visibility:hidden;z-index:-1;';
+    const probeBottom = document.createElement('div');
+    probeBottom.style.cssText =
+      'position:fixed;bottom:0;left:0;width:0;height:env(safe-area-inset-bottom, 0px);pointer-events:none;visibility:hidden;z-index:-1;';
+
+    document.body.appendChild(probeTop);
+    document.body.appendChild(probeBottom);
+
+    const updateSafeArea = () => {
+      setSafeArea({
+        top: probeTop.offsetHeight || 0,
+        bottom: probeBottom.offsetHeight || 0,
       });
     };
-    updateSize();
-    window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
+
+    updateSafeArea();
+    window.addEventListener('resize', updateSafeArea);
+    window.addEventListener('orientationchange', updateSafeArea);
+
+    return () => {
+      probeTop.remove();
+      probeBottom.remove();
+      window.removeEventListener('resize', updateSafeArea);
+      window.removeEventListener('orientationchange', updateSafeArea);
+    };
   }, []);
 
-  // On mobile (< 640px), fill the full mobile screen (100vw x 100dvh) with zero scrolling.
-  // On larger desktop viewports, constrain to a mobile frame that fits within 100dvh.
-  const isDesktop = viewport.width >= 640;
-  const stageHeight = isDesktop ? Math.min(dimensions.mobileHeight, viewport.height) : viewport.height;
-  const stageWidth = isDesktop
-    ? Math.min(430, Math.round(stageHeight * (dimensions.mobileWidth / dimensions.mobileHeight)))
-    : viewport.width;
+  // Viewport tracking (using window.visualViewport if available)
+  const [viewport, setViewport] = useState({
+    width: typeof window !== 'undefined' ? (window.visualViewport?.width || window.innerWidth) : 390,
+    height: typeof window !== 'undefined' ? (window.visualViewport?.height || window.innerHeight) : 844,
+  });
 
-  const scaleX = stageWidth / dimensions.mobileWidth;
-  const scaleY = stageHeight / dimensions.mobileHeight;
-  const s = Math.min(scaleX, scaleY);
-
-  // Dev-mode self-check: verify elements against layoutSpec
   useEffect(() => {
-    const isDev =
-      typeof window !== 'undefined' &&
-      ((import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV ?? true);
-    if (!isDev) return;
+    const updateViewport = () => {
+      const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+      const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      setViewport({ width: vw, height: vh });
+    };
 
-    const timer = setTimeout(() => {
-      const stageEl = stageRef.current;
-      if (!stageEl) return;
-      const stageRect = stageEl.getBoundingClientRect();
-      const sx = stageRect.width / dimensions.mobileWidth || 1;
-      const sy = stageRect.height / dimensions.mobileHeight || 1;
-      const su = Math.min(sx, sy);
-      const diffs: string[] = [];
+    updateViewport();
 
-      for (const [key, spec] of Object.entries(layoutSpec)) {
-        const el =
-          key === 'stage'
-            ? stageEl
-            : (stageEl.querySelector(`[data-spec="${key}"]`) as HTMLElement | null);
-        if (!el) {
-          diffs.push(`[layoutSpec] Missing element for key "${key}"`);
-          continue;
-        }
-        if (key === 'stage') continue;
+    window.addEventListener('resize', updateViewport);
+    window.addEventListener('orientationchange', updateViewport);
 
-        const rect = el.getBoundingClientRect();
-        const actualY = (rect.top - stageRect.top) / sy;
-        const actualW = rect.width / su;
-        const actualH = rect.height / su;
-
-        let expectedLeftPx = spec.x * sx;
-        if (spec.anchor === 'left') {
-          expectedLeftPx = spec.x * su;
-        } else if (spec.anchor === 'right') {
-          expectedLeftPx = stageRect.width - (dimensions.mobileWidth - spec.x) * su;
-        } else {
-          const cx = spec.centerX ?? spec.x + spec.width / 2;
-          expectedLeftPx = stageRect.width / 2 + (cx - dimensions.mobileWidth / 2) * su - (spec.width * su) / 2;
-        }
-        const actualLeftPx = rect.left - stageRect.left;
-
-        const dx = Math.abs(actualLeftPx - expectedLeftPx) / su;
-        const dy = Math.abs(actualY - spec.y);
-        const dw = Math.abs(actualW - spec.width);
-        const dh = Math.abs(actualH - spec.height);
-
-        if (dx > 2 || dy > 2 || dw > 2 || dh > 2) {
-          diffs.push(
-            `${key}: expected (${spec.x}, ${spec.y}, ${spec.width}x${spec.height}), off by (${dx.toFixed(
-              1
-            )}, ${dy.toFixed(1)}, ${dw.toFixed(1)}x${dh.toFixed(1)})`
-          );
-        }
-      }
-
-      if (diffs.length > 0) {
-        console.warn('[WelcomeScreen layoutSpec] Elements > 2px off:\n' + diffs.join('\n'));
-      } else {
-        console.log('[WelcomeScreen layoutSpec] All elements within 2px of layoutSpec.');
-      }
-    }, 200);
-
-    return () => clearTimeout(timer);
-  }, [stageWidth, stageHeight]);
-
-  const computeLeft = (spec: SpecBox): number => {
-    if (spec.anchor === 'left') {
-      return spec.x * s;
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateViewport);
+      window.visualViewport.addEventListener('scroll', updateViewport);
     }
-    if (spec.anchor === 'right') {
-      return stageWidth - (dimensions.mobileWidth - spec.x) * s;
-    }
-    const cx = spec.centerX ?? spec.x + spec.width / 2;
-    return stageWidth / 2 + (cx - dimensions.mobileWidth / 2) * s - (spec.width * s) / 2;
-  };
 
-  const boxStyle = (spec: SpecBox): React.CSSProperties => ({
-    position: 'absolute',
-    left: `${computeLeft(spec)}px`,
-    top: `${spec.y * scaleY}px`,
-    width: `${spec.width * s}px`,
-    height: `${spec.height * s}px`,
-  });
+    return () => {
+      window.removeEventListener('resize', updateViewport);
+      window.removeEventListener('orientationchange', updateViewport);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updateViewport);
+        window.visualViewport.removeEventListener('scroll', updateViewport);
+      }
+    };
+  }, []);
 
-  const imgStyle = (spec: SpecBox): React.CSSProperties => ({
-    position: 'absolute',
-    left: `${computeLeft(spec)}px`,
-    top: `${spec.y * scaleY}px`,
-    width: `${spec.width * s}px`,
-    height: 'auto',
-    maxWidth: 'none',
-    display: 'block',
-  });
+  // Seamless full-bleed ivory background #FAF6EA on body and html
+  useEffect(() => {
+    const prevBodyBg = document.body.style.backgroundColor;
+    const prevHtmlBg = document.documentElement.style.backgroundColor;
+    document.body.style.backgroundColor = '#FAF6EA';
+    document.documentElement.style.backgroundColor = '#FAF6EA';
+    return () => {
+      document.body.style.backgroundColor = prevBodyBg;
+      document.documentElement.style.backgroundColor = prevHtmlBg;
+    };
+  }, []);
+
+  // Width scale: fill full width on mobile, cap at 1.3 on desktop/tablets
+  const scale = Math.min(viewport.width / 390, 1.3);
+
+  // Available height in stage units
+  const availHeightPx = Math.max(0, viewport.height - safeArea.top - safeArea.bottom);
+  const H = availHeightPx / scale;
+
+  // Adaptive vertical scaling factor for short viewports
+  const f = H < 844 ? Math.max(0.68, H / 844) : 1.0;
+  const s_hero = H < 844 ? Math.max(0.85, Math.min(1.0, H / 844)) : 1.0;
+
+  // ── EXACT REFERENCE LAYOUT COORDINATES (on 390 x 844 stage)
+  // Top decorations:
+  const crescentTopY = 28 * f;
+  const heartRightTopY = 24 * f;
+  const starburstRightTopY = 165 * f; // Above girl's head on the right edge
+
+  // Header lockup:
+  const logoTopY = 80 * f;
+  const wordmarkTopY = logoTopY + 28;
+
+  // Hero illustration:
+  const heroTopY = 250 * f;
+  const heroW = 342 * s_hero;
+  const heroH = 175 * s_hero;
+  const heroLeft = 195 - heroW / 2;
+
+  // Title & Tagline:
+  const titleTopY = heroTopY + heroH + 26 * f;
+  const taglineTopY = titleTopY + 44 + 10 * f;
+
+  // Mid decorations:
+  const starburstLeftTopY = 585 * f;
+  const crossOliveTopY = 605 * f;
+
+  // Lower decorations:
+  const heartLeftTopY = 705 * f; // Sits above the left side of the button
+  const crescentBottomTopY = 720 * f; // Sits to the right of the button
+
+  // Button & Join link:
+  const buttonTopY = 730 * f;
+  const joinLineTopY = buttonTopY + 54 + 10 * f;
 
   return (
     <div
-      className="w-full h-[100dvh] max-h-[100dvh] overflow-hidden flex items-center justify-center select-none"
       style={{
-        backgroundColor: '#FAF6E9',
-        fontFamily: typography.fontFamily,
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        height: '100dvh',
+        backgroundColor: '#FAF6EA',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        paddingTop: `${safeArea.top}px`,
+        paddingBottom: `${safeArea.bottom}px`,
+        boxSizing: 'border-box',
+        userSelect: 'none',
       }}
     >
-      {/* Responsive unscrollable mobile stage */}
+      {/* ── STAGE CONTAINER (Strict 390 width scaled to fill screen, zero side gaps) ── */}
       <div
-        ref={stageRef}
-        data-spec="stage"
-        className="relative overflow-hidden select-none font-nunito"
         style={{
-          width: `${stageWidth}px`,
-          height: `${stageHeight}px`,
-          backgroundColor: '#FAF6E9',
+          position: 'relative',
+          width: `${390 * scale}px`,
+          height: `${H * scale}px`,
+          flexShrink: 0,
+          overflow: 'hidden',
         }}
       >
-        {/* ---------------- DECORATIVE & HERO PNG ASSETS ---------------- */}
-
-        {/* crescent-yellow-top: x 10, y 29, width 71 */}
-        <img
-          data-spec="crescentYellowTop"
-          src="/assets/welcome/crescent-yellow-top.png"
-          alt=""
-          style={imgStyle(layoutSpec.crescentYellowTop)}
-          className="pointer-events-none select-none z-10"
-          draggable={false}
-        />
-
-        {/* heart-pink-right: x 311, y 24, width 79 (runs off the right edge) */}
-        <img
-          data-spec="heartPinkRight"
-          src="/assets/welcome/heart-pink-right.png"
-          alt=""
-          style={imgStyle(layoutSpec.heartPinkRight)}
-          className="pointer-events-none select-none z-10"
-          draggable={false}
-        />
-
-        {/* logo-duo: x 163, y 71, width 65 */}
-        <img
-          data-spec="logoDuo"
-          src="/assets/welcome/logo-duo.png"
-          alt="Get-to-Know-You logo"
-          style={imgStyle(layoutSpec.logoDuo)}
-          className="pointer-events-none select-none z-10"
-          draggable={false}
-        />
-
-        {/* starburst-blue-right: x 333, y 144, width 57 (runs off the right edge) */}
-        <img
-          data-spec="starburstBlueRight"
-          src="/assets/welcome/starburst-blue-right.png"
-          alt=""
-          style={imgStyle(layoutSpec.starburstBlueRight)}
-          className="pointer-events-none select-none z-10"
-          draggable={false}
-        />
-
-        {/* hero-pair: x 26, y 215, width 343 */}
-        <img
-          data-spec="heroPair"
-          src="/assets/welcome/hero-pair.png"
-          alt="Two friends"
-          style={imgStyle(layoutSpec.heroPair)}
-          className="pointer-events-none select-none z-10"
-          draggable={false}
-        />
-
-        {/* starburst-blue-left: x 3, y 523, width 75 */}
-        <img
-          data-spec="starburstBlueLeft"
-          src="/assets/welcome/starburst-blue-left.png"
-          alt=""
-          style={imgStyle(layoutSpec.starburstBlueLeft)}
-          className="pointer-events-none select-none z-10"
-          draggable={false}
-        />
-
-        {/* cross-olive: x 304, y 540, width 67 */}
-        <img
-          data-spec="crossOlive"
-          src="/assets/welcome/cross-olive.png"
-          alt=""
-          style={imgStyle(layoutSpec.crossOlive)}
-          className="pointer-events-none select-none z-10"
-          draggable={false}
-        />
-
-        {/* heart-pink-left: x 0, y 640, width 69 (runs off the left edge) */}
-        <img
-          data-spec="heartPinkLeft"
-          src="/assets/welcome/heart-pink-left.png"
-          alt=""
-          style={imgStyle(layoutSpec.heartPinkLeft)}
-          className="pointer-events-none select-none z-10"
-          draggable={false}
-        />
-
-        {/* crescent-yellow-bottom: x 329, y 654, width 60 (runs off the right edge) */}
-        <img
-          data-spec="crescentYellowBottom"
-          src="/assets/welcome/crescent-yellow-bottom.png"
-          alt=""
-          style={imgStyle(layoutSpec.crescentYellowBottom)}
-          className="pointer-events-none select-none z-10"
-          draggable={false}
-        />
-
-        {/* ---------------- TEXT AND BUTTON ---------------- */}
-
-        {/* Wordmark "Get-to-Know-You": centered at x 195, y 104 to 112, Nunito 800, about 15px, ink #1B1D20 */}
         <div
-          data-spec="wordmark"
-          className="flex items-center justify-center whitespace-nowrap select-none z-20"
+          ref={stageRef}
           style={{
-            ...boxStyle(layoutSpec.wordmark),
-            fontWeight: typography.weights.question,
-            fontSize: `${15.2 * s}px`,
-            lineHeight: `${16 * s}px`,
-            letterSpacing: '-0.02em',
-            color: '#1B1D20',
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            width: '390px',
+            height: `${H}px`,
+            overflow: 'hidden',
+            backgroundColor: '#FAF6EA',
+            transform: `scale(${scale})`,
+            transformOrigin: 'top left',
           }}
         >
-          Get-to-Know-You
-        </div>
+          {/* ── 1. TOP-LEFT YELLOW CRESCENT MOON: (10, crescentTopY), width 70, height 84 ── */}
+          <img
+            src="/assets/welcome/crescent-yellow-top.png"
+            alt=""
+            draggable={false}
+            style={{
+              position: 'absolute',
+              left: '10px',
+              top: `${crescentTopY}px`,
+              width: '70px',
+              height: '84px',
+              objectFit: 'contain',
+              pointerEvents: 'none',
+              zIndex: 1,
+            }}
+          />
 
-        {/* Title "Get-to-Know-You": x 27 to 368 (341px wide), y 414 to 454, Nunito 900, ink, one line */}
-        <h1
-          data-spec="title"
-          className="m-0 flex items-center justify-center whitespace-nowrap select-none z-20"
-          style={{
-            ...boxStyle(layoutSpec.title),
-            fontWeight: typography.weights.hero,
-            fontSize: `${42.5 * s}px`,
-            lineHeight: `${40 * s}px`,
-            letterSpacing: '-0.028em',
-            color: '#1B1D20',
-          }}
-        >
-          Get-to-Know-You
-        </h1>
+          {/* ── 2. TOP-RIGHT PINK HEART: (310, heartRightTopY), width 80, height 84, cropped right ── */}
+          <img
+            src="/assets/welcome/heart-pink-right.png"
+            alt=""
+            draggable={false}
+            style={{
+              position: 'absolute',
+              left: '310px',
+              top: `${heartRightTopY}px`,
+              width: '80px',
+              height: '84px',
+              objectFit: 'contain',
+              pointerEvents: 'none',
+              zIndex: 1,
+            }}
+          />
 
-        {/* Tagline "Two friends. One question a day.": x 66 to 324, vertical center y 480, Nunito 600, about 19px, muted gray */}
-        <p
-          data-spec="tagline"
-          className="m-0 flex items-center justify-center whitespace-nowrap select-none z-20"
-          style={{
-            ...boxStyle(layoutSpec.tagline),
-            fontWeight: typography.weights.label,
-            fontSize: `${18.5 * s}px`,
-            lineHeight: `${22 * s}px`,
-            letterSpacing: '-0.015em',
-            color: '#75767C',
-          }}
-        >
-          Two friends. One question a day.
-        </p>
+          {/* ── 3. TOP BRANDING LOCKUP: logo-duo + wordmark "Get-to-Know-You" ── */}
+          <img
+            src="/assets/welcome/logo-duo.png"
+            alt="Get-to-Know-You logo"
+            draggable={false}
+            style={{
+              position: 'absolute',
+              left: `${195 - 64 / 2}px`,
+              top: `${logoTopY}px`,
+              width: '64px',
+              height: '23px',
+              objectFit: 'contain',
+              pointerEvents: 'none',
+              zIndex: 10,
+            }}
+          />
 
-        {/* Button "Get started": black pill x 48, y 713, 294x53, white Nunito 700 text, about 19px */}
-        <PillButton
-          data-spec="getStartedButton"
-          variant="black"
-          onClick={onGetStarted}
-          style={{
-            ...boxStyle(layoutSpec.getStartedButton),
-            fontWeight: typography.weights.button,
-            fontSize: `${19 * s}px`,
-            letterSpacing: '-0.015em',
-            backgroundColor: '#191B20',
-            color: '#FFFFFF',
-          }}
-          className="p-0 z-20 cursor-pointer focus:outline-none"
-        >
-          Get started
-        </PillButton>
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: `${wordmarkTopY}px`,
+              width: '390px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontFamily: "'Nunito', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 900,
+              fontSize: '15.5px',
+              lineHeight: '16px',
+              letterSpacing: '-0.025em',
+              color: '#1B1D20',
+              pointerEvents: 'none',
+              zIndex: 10,
+            }}
+          >
+            Get-to-Know-You
+          </div>
 
-        {/* "Already have a code? Join": centered at x 195, y 785, Nunito 500, 13px, muted, with "Join" underlined */}
-        <div
-          data-spec="joinLine"
-          className="flex items-center justify-center whitespace-nowrap select-none z-20"
-          style={{
-            ...boxStyle(layoutSpec.joinLine),
-            fontWeight: typography.weights.tiny,
-            fontSize: `${13 * s}px`,
-            lineHeight: `${18 * s}px`,
-            letterSpacing: '-0.01em',
-            color: colors.mutedGray,
-          }}
-        >
-          <span>Already have a code?&nbsp;</span>
+          {/* ── 4. UPPER-RIGHT BLUE STARBURST: (332, starburstRightTopY), cropped right edge, above girl's head ── */}
+          <img
+            src="/assets/welcome/starburst-blue-right.png"
+            alt=""
+            draggable={false}
+            style={{
+              position: 'absolute',
+              left: '332px',
+              top: `${starburstRightTopY}px`,
+              width: '58px',
+              height: '76px',
+              objectFit: 'contain',
+              pointerEvents: 'none',
+              zIndex: 1,
+            }}
+          />
+
+          {/* ── 5. HERO PAIR ILLUSTRATION: centered at centerX = 195, y: heroTopY ── */}
+          <img
+            src="/assets/welcome/hero-pair.png"
+            alt="Two friends"
+            draggable={false}
+            style={{
+              position: 'absolute',
+              left: `${heroLeft}px`,
+              top: `${heroTopY}px`,
+              width: `${heroW}px`,
+              height: `${heroH}px`,
+              objectFit: 'contain',
+              pointerEvents: 'none',
+              zIndex: 10,
+            }}
+          />
+
+          {/* ── 6. MAIN TITLE: "Get-to-Know-You", Nunito 900, 42px ── */}
+          <h1
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: `${titleTopY}px`,
+              width: '390px',
+              margin: 0,
+              padding: '0 16px',
+              boxSizing: 'border-box',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              fontFamily: "'Nunito', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 900,
+              fontSize: '42px',
+              lineHeight: '44px',
+              letterSpacing: '-0.035em',
+              color: '#191B20',
+              whiteSpace: 'nowrap',
+              zIndex: 10,
+            }}
+          >
+            Get-to-Know-You
+          </h1>
+
+          {/* ── 7. TAGLINE: "Two friends. One question a day.", Nunito 600, 18.5px ── */}
+          <p
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: `${taglineTopY}px`,
+              width: '390px',
+              margin: 0,
+              padding: '0 20px',
+              boxSizing: 'border-box',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              fontFamily: "'Nunito', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 600,
+              fontSize: '18.5px',
+              lineHeight: '22px',
+              letterSpacing: '-0.015em',
+              color: '#75767C',
+              whiteSpace: 'nowrap',
+              zIndex: 10,
+            }}
+          >
+            Two friends. One question a day.
+          </p>
+
+          {/* ── 8. MID-LEFT BLUE STARBURST: (2, starburstLeftTopY), width 74, height 74, cropped left edge ── */}
+          <img
+            src="/assets/welcome/starburst-blue-left.png"
+            alt=""
+            draggable={false}
+            style={{
+              position: 'absolute',
+              left: '2px',
+              top: `${starburstLeftTopY}px`,
+              width: '74px',
+              height: '74px',
+              objectFit: 'contain',
+              pointerEvents: 'none',
+              zIndex: 1,
+            }}
+          />
+
+          {/* ── 9. MID-RIGHT OLIVE 4-LOBE CROSS: (304, crossOliveTopY), width 66, height 66, ~18px margin from right edge ── */}
+          <img
+            src="/assets/welcome/cross-olive.png"
+            alt=""
+            draggable={false}
+            style={{
+              position: 'absolute',
+              left: '304px',
+              top: `${crossOliveTopY}px`,
+              width: '66px',
+              height: '66px',
+              objectFit: 'contain',
+              pointerEvents: 'none',
+              zIndex: 1,
+            }}
+          />
+
+          {/* ── 10. BOTTOM-LEFT PINK HEART: (0, heartLeftTopY), sits right above the left side of button ── */}
+          <img
+            src="/assets/welcome/heart-pink-left.png"
+            alt=""
+            draggable={false}
+            style={{
+              position: 'absolute',
+              left: '0px',
+              top: `${heartLeftTopY}px`,
+              width: '69px',
+              height: '63px',
+              objectFit: 'contain',
+              pointerEvents: 'none',
+              zIndex: 1,
+            }}
+          />
+
+          {/* ── 11. BOTTOM-RIGHT YELLOW CRESCENT: (328, crescentBottomTopY), sits alongside right of button ── */}
+          <img
+            src="/assets/welcome/crescent-yellow-bottom.png"
+            alt=""
+            draggable={false}
+            style={{
+              position: 'absolute',
+              left: '328px',
+              top: `${crescentBottomTopY}px`,
+              width: '60px',
+              height: '72px',
+              objectFit: 'contain',
+              pointerEvents: 'none',
+              zIndex: 1,
+            }}
+          />
+
+          {/* ── 12. "GET STARTED" BUTTON: 294x54 pill at (48, buttonTopY), solid deep black #191B20 ── */}
           <button
             type="button"
-            onClick={onJoinCode}
+            onClick={onGetStarted}
+            className="btn-press cursor-pointer hover:bg-[#282a30] transition-colors focus:outline-none"
             style={{
-              fontSize: `${13 * s}px`,
-              lineHeight: `${18 * s}px`,
-              color: colors.mutedGray,
+              position: 'absolute',
+              left: '48px',
+              top: `${buttonTopY}px`,
+              width: '294px',
+              height: '54px',
+              backgroundColor: '#191B20',
+              borderRadius: '9999px',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#FFFFFF',
+              fontFamily: "'Nunito', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 800,
+              fontSize: '19px',
+              letterSpacing: '-0.015em',
+              margin: 0,
+              padding: 0,
+              zIndex: 20,
+              boxSizing: 'border-box',
             }}
-            className="bg-transparent border-0 p-0 m-0 font-medium underline underline-offset-[2px] cursor-pointer focus:outline-none hover:text-[#1B1D20] transition-colors"
           >
-            Join
+            Get started
           </button>
+
+          {/* ── 13. "Already have a code? Join": centered beneath button at joinLineTopY ── */}
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: `${joinLineTopY}px`,
+              width: '390px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontFamily: "'Nunito', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 500,
+              fontSize: '13.5px',
+              lineHeight: '18px',
+              letterSpacing: '-0.01em',
+              color: '#75767C',
+              zIndex: 20,
+            }}
+          >
+            <span>Already have a code?&nbsp;</span>
+            <button
+              type="button"
+              onClick={onJoinCode}
+              style={{
+                fontFamily: "'Nunito', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 600,
+                fontSize: '13.5px',
+                lineHeight: '18px',
+                color: '#75767C',
+                backgroundColor: 'transparent',
+                border: 'none',
+                padding: 0,
+                margin: 0,
+                textDecoration: 'underline',
+                textUnderlineOffset: '2.5px',
+                cursor: 'pointer',
+              }}
+              className="hover:text-[#191B20] transition-colors focus:outline-none"
+            >
+              Join
+            </button>
+          </div>
         </div>
       </div>
     </div>
