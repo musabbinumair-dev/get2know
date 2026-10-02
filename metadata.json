@@ -1,0 +1,8 @@
+{
+  "name": "Get-to-Know-You",
+  "description": "A private two-person daily question game for two best friends. Two friends. One question a day.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
