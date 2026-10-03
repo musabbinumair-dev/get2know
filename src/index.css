@@ -5,11 +5,66 @@
 @tailwind utilities;
 
 :root {
-  --bg-cream: #FAF6EA;
-  --color-ink: #1A1C22;
+  --u: min(calc(100vw / 390), calc(100dvh / 844));
+  --bg-cream: #F8F1E1;
+  --color-ink: #1b1d22;
   --color-muted-gray: #8A8A93;
   --font-heading: 'Nunito', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-body: 'Nunito', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.home-shell {
+  --u: min(calc(min(100vw, 430px) / 390), calc(100dvh / 844));
+  --hero-avatar-w: 30%;
+  --quick-gap: calc(10 * var(--u));
+  --heading-size: clamp(28px, calc(40 * var(--u)), 44px);
+  --spacer-top: clamp(8px, 1.8dvh, 20px);
+  --spacer-card: clamp(8px, 1.8dvh, 18px);
+  --spacer-quick: clamp(8px, 1.8dvh, 18px);
+  --spacer-pill: clamp(6px, 1.4dvh, 16px);
+}
+
+@supports (container-type: size) {
+  .home-shell {
+    container-type: size;
+    --u: min(calc(100cqw / 390), calc(100cqh / 844));
+  }
+}
+
+@media (max-height: 700px) {
+  .home-shell {
+    --hero-avatar-w: 26%;
+    --spacer-top: 6px;
+    --spacer-card: 6px;
+    --spacer-quick: 6px;
+    --spacer-pill: 5px;
+  }
+  .hide-on-compact {
+    display: none !important;
+  }
+}
+
+@media (min-height: 880px) {
+  .home-shell {
+    --spacer-top: clamp(14px, 2.5dvh, 28px);
+    --spacer-card: clamp(14px, 2.6dvh, 30px);
+    --spacer-quick: clamp(12px, 2.4dvh, 26px);
+    --spacer-pill: clamp(10px, 2dvh, 24px);
+  }
+}
+
+@media (max-width: 340px) {
+  .home-shell {
+    --heading-size: calc(36 * var(--u));
+    --quick-gap: calc(6 * var(--u));
+  }
+}
+
+@media (min-width: 431px) {
+  .home-shell {
+    border-radius: 32px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  }
 }
 
 html, body {

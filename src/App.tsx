@@ -3,7 +3,6 @@ import { WelcomeScreen } from './screens/WelcomeScreen';
 import { CreateProfileScreen, UserProfile } from './screens/CreateProfileScreen';
 import { InviteFriendScreen, generateInviteCode } from './screens/InviteFriendScreen';
 import { JoinCodeScreen } from './screens/JoinCodeScreen';
-import { TodayQuestionScreen } from './screens/TodayQuestionScreen';
 import { AnswerLockedScreen } from './screens/AnswerLockedScreen';
 import { RevealScreen } from './screens/RevealScreen';
 import { GuessScreen } from './screens/GuessScreen';
@@ -11,11 +10,13 @@ import { ScoresScreen } from './screens/ScoresScreen';
 import { MemoryWallScreen, INITIAL_CARDS } from './screens/MemoryWallScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { FriendProfileScreen } from './screens/FriendProfileScreen';
+import { HomeScreen } from './screens/HomeScreen';
 import { MemoryCardProps } from './components/MemoryCard';
 import { NavTab } from './components/BottomNav';
 import { QUESTION_BANK } from './data/gameData';
 
 type ScreenType =
+  | 'home'
   | 'welcome'
   | 'create-profile'
   | 'invite'
@@ -33,6 +34,7 @@ type ScreenType =
   | 'leave-duo';
 
 const VALID_SCREENS: ScreenType[] = [
+  'home',
   'welcome',
   'create-profile',
   'invite',
@@ -62,7 +64,7 @@ export function App() {
         return saved;
       }
     }
-    return 'welcome';
+    return 'home';
   });
 
   // Sync current screen to URL search param and localStorage so reload never resets
@@ -329,14 +331,7 @@ export function App() {
   };
 
   const handleStartTodayFromInvite = () => {
-    setCurrentScreen('today');
-  };
-
-  const handleShuffleQuestion = () => {
-    const nextIdx = (questionIndex + 1) % QUESTION_BANK.length;
-    setQuestionIndex(nextIdx);
-    setPlayer1Answer(QUESTION_BANK[nextIdx].player1DefaultAnswer);
-    localStorage.setItem('today_answer_locked', 'false');
+    setCurrentScreen('home');
   };
 
   const handleNextQuestion = () => {
@@ -374,7 +369,7 @@ export function App() {
 
   const handleTabNavigate = (tab: NavTab) => {
     if (tab === 'today') {
-      setCurrentScreen('today');
+      setCurrentScreen('home');
     } else if (tab === 'guess') {
       setCurrentScreen('guess');
     } else if (tab === 'scores') {
@@ -428,7 +423,7 @@ export function App() {
         autoOpenSignOutModal={currentScreen === 'sign-out'}
         autoOpenTimePicker={currentScreen === 'time-picker'}
         autoOpenLeaveDuoModal={currentScreen === 'leave-duo'}
-        onBack={() => setCurrentScreen('today')}
+        onBack={() => setCurrentScreen('home')}
         onEditProfile={() => setCurrentScreen('create-profile')}
         onSignOut={handleSignOut}
         onLeaveDuo={handleLeaveDuo}
@@ -524,18 +519,11 @@ export function App() {
     );
   }
 
-  if (currentScreen === 'today') {
+  if (currentScreen === 'home' || currentScreen === 'today') {
     return (
-      <TodayQuestionScreen
-        userProfile={profile}
-        questionData={activeQuestion}
-        streak={streak}
+      <HomeScreen
         onOpenSettings={() => setCurrentScreen('profile')}
-        onLockInSuccess={(ans) => {
-          setPlayer1Answer(ans);
-          setCurrentScreen('locked');
-        }}
-        onShuffleQuestion={handleShuffleQuestion}
+        onOpenFriendProfile={() => setCurrentScreen('friend-profile')}
         onNavigateTab={handleTabNavigate}
       />
     );

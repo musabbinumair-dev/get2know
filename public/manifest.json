@@ -1,79 +1,170 @@
 {
-  "screen": "Friend profile",
+  "screen": "Home",
   "stage": "390x844 reference px",
-  "note": "x,y = top-left on the reference stage, width in reference px, height follows the aspect ratio. Never redraw these.",
+  "note": "x,y = top-left on the reference stage, width/height in reference px. Never redraw these.",
   "assets": [
     {
-      "file": "deco-crescent-yellow-top-left-cropped.webp",
-      "role": "yellow crescent, top-left, cut by the left and top screen edges",
+      "file": "deco-heart-pink-top-left-cropped.webp",
+      "role": "pink heart, top-left, cut by the left screen edge",
       "x": 0,
-      "y": 0,
-      "width": 38.9,
-      "height": 53.1
+      "y": 69,
+      "width": 53.5,
+      "height": 61.3,
+      "snap": "left"
     },
     {
-      "file": "deco-heart-pink-top-right-cropped.webp",
-      "role": "pink heart, top-right, cut by the right screen edge",
-      "x": 325.9,
-      "y": 13.7,
-      "width": 64.1,
-      "height": 74.2
+      "file": "deco-starburst-blue-top-right-cropped.webp",
+      "role": "blue starburst, top-right, cut by the right screen edge",
+      "x": 347.9,
+      "y": 75,
+      "width": 42.1,
+      "height": 71.3,
+      "snap": "right"
     },
     {
-      "file": "deco-starburst-blue-bottom-left-cropped.webp",
-      "role": "blue starburst, bottom-left, cut by the left and bottom screen edges",
-      "x": 0,
-      "y": 752.1,
-      "width": 91.5,
-      "height": 92.9
+      "file": "deco-cross-olive-bottom-left.webp",
+      "role": "olive cross, bottom-left",
+      "x": 5.9,
+      "y": 705,
+      "width": 52.1,
+      "height": 51.2
     },
     {
-      "file": "avatar-sam-teal-blob-bun-girl.webp",
-      "role": "big teal blob with the bun girl avatar (Sam), centered",
-      "x": 103,
-      "y": 168.5,
-      "width": 184,
-      "height": 193.6
+      "file": "deco-crescent-yellow-bottom-right.webp",
+      "role": "yellow crescent, bottom-right, behind the tab bar",
+      "x": 327.4,
+      "y": 696.3,
+      "width": 43.9,
+      "height": 52.1
     },
     {
-      "file": "stat-starburst-yellow-streak.webp",
-      "role": "yellow starburst behind the streak number (no text in image)",
-      "x": 32.5,
-      "y": 412,
-      "width": 89.3,
-      "height": 89.8
+      "file": "deco-heart-pink-bottom-right-cropped.webp",
+      "role": "pink heart, bottom-right, cut by the right edge, behind the tab bar",
+      "x": 346.6,
+      "y": 738.4,
+      "width": 43.4,
+      "height": 55.8,
+      "snap": "right"
     },
     {
-      "file": "stat-teardrop-blue-matches.webp",
-      "role": "blue teardrop behind the matches number (no text in image)",
-      "x": 155.2,
-      "y": 411.5,
-      "width": 79.6,
-      "height": 89.7
+      "file": "logo-duo-sparks.webp",
+      "role": "two-people logo with yellow spark lines, top-left",
+      "x": 19.7,
+      "y": 27,
+      "width": 58.1,
+      "height": 22.9
     },
     {
-      "file": "stat-cross-olive-guess-wins.webp",
-      "role": "olive cross behind the guess wins number (no text in image)",
-      "x": 268.2,
-      "y": 412,
-      "width": 90.6,
-      "height": 89.7
-    },
-    {
-      "file": "icon-clock-teal-blob.webp",
-      "role": "teal blob with a clock icon, left side of the \"Last answered\" row",
-      "x": 34.8,
-      "y": 559.4,
-      "width": 41.2,
-      "height": 42.6
-    },
-    {
-      "file": "icon-wave-hand.webp",
-      "role": "raised hand emoji after the \"Send a nudge\" text in the black button",
-      "x": 245.8,
-      "y": 644,
+      "file": "icon-gear-settings.webp",
+      "role": "black settings gear icon inside the dashed circle button, top-right",
+      "x": 342.9,
+      "y": 28.8,
       "width": 19.2,
-      "height": 21.0
+      "height": 20.6
+    },
+    {
+      "file": "icon-flame.webp",
+      "role": "flame icon inside the streak pill",
+      "x": 174.7,
+      "y": 27.4,
+      "width": 18.3,
+      "height": 21.9
+    },
+    {
+      "file": "card-hero-yellow.webp",
+      "role": "big wobbly yellow card behind the two avatars (no content in the image)",
+      "x": 14.6,
+      "y": 205.3,
+      "width": 361.7,
+      "height": 250.1
+    },
+    {
+      "file": "deco-sparks-yellow-around-avatars.webp",
+      "role": "yellow spark lines left and right of the avatars, transparent in the middle",
+      "x": 37,
+      "y": 255.6,
+      "width": 315.0,
+      "height": 58.5
+    },
+    {
+      "file": "avatar-alex-pink-blob-boy.webp",
+      "role": "Alex: boy avatar on a pink blob",
+      "x": 60.8,
+      "y": 221.3,
+      "width": 106.5,
+      "height": 112.5
+    },
+    {
+      "file": "avatar-sam-blue-blob-girl.webp",
+      "role": "Sam: girl avatar on a blue blob",
+      "x": 220.8,
+      "y": 226.3,
+      "width": 109.3,
+      "height": 109.3
+    },
+    {
+      "file": "badge-vs-starburst-yellow.webp",
+      "role": "yellow starburst between the avatars (no text in the image)",
+      "x": 157.3,
+      "y": 241.9,
+      "width": 73.6,
+      "height": 77.7
+    },
+    {
+      "file": "quick-blob-pink-know-me.webp",
+      "role": "pink blob for the Know Me quick start card (no icon or text)",
+      "x": 15.1,
+      "y": 503.8,
+      "width": 118.4,
+      "height": 105.2
+    },
+    {
+      "file": "quick-blob-blue-trivia.webp",
+      "role": "blue blob for the Trivia quick start card (no icon or text)",
+      "x": 140.8,
+      "y": 502,
+      "width": 111.6,
+      "height": 106.5
+    },
+    {
+      "file": "quick-blob-green-random.webp",
+      "role": "green blob for the Random quick start card (no icon or text)",
+      "x": 259.7,
+      "y": 503.4,
+      "width": 115.7,
+      "height": 106.1
+    },
+    {
+      "file": "quick-icon-wink-face-sparks.webp",
+      "role": "winking face emoji with yellow sparks, on the Know Me card",
+      "x": 40.2,
+      "y": 527.2,
+      "width": 67.7,
+      "height": 36.6
+    },
+    {
+      "file": "quick-icon-lightbulb-sparks.webp",
+      "role": "lightbulb emoji with yellow sparks, on the Trivia card",
+      "x": 165.1,
+      "y": 526.7,
+      "width": 63.1,
+      "height": 37.5
+    },
+    {
+      "file": "quick-icon-dice-sparks.webp",
+      "role": "dice emoji with yellow sparks, on the Random card",
+      "x": 285.8,
+      "y": 526.7,
+      "width": 66.8,
+      "height": 37.9
+    },
+    {
+      "file": "icon-trophy-yellow-blob.webp",
+      "role": "yellow blob with a trophy, left side of the Last game row",
+      "x": 42.1,
+      "y": 639.2,
+      "width": 47.5,
+      "height": 43.9
     }
   ]
 }
