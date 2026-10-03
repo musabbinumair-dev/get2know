@@ -1,0 +1,79 @@
+{
+  "screen": "Friend profile",
+  "stage": "390x844 reference px",
+  "note": "x,y = top-left on the reference stage, width in reference px, height follows the aspect ratio. Never redraw these.",
+  "assets": [
+    {
+      "file": "deco-crescent-yellow-top-left-cropped.webp",
+      "role": "yellow crescent, top-left, cut by the left and top screen edges",
+      "x": 0,
+      "y": 0,
+      "width": 38.9,
+      "height": 53.1
+    },
+    {
+      "file": "deco-heart-pink-top-right-cropped.webp",
+      "role": "pink heart, top-right, cut by the right screen edge",
+      "x": 325.9,
+      "y": 13.7,
+      "width": 64.1,
+      "height": 74.2
+    },
+    {
+      "file": "deco-starburst-blue-bottom-left-cropped.webp",
+      "role": "blue starburst, bottom-left, cut by the left and bottom screen edges",
+      "x": 0,
+      "y": 752.1,
+      "width": 91.5,
+      "height": 92.9
+    },
+    {
+      "file": "avatar-sam-teal-blob-bun-girl.webp",
+      "role": "big teal blob with the bun girl avatar (Sam), centered",
+      "x": 103,
+      "y": 168.5,
+      "width": 184,
+      "height": 193.6
+    },
+    {
+      "file": "stat-starburst-yellow-streak.webp",
+      "role": "yellow starburst behind the streak number (no text in image)",
+      "x": 32.5,
+      "y": 412,
+      "width": 89.3,
+      "height": 89.8
+    },
+    {
+      "file": "stat-teardrop-blue-matches.webp",
+      "role": "blue teardrop behind the matches number (no text in image)",
+      "x": 155.2,
+      "y": 411.5,
+      "width": 79.6,
+      "height": 89.7
+    },
+    {
+      "file": "stat-cross-olive-guess-wins.webp",
+      "role": "olive cross behind the guess wins number (no text in image)",
+      "x": 268.2,
+      "y": 412,
+      "width": 90.6,
+      "height": 89.7
+    },
+    {
+      "file": "icon-clock-teal-blob.webp",
+      "role": "teal blob with a clock icon, left side of the \"Last answered\" row",
+      "x": 34.8,
+      "y": 559.4,
+      "width": 41.2,
+      "height": 42.6
+    },
+    {
+      "file": "icon-wave-hand.webp",
+      "role": "raised hand emoji after the \"Send a nudge\" text in the black button",
+      "x": 245.8,
+      "y": 644,
+      "width": 19.2,
+      "height": 21.0
+    }
+  ]
+}

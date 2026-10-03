@@ -1,0 +1,137 @@
+{
+  "screen": "Scores",
+  "stage": "390x844 px",
+  "note": "x,y = top-left on the stage, width in px, height follows the aspect ratio. Use these files only; never redraw them with CSS or SVG.",
+  "assets": [
+    {
+      "file": "icon-category-dreams-blue-moon.webp",
+      "role": "icon on the Dreams row (blue blob with moon emoji)",
+      "x": 44,
+      "y": 648.6,
+      "width": 41,
+      "height": 37.7,
+      "stage": "390x844 px",
+      "encoding": "lossless"
+    },
+    {
+      "file": "deco-cross-olive-right.webp",
+      "role": "decoration, olive cross under the blue star on the right side",
+      "x": 328,
+      "y": 178,
+      "width": 59,
+      "height": 59.0,
+      "stage": "390x844 px",
+      "encoding": "lossless"
+    },
+    {
+      "file": "deco-star-blue-top-right-cropped.webp",
+      "role": "decoration, blue 7-point star at top right, cut by the right screen edge",
+      "x": 327,
+      "y": 75,
+      "width": 63,
+      "height": 74.7,
+      "stage": "390x844 px",
+      "encoding": "lossless"
+    },
+    {
+      "file": "deco-heart-pink-top-left-cropped.webp",
+      "role": "decoration, pink heart at top left, cut by the left screen edge",
+      "x": 0,
+      "y": 82,
+      "width": 62,
+      "height": 60.7,
+      "stage": "390x844 px",
+      "encoding": "lossless"
+    },
+    {
+      "file": "icon-category-fears-green-scream.webp",
+      "role": "icon on the Fears row (green blob with scream emoji)",
+      "x": 43,
+      "y": 702,
+      "width": 42,
+      "height": 34.7,
+      "stage": "390x844 px",
+      "encoding": "lossless"
+    },
+    {
+      "file": "deco-moon-yellow-bottom-left.webp",
+      "role": "decoration, yellow crescent at bottom left, partly behind the tab bar",
+      "x": 4,
+      "y": 735,
+      "width": 47,
+      "height": 44.7,
+      "stage": "390x844 px",
+      "encoding": "lossless"
+    },
+    {
+      "file": "deco-sparks-yellow-around-heart.webp",
+      "role": "six short yellow spark lines around the big score heart, transparent in the middle",
+      "x": 85,
+      "y": 121,
+      "width": 223,
+      "height": 74.3,
+      "stage": "390x844 px",
+      "encoding": "lossless"
+    },
+    {
+      "file": "deco-heart-pink-bottom-right-cropped.webp",
+      "role": "decoration, pink heart at bottom right, cut by the right edge, partly behind the tab bar",
+      "x": 346.5,
+      "y": 742,
+      "width": 43.5,
+      "height": 37.1,
+      "stage": "390x844 px",
+      "encoding": "lossless"
+    },
+    {
+      "file": "icon-category-food-pink-pizza.webp",
+      "role": "icon on the Food row (pink blob with pizza emoji)",
+      "x": 44,
+      "y": 601.5,
+      "width": 41,
+      "height": 34.7,
+      "stage": "390x844 px",
+      "encoding": "lossless"
+    },
+    {
+      "file": "hero-heart-pink-sync-score.webp",
+      "role": "big pink heart behind the 74% sync score text (no text in the image)",
+      "x": 116,
+      "y": 103.5,
+      "width": 162,
+      "height": 130.0,
+      "stage": "390x844 px",
+      "encoding": "lossless"
+    },
+    {
+      "file": "stat-starburst-yellow-streak.webp",
+      "role": "yellow starburst behind the streak number (no text in the image)",
+      "x": 22,
+      "y": 267,
+      "width": 111,
+      "height": 107.8,
+      "stage": "390x844 px",
+      "encoding": "lossless"
+    },
+    {
+      "file": "stat-teardrop-blue-matches.webp",
+      "role": "blue teardrop behind the matches number (no text in the image)",
+      "x": 153,
+      "y": 270,
+      "width": 90,
+      "height": 99.6,
+      "stage": "390x844 px",
+      "encoding": "lossless"
+    },
+    {
+      "file": "stat-cross-olive-guess-wins.webp",
+      "role": "olive cross blob behind the guess wins number (no text in the image)",
+      "x": 261,
+      "y": 270,
+      "width": 102.5,
+      "height": 102.0,
+      "stage": "390x844 px",
+      "encoding": "lossless"
+    }
+  ]
+}

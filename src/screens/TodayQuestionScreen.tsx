@@ -3,20 +3,33 @@ import { Screen } from '../components/Screen';
 import { PillButton } from '../components/PillButton';
 import { BottomNav, NavTab } from '../components/BottomNav';
 import { TopBar } from '../components/TopBar';
+import { UserProfile } from './CreateProfileScreen';
+import { QuestionData, getAvatarBlobSrc, getAvatarFaceSrc } from '../data/gameData';
 
 interface TodayQuestionScreenProps {
+  userProfile?: UserProfile;
+  questionData?: QuestionData;
+  streak?: number;
   onOpenSettings?: () => void;
   onNavigateTab?: (tab: NavTab) => void;
-  onLockInSuccess?: () => void;
+  onLockInSuccess?: (answer: string) => void;
+  onShuffleQuestion?: () => void;
 }
 
 export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
+  userProfile = { avatarId: 1, name: 'Player 1', color: 'salmon' },
+  questionData,
+  streak = 12,
   onOpenSettings,
   onNavigateTab,
   onLockInSuccess,
+  onShuffleQuestion,
 }) => {
+  const currentQuestionText =
+    questionData?.question || "What’s a fear you’d never tell anyone?";
+
   const [answer, setAnswer] = useState<string>(() => {
-    return localStorage.getItem('today_answer') || '';
+    return localStorage.getItem('today_answer') || questionData?.player1DefaultAnswer || '';
   });
   const [isLocked, setIsLocked] = useState<boolean>(() => {
     return localStorage.getItem('today_answer_locked') === 'true';
@@ -25,6 +38,18 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
   const [activeTab, setActiveTab] = useState<NavTab>('today');
 
   const maxChars = 200;
+
+  // Update answer when question changes if not already locked
+  useEffect(() => {
+    if (!isLocked && questionData) {
+      const saved = localStorage.getItem(`today_answer_${questionData.id}`);
+      if (saved) {
+        setAnswer(saved);
+      } else {
+        setAnswer(questionData.player1DefaultAnswer || '');
+      }
+    }
+  }, [questionData?.id, isLocked]);
 
   // Sync body & html background to bright warm yellow
   useEffect(() => {
@@ -49,9 +74,12 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
     if (!answer.trim()) return;
     setIsLocked(true);
     localStorage.setItem('today_answer_locked', 'true');
+    if (questionData) {
+      localStorage.setItem(`today_answer_${questionData.id}`, answer);
+    }
     setShowLockedToast(true);
     setTimeout(() => {
-      onLockInSuccess?.();
+      onLockInSuccess?.(answer);
     }, 450);
   };
 
@@ -137,22 +165,33 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
       {/* ---------------- MAIN CONTENT ---------------- */}
       <div className="relative z-10 flex flex-col justify-between h-full overflow-y-auto overflow-x-hidden pt-9 pb-[84px] select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <div>
-          {/* Unified Top Bar: Duo Icon | Streak 12 | Settings Gear */}
-          <TopBar streak={12} onSettingsClick={onOpenSettings} />
+          {/* Unified Top Bar: Duo Icon | Streak | Settings Gear */}
+          <TopBar streak={streak} onSettingsClick={onOpenSettings} />
 
           <div className="px-7 sm:px-8">
             {/* Question Heading Section */}
             <div className="mt-5">
-              <h2 className="text-[17.5px] sm:text-[18.5px] font-bold text-[#4E5244] tracking-tight">
-                Today’s question
-              </h2>
-              <h1 className="mt-2 text-[38px] sm:text-[42px] font-black text-[#1A1C22] leading-[1.08] tracking-[-0.035em]">
-                What’s a fear you’d never tell anyone?
+              <div className="flex items-center justify-between">
+                <h2 className="text-[17.5px] sm:text-[18.5px] font-bold text-[#4E5244] tracking-tight">
+                  Today’s question {questionData?.category ? `· ${questionData.category}` : ''}
+                </h2>
+                {onShuffleQuestion && (
+                  <button
+                    type="button"
+                    onClick={onShuffleQuestion}
+                    className="text-[13px] font-extrabold text-[#1A1C22]/70 hover:text-[#1A1C22] flex items-center gap-1 cursor-pointer bg-white/40 px-2.5 py-1 rounded-full active:scale-95 transition-all shadow-none"
+                  >
+                    <span>🎲</span> Shuffle
+                  </button>
+                )}
+              </div>
+              <h1 className="mt-2 text-[32px] sm:text-[38px] font-black text-[#1A1C22] leading-[1.1] tracking-[-0.035em]">
+                {currentQuestionText}
               </h1>
             </div>
 
             {/* Cream Textarea Card (rounded ~34px, comfortable padding) */}
-            <div className="mt-6 relative w-full max-w-[342px] mx-auto bg-[#FAF6EB] rounded-[34px] p-6 flex flex-col justify-between min-h-[178px]">
+            <div className="mt-5 relative w-full max-w-[342px] mx-auto bg-[#FAF6EB] rounded-[34px] p-6 flex flex-col justify-between min-h-[178px]">
               <textarea
                 value={answer}
                 onChange={handleTextChange}
@@ -184,19 +223,21 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
               </div>
             </div>
 
-            {/* Privacy Note with Avatar and Lock Badge */}
+            {/* Privacy Note with Dynamic Avatar and Lock Badge */}
             <div className="mt-4 flex items-center gap-3.5 w-full max-w-[342px] mx-auto px-1">
-              {/* Avatar on Blue Blob with Lock Icon Badge */}
-              <div className="relative w-[54px] h-[54px] flex items-center justify-center flex-shrink-0">
+              <div
+                onClick={onOpenSettings}
+                className="relative w-[54px] h-[54px] flex items-center justify-center flex-shrink-0 cursor-pointer active:scale-95 transition-transform"
+              >
                 <img
-                  src="/file_00000000872c821185f1f972a55e71f3.png"
+                  src={getAvatarBlobSrc(userProfile.avatarId, userProfile.color)}
                   alt=""
                   className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
                   draggable={false}
                 />
                 <img
-                  src="/assets/avatars/avatar-1.png"
-                  alt="You"
+                  src={getAvatarFaceSrc(userProfile.avatarId)}
+                  alt={userProfile.name || 'You'}
                   className="relative z-10 w-[74%] h-[74%] object-contain pointer-events-none select-none"
                   draggable={false}
                 />
@@ -219,7 +260,7 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
               </div>
 
               {/* Note text */}
-              <p className="text-[15.5px] font-bold text-[#4E5244] leading-[1.25]">
+              <p className="text-[15px] font-bold text-[#4E5244] leading-[1.25]">
                 {isLocked
                   ? "Locked! They can't see it until you both answer."
                   : 'They can’t see it until you both answer.'}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BottomNav, NavTab } from '../components/BottomNav';
+import { QuestionData, getAvatarFaceSrc } from '../data/gameData';
 
 export interface SpecBox {
   x: number;
@@ -108,7 +109,12 @@ const REACTION_EMOJIS = [
 
 export interface RevealScreenProps {
   player1Name?: string;
+  player1AvatarId?: number;
+  player1Color?: string;
   player2Name?: string;
+  player2AvatarId?: number;
+  player2Color?: string;
+  questionData?: QuestionData;
   player1Answer?: string;
   player2Answer?: string;
   syncScore?: number;
@@ -116,26 +122,42 @@ export interface RevealScreenProps {
   selectedReaction?: string | null;
   onSelectReaction?: (reactionId: string) => void;
   onSaveToMemoryWall?: () => void;
+  onNextQuestion?: () => void;
   onBack?: () => void;
   onNavigateTab?: (tab: NavTab) => void;
 }
 
-function splitAnswerIntoTwoLines(answer: string): [string, string] {
+function formatBlobAnswer(answer: string, maxLength = 36): {
+  text: string;
+  isTruncated: boolean;
+  fontSize: string;
+  lineHeight: string;
+} {
   const trimmed = answer.trim();
-  if (trimmed.toLowerCase() === 'anchovies on pizza.') {
-    return ['Anchovies', 'on pizza.'];
+  const isTruncated = trimmed.length > maxLength;
+  const displayText = isTruncated ? trimmed.slice(0, maxLength).trim() + '....' : trimmed;
+
+  let fontSize = '18px';
+  let lineHeight = '21px';
+  if (displayText.length > 28) {
+    fontSize = '12px';
+    lineHeight = '14.5px';
+  } else if (displayText.length > 16) {
+    fontSize = '14.5px';
+    lineHeight = '17px';
   }
-  const words = trimmed.split(/\s+/);
-  if (words.length <= 1) {
-    return [trimmed, ''];
-  }
-  const mid = Math.ceil(words.length / 2);
-  return [words.slice(0, mid).join(' '), words.slice(mid).join(' ')];
+
+  return { text: displayText, isTruncated, fontSize, lineHeight };
 }
 
 export const RevealScreen: React.FC<RevealScreenProps> = ({
   player1Name = 'Player 1',
+  player1AvatarId = 1,
+  player1Color: _p1Color = 'salmon',
   player2Name = 'Player 2',
+  player2AvatarId = 2,
+  player2Color: _p2Color = 'teal',
+  questionData,
   player1Answer = 'Anchovies on pizza.',
   player2Answer = 'Anchovies on pizza.',
   syncScore = 74,
@@ -143,6 +165,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
   selectedReaction: controlledReaction,
   onSelectReaction,
   onSaveToMemoryWall,
+  onNextQuestion,
   onBack,
   onNavigateTab,
 }) => {
@@ -163,6 +186,14 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
   const [toastMessage, setToastMessage] = useState<string>('');
   const [activeTab, setActiveTab] = useState<NavTab>('today');
 
+  // Modal state to inspect full answer
+  const [inspectingPlayer, setInspectingPlayer] = useState<{
+    name: string;
+    avatarId: number;
+    answer: string;
+    blobBg: string;
+  } | null>(null);
+
   const activeReaction =
     controlledReaction !== undefined ? controlledReaction : internalReaction;
 
@@ -171,8 +202,14 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
       ? isMatched
       : player1Answer.trim().toLowerCase() === player2Answer.trim().toLowerCase();
 
-  const [p1Line1, p1Line2] = splitAnswerIntoTwoLines(player1Answer);
-  const [p2Line1, p2Line2] = splitAnswerIntoTwoLines(player2Answer);
+  const p1Formatted = formatBlobAnswer(player1Answer);
+  const p2Formatted = formatBlobAnswer(player2Answer);
+
+  const questionLines = questionData?.questionLines || [
+    "What’s the worst",
+    "food you’ve ever",
+    "tried?",
+  ];
 
   useEffect(() => {
     const handleResize = () => {
@@ -423,41 +460,67 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
           className="font-black text-[#1B1D20] select-none z-10 whitespace-nowrap"
           style={{
             ...boxStyle(layoutSpec.question),
-            fontSize: '41.5px',
-            lineHeight: '43.5px',
+            fontSize: '36px',
+            lineHeight: '40px',
             letterSpacing: '-0.03em',
           }}
         >
-          <div>What’s the worst</div>
-          <div>food you’ve ever</div>
-          <div>tried?</div>
+          {questionLines.map((line, idx) => (
+            <div key={idx}>{line}</div>
+          ))}
         </div>
 
         {/* ---------------- CARDS & AVATARS ---------------- */}
-        {/* card-blob-pink: 152x156 at x 22, y 275 */}
-        <img
-          data-spec="cardBlobPink"
-          src="/assets/reveal/card-blob-pink.png"
-          alt=""
-          style={imgStyle(layoutSpec.cardBlobPink)}
-          className="pointer-events-none select-none z-10"
-          draggable={false}
-        />
+        {/* card-blob-pink: 152x156 at x 22, y 275 - Clickable to inspect full answer */}
+        <div
+          onClick={() =>
+            setInspectingPlayer({
+              name: player1Name,
+              avatarId: player1AvatarId,
+              answer: player1Answer,
+              blobBg: '#FCA0D1',
+            })
+          }
+          className="cursor-pointer active:scale-[0.98] transition-transform"
+          title="Click to view full answer"
+        >
+          <img
+            data-spec="cardBlobPink"
+            src="/assets/reveal/card-blob-pink.png"
+            alt=""
+            style={imgStyle(layoutSpec.cardBlobPink)}
+            className="pointer-events-none select-none z-10"
+            draggable={false}
+          />
+        </div>
 
-        {/* card-blob-blue: 149x146 at x 224, y 274 */}
-        <img
-          data-spec="cardBlobBlue"
-          src="/assets/reveal/card-blob-blue.png"
-          alt=""
-          style={imgStyle(layoutSpec.cardBlobBlue)}
-          className="pointer-events-none select-none z-10"
-          draggable={false}
-        />
+        {/* card-blob-blue: 149x146 at x 224, y 274 - Clickable to inspect full answer */}
+        <div
+          onClick={() =>
+            setInspectingPlayer({
+              name: player2Name,
+              avatarId: player2AvatarId,
+              answer: player2Answer,
+              blobBg: '#8EAFFD',
+            })
+          }
+          className="cursor-pointer active:scale-[0.98] transition-transform"
+          title="Click to view full answer"
+        >
+          <img
+            data-spec="cardBlobBlue"
+            src="/assets/reveal/card-blob-blue.png"
+            alt=""
+            style={imgStyle(layoutSpec.cardBlobBlue)}
+            className="pointer-events-none select-none z-10"
+            draggable={false}
+          />
+        </div>
 
         {/* Player 1 avatar: 50x53 at x 65, y 293 (on the pink card) */}
         <img
           data-spec="player1Avatar"
-          src="/assets/avatars/avatar-1.png"
+          src={getAvatarFaceSrc(player1AvatarId)}
           alt={player1Name}
           style={imgStyle(layoutSpec.player1Avatar)}
           className="pointer-events-none select-none z-20"
@@ -467,7 +530,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
         {/* Player 2 avatar: 50x53 at x 271, y 293 (on the blue card) */}
         <img
           data-spec="player2Avatar"
-          src="/assets/avatars/avatar-4.png"
+          src={getAvatarFaceSrc(player2AvatarId)}
           alt={player2Name}
           style={imgStyle(layoutSpec.player2Avatar)}
           className="pointer-events-none select-none z-20"
@@ -501,56 +564,74 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
           {player2Name}
         </div>
 
-        {/* Left Card Answer: two lines centered at x 95, y 381 and y 403, Nunito 800, ~19px, ink */}
+        {/* Left Card Answer: Perfectly contained inside pink blob, max 2 lines, truncated with '....' */}
         <div
-          data-spec="player1AnswerLine1"
-          className="flex items-center justify-center font-extrabold text-[#1B1D20] select-none z-20 whitespace-nowrap"
+          onClick={() =>
+            setInspectingPlayer({
+              name: player1Name,
+              avatarId: player1AvatarId,
+              answer: player1Answer,
+              blobBg: '#FCA0D1',
+            })
+          }
+          className="absolute z-20 flex items-center justify-center text-center px-1 cursor-pointer select-none"
           style={{
-            ...boxStyle(layoutSpec.player1AnswerLine1),
-            fontSize: '19px',
-            lineHeight: '22px',
-            letterSpacing: '-0.02em',
+            left: '26px',
+            top: '366px',
+            width: '144px',
+            height: '56px',
           }}
+          title="Click to view full answer"
         >
-          {p1Line1}
-        </div>
-        <div
-          data-spec="player1AnswerLine2"
-          className="flex items-center justify-center font-extrabold text-[#1B1D20] select-none z-20 whitespace-nowrap"
-          style={{
-            ...boxStyle(layoutSpec.player1AnswerLine2),
-            fontSize: '19px',
-            lineHeight: '22px',
-            letterSpacing: '-0.02em',
-          }}
-        >
-          {p1Line2}
+          <p
+            className="font-extrabold text-[#1B1D20] text-center line-clamp-2 overflow-hidden text-ellipsis"
+            style={{
+              fontSize: p1Formatted.fontSize,
+              lineHeight: p1Formatted.lineHeight,
+              letterSpacing: '-0.02em',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              wordBreak: 'break-word',
+            }}
+          >
+            {p1Formatted.text}
+          </p>
         </div>
 
-        {/* Right Card Answer: two lines centered at x 297, y 381 and y 403, Nunito 800, ~19px, ink */}
+        {/* Right Card Answer: Perfectly contained inside blue blob, max 2 lines, truncated with '....' */}
         <div
-          data-spec="player2AnswerLine1"
-          className="flex items-center justify-center font-extrabold text-[#1B1D20] select-none z-20 whitespace-nowrap"
+          onClick={() =>
+            setInspectingPlayer({
+              name: player2Name,
+              avatarId: player2AvatarId,
+              answer: player2Answer,
+              blobBg: '#8EAFFD',
+            })
+          }
+          className="absolute z-20 flex items-center justify-center text-center px-1 cursor-pointer select-none"
           style={{
-            ...boxStyle(layoutSpec.player2AnswerLine1),
-            fontSize: '19px',
-            lineHeight: '22px',
-            letterSpacing: '-0.02em',
+            left: '228px',
+            top: '366px',
+            width: '141px',
+            height: '56px',
           }}
+          title="Click to view full answer"
         >
-          {p2Line1}
-        </div>
-        <div
-          data-spec="player2AnswerLine2"
-          className="flex items-center justify-center font-extrabold text-[#1B1D20] select-none z-20 whitespace-nowrap"
-          style={{
-            ...boxStyle(layoutSpec.player2AnswerLine2),
-            fontSize: '19px',
-            lineHeight: '22px',
-            letterSpacing: '-0.02em',
-          }}
-        >
-          {p2Line2}
+          <p
+            className="font-extrabold text-[#1B1D20] text-center line-clamp-2 overflow-hidden text-ellipsis"
+            style={{
+              fontSize: p2Formatted.fontSize,
+              lineHeight: p2Formatted.lineHeight,
+              letterSpacing: '-0.02em',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              wordBreak: 'break-word',
+            }}
+          >
+            {p2Formatted.text}
+          </p>
         </div>
 
         {/* match-starburst: 88x92 at x 152, y 295, drawn above both cards */}
@@ -760,15 +841,20 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
           <span className="leading-none">Save to memory wall</span>
         </button>
 
-        {/* "Next question tomorrow": pill x 31, y 694, 328x40, disabled look (background #D2C7D3, muted gray text) */}
+        {/* "Next question": pill x 31, y 694, 328x40 */}
         <button
           type="button"
           data-spec="nextQuestionPill"
-          disabled
+          onClick={onNextQuestion}
+          disabled={!onNextQuestion}
           style={boxStyle(layoutSpec.nextQuestionPill)}
-          className="rounded-full bg-[#D2C7D3] text-[#7D7580] font-bold text-[18px] tracking-[-0.015em] flex items-center justify-center cursor-default focus:outline-none z-20 p-0"
+          className={`rounded-full font-bold text-[18px] tracking-[-0.015em] flex items-center justify-center focus:outline-none z-20 p-0 ${
+            onNextQuestion
+              ? 'bg-[#1B1D20] text-white hover:bg-[#2A2D32] cursor-pointer btn-press'
+              : 'bg-[#D2C7D3] text-[#7D7580] cursor-default'
+          }`}
         >
-          <span className="leading-none">Next question tomorrow</span>
+          <span className="leading-none">{onNextQuestion ? 'Next question ✨' : 'Next question tomorrow'}</span>
         </button>
 
         {/* ---------------- BOTTOM DECORATIONS (BEHIND TAB BAR) ---------------- */}
@@ -800,6 +886,48 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
         >
           <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
         </div>
+
+        {/* ---------------- FULL ANSWER INSPECTION MODAL ---------------- */}
+        {inspectingPlayer && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1B1D20]/60 backdrop-blur-xs select-auto"
+            onClick={() => setInspectingPlayer(null)}
+          >
+            <div
+              className="relative w-full max-w-[320px] bg-[#FAF6EB] rounded-[32px] p-6 shadow-2xl flex flex-col items-center text-center animate-pop border-2 border-[#1B1D20]/10"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Avatar on Color Blob */}
+              <div
+                className="relative w-[72px] h-[72px] rounded-full flex items-center justify-center mb-3 shadow-inner"
+                style={{ backgroundColor: inspectingPlayer.blobBg }}
+              >
+                <img
+                  src={getAvatarFaceSrc(inspectingPlayer.avatarId)}
+                  alt={inspectingPlayer.name}
+                  className="w-[54px] h-[54px] object-contain pointer-events-none select-none"
+                  draggable={false}
+                />
+              </div>
+
+              <span className="text-[13px] font-bold text-[#1B1D20]/60 uppercase tracking-wider">
+                {inspectingPlayer.name}’s answer
+              </span>
+
+              <h3 className="mt-2 text-[20px] sm:text-[22px] font-black text-[#1B1D20] leading-snug tracking-tight break-words max-h-[220px] overflow-y-auto px-1">
+                “{inspectingPlayer.answer}”
+              </h3>
+
+              <button
+                type="button"
+                onClick={() => setInspectingPlayer(null)}
+                className="mt-5 w-full h-[46px] rounded-full bg-[#1B1D20] hover:bg-[#2A2D32] text-white font-bold text-[16px] tracking-tight cursor-pointer btn-press"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

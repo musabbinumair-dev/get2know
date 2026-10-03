@@ -16,7 +16,7 @@ export const TopBar: React.FC<TopBarProps> = ({
       {/* Left: Duo Logo Asset */}
       <div className="flex items-center justify-center h-[44px]">
         <img
-          src="/assets/waiting/logo-duo.png"
+          src="/assets/waiting/logo-duo.webp"
           alt="Get-to-Know-You"
           className="w-[58px] h-[22px] object-contain pointer-events-none select-none"
           draggable={false}
@@ -26,7 +26,7 @@ export const TopBar: React.FC<TopBarProps> = ({
       {/* Center: Streak Pill (68x33) with authentic streak-flame asset + streak number */}
       <div className="absolute left-1/2 -translate-x-1/2 h-[34px] px-3.5 rounded-full bg-[#1B1D20] flex items-center justify-center gap-1.5 select-none pointer-events-none shadow-sm">
         <img
-          src="/assets/waiting/streak-flame.png"
+          src="/assets/waiting/streak-flame.webp"
           alt=""
           className="w-[14px] h-[19px] object-contain select-none pointer-events-none"
           draggable={false}
