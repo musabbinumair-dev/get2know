@@ -80,12 +80,18 @@ export const CreateProfileScreen: React.FC<CreateProfileScreenProps> = ({
       : null
   );
 
-  const handleContinue = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleContinue = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    await new Promise((r) => setTimeout(r, 400));
     onContinue({
       avatarId: selectedAvatarId ?? 1,
       name: name.trim() || 'Player',
       color: selectedColor ?? 'salmon',
     });
+    setIsSubmitting(false);
   };
 
   return (
@@ -316,7 +322,7 @@ export const CreateProfileScreen: React.FC<CreateProfileScreenProps> = ({
 
         {/* Continue Button: Standardized PillButton size matching other pages */}
         <div className="mt-5 sm:mt-6 w-full">
-          <PillButton onClick={handleContinue} variant="black">
+          <PillButton onClick={handleContinue} variant="black" isLoading={isSubmitting}>
             Continue
           </PillButton>
         </div>

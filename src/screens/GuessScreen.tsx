@@ -15,7 +15,7 @@ interface GuessScreenProps {
 }
 
 const BLOB_OUTLINE_FILTER =
-  'drop-shadow(3px 0 0 #17181B) drop-shadow(-3px 0 0 #17181B) drop-shadow(0 3px 0 #17181B) drop-shadow(0 -3px 0 #17181B)';
+  'drop-shadow(2.5px 0 0 #17181B) drop-shadow(-2.5px 0 0 #17181B) drop-shadow(0 2.5px 0 #17181B) drop-shadow(0 -2.5px 0 #17181B)';
 
 export const GuessScreen: React.FC<GuessScreenProps> = ({
   questionData,
@@ -98,7 +98,6 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
 
   // Label "Guess their answer"
   const labelTop = topBarBottom + gapA;
-  const labelCenterY = labelTop + 10;
   const labelBottom = labelTop + 20;
 
   // Question "What's the worst..."
@@ -113,18 +112,11 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
 
   // Starburst Badge ("+15 if right")
   const starburstY = row1Top - 35; // base 279
-  const starburstTextCenterY = row1Top - 3; // base 311
 
   // Blob Row 2
   const row2Top = row1Top + 126 + gapD; // base 449
   const creamY = row2Top;     // base 449
   const greenY = row2Top + 7; // base 456
-
-  // Option labels center Y
-  const pinkLabelCenterY = row1Top + 66;    // base 381
-  const yellowLabelCenterY = row1Top + 67;  // base 381
-  const creamLabelCenterY = row2Top + 65;   // base 514
-  const greenLabelCenterY = row2Top + 60;   // base 516
 
   // Hint "Only one is what they really said."
   const hintTop = row2Top + 130 + gapE; // base 600
@@ -136,35 +128,21 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
   // Bottom Nav
   const navTop = stageHeight - gapH - 59; // base 763 (844 - 22 - 59)
 
-  // Check badge coords for currently selected blob tailored to each blob's visual contour
-  const getCheckBadgeCoords = (id: OptionId | null) => {
-    if (id === 'pink') {
-      return { cx: 31 + 156 - 32, cy: pinkY + 22 };
-    }
-    if (id === 'yellow') {
-      return { cx: 204 + 157 - 35, cy: yellowY + 24 };
-    }
-    if (id === 'cream') {
-      return { cx: 31 + 168 - 35, cy: creamY + 22 }; // center (164, 471) at base
-    }
-    if (id === 'green') {
-      return { cx: 213 + 142 - 32, cy: greenY + 22 };
-    }
-    return null;
-  };
-
-  const checkBadgeCoords = getCheckBadgeCoords(selectedId);
-
   const handleSelect = (id: OptionId) => {
     setSelectedId(id);
   };
 
-  const handleLock = () => {
-    if (!selectedId) return;
+  const [isLocking, setIsLocking] = useState(false);
+
+  const handleLock = async () => {
+    if (!selectedId || isLocking) return;
+    setIsLocking(true);
+    await new Promise((r) => setTimeout(r, 400));
     const correctId = questionData?.correctOptionId || 'cream';
     const isCorrect = selectedId === correctId;
     const selectedOption = questionData?.guessOptions?.find((o) => o.id === selectedId);
     onLockGuess?.(selectedOption?.text || selectedId, isCorrect);
+    setIsLocking(false);
   };
 
   const questionLines = questionData?.questionLines || [
@@ -193,54 +171,74 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
           flexShrink: 0,
         }}
       >
-        {/* ---------------- 9. DECORATIONS (PNG ASSETS, NEVER CSS) ---------------- */}
+        {/* ---------------- 9. DECORATIONS (WEBP ASSETS, MATCHING MOCKUP EXACTLY) ---------------- */}
 
-        {/* deco-moon-yellow: visible part spans x 0 to 43 and y 85 to 141 (top = labelCenterY - 57) */}
+        {/* deco-moon-yellow: Upper-left, peeking from left edge next to back button and question */}
         <div
           style={{
             position: 'absolute',
-            left: '-24px',
-            top: `${labelCenterY - 57}px`,
-            width: '67px',
-            height: '56px',
+            left: '-22px',
+            top: '84px',
+            width: '84px',
+            height: '84px',
             pointerEvents: 'none',
             zIndex: 4,
           }}
         >
           <img
-            src="/assets/guess/deco-moon-yellow.png"
+            src="/assets/guess/deco-moon-yellow.webp"
             alt=""
             style={{ width: '100%', height: '100%', objectFit: 'contain' }}
             draggable={false}
           />
         </div>
 
-        {/* deco-heart-pink: x 337, y 92, w 53, cropped by right edge (top = labelCenterY - 50) */}
+        {/* deco-heart-pink: Upper-right, peeking from right edge below streak pill */}
         <div
           style={{
             position: 'absolute',
-            left: '337px',
-            top: `${labelCenterY - 50}px`,
-            width: '53px',
-            height: '48px',
+            left: '332px',
+            top: '94px',
+            width: '88px',
+            height: '88px',
             pointerEvents: 'none',
             zIndex: 4,
           }}
         >
           <img
-            src="/assets/guess/deco-heart-pink.png"
+            src="/assets/guess/deco-heart-pink.webp"
             alt=""
             style={{ width: '100%', height: '100%', objectFit: 'contain' }}
             draggable={false}
           />
         </div>
 
-        {/* deco-star-blue: x 8, w 68, bottom edge 9px above nav top (z-index 5, behind button & nav) */}
+        {/* deco-star-blue: Lower-left, below lock button and above bottom nav */}
         <div
           style={{
             position: 'absolute',
-            left: '8px',
-            top: `${navTop - 9 - 68}px`,
+            left: '10px',
+            top: `${buttonTop + 48}px`,
+            width: '78px',
+            height: '78px',
+            pointerEvents: 'none',
+            zIndex: 5,
+          }}
+        >
+          <img
+            src="/assets/guess/deco-star-blue.webp"
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            draggable={false}
+          />
+        </div>
+
+        {/* deco-cross-olive: Lower-right, below lock button and above bottom nav */}
+        <div
+          style={{
+            position: 'absolute',
+            left: '322px',
+            top: `${buttonTop + 52}px`,
             width: '68px',
             height: '68px',
             pointerEvents: 'none',
@@ -248,27 +246,7 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
           }}
         >
           <img
-            src="/assets/guess/deco-star-blue.png"
-            alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-            draggable={false}
-          />
-        </div>
-
-        {/* deco-cross-olive: x 326, w 57 (right edge at 383), bottom edge 10px above nav top (z-index 5) */}
-        <div
-          style={{
-            position: 'absolute',
-            left: '326px',
-            top: `${navTop - 10 - 57}px`,
-            width: '57px',
-            height: '57px',
-            pointerEvents: 'none',
-            zIndex: 5,
-          }}
-        >
-          <img
-            src="/assets/guess/deco-cross-olive.png"
+            src="/assets/guess/deco-cross-olive.webp"
             alt=""
             style={{ width: '100%', height: '100%', objectFit: 'contain' }}
             draggable={false}
@@ -353,7 +331,7 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
         >
           {/* Flame asset at x 319.5, y 38.5, w 16 */}
           <img
-            src="/assets/guess/icon-flame.png"
+            src="/assets/guess/icon-flame.webp"
             alt=""
             style={{ width: '16px', height: 'auto', objectFit: 'contain' }}
             draggable={false}
@@ -415,7 +393,7 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
 
         {/* ---------------- 2. BLOBS (SIBLINGS, NOT CONTAINING STARBURST OR CHECK) ---------------- */}
 
-        {/* Pink Blob: x 31, y 315, w 156 */}
+        {/* Pink Blob (Left Column): x 31, y 315, w 156, check badge on top right */}
         <div
           onClick={() => handleSelect('pink')}
           style={{
@@ -428,9 +406,11 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
           }}
         >
           <img
-            src="/assets/guess/answer-blob-pink.png"
+            src="/assets/guess/answer-blob-pink.webp"
             alt={pinkText}
             style={{
+              position: 'relative',
+              zIndex: 1,
               width: '100%',
               height: 'auto',
               display: 'block',
@@ -439,9 +419,61 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
             }}
             draggable={false}
           />
+          {selectedId === 'pink' && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '12px',
+                right: '16px',
+                width: '22px',
+                height: '22px',
+                borderRadius: '9999px',
+                backgroundColor: '#17181B',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 5,
+                pointerEvents: 'none',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+          )}
+          {/* Centered & Responsive Text inside Blob */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              padding: '0 16px',
+              pointerEvents: 'none',
+              zIndex: 15,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "'Nunito', sans-serif",
+                fontWeight: 800,
+                fontSize: pinkText.length > 22 ? '14px' : pinkText.length > 15 ? '16px' : '18px',
+                lineHeight: '1.2',
+                color: '#17181B',
+                letterSpacing: '-0.02em',
+                wordBreak: 'break-word',
+                maxWidth: '100%',
+              }}
+            >
+              {pinkText}
+            </span>
+          </div>
         </div>
 
-        {/* Yellow Blob: x 204, y 314, w 157 (right edge at 361) */}
+        {/* Yellow Blob (Right Column): x 204, y 314, w 157, check badge on top left */}
         <div
           onClick={() => handleSelect('yellow')}
           style={{
@@ -454,9 +486,11 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
           }}
         >
           <img
-            src="/assets/guess/answer-blob-yellow.png"
+            src="/assets/guess/answer-blob-yellow.webp"
             alt={yellowText}
             style={{
+              position: 'relative',
+              zIndex: 1,
               width: '100%',
               height: 'auto',
               display: 'block',
@@ -465,9 +499,61 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
             }}
             draggable={false}
           />
+          {selectedId === 'yellow' && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '12px',
+                left: '16px',
+                width: '22px',
+                height: '22px',
+                borderRadius: '9999px',
+                backgroundColor: '#17181B',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 5,
+                pointerEvents: 'none',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+          )}
+          {/* Centered & Responsive Text inside Blob */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              padding: '0 16px',
+              pointerEvents: 'none',
+              zIndex: 15,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "'Nunito', sans-serif",
+                fontWeight: 800,
+                fontSize: yellowText.length > 22 ? '14px' : yellowText.length > 15 ? '16px' : '18px',
+                lineHeight: '1.2',
+                color: '#17181B',
+                letterSpacing: '-0.02em',
+                wordBreak: 'break-word',
+                maxWidth: '100%',
+              }}
+            >
+              {yellowText}
+            </span>
+          </div>
         </div>
 
-        {/* Cream Blob: x 31, y 449, w 168 */}
+        {/* Cream Blob (Left Column): x 31, y 449, w 168, check badge on top right */}
         <div
           onClick={() => handleSelect('cream')}
           style={{
@@ -480,9 +566,11 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
           }}
         >
           <img
-            src="/assets/guess/answer-blob-cream.png"
+            src="/assets/guess/answer-blob-cream.webp"
             alt={creamText}
             style={{
+              position: 'relative',
+              zIndex: 1,
               width: '100%',
               height: 'auto',
               display: 'block',
@@ -491,9 +579,61 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
             }}
             draggable={false}
           />
+          {selectedId === 'cream' && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '12px',
+                right: '16px',
+                width: '22px',
+                height: '22px',
+                borderRadius: '9999px',
+                backgroundColor: '#17181B',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 5,
+                pointerEvents: 'none',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+          )}
+          {/* Centered & Responsive Text inside Blob */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              padding: '0 16px',
+              pointerEvents: 'none',
+              zIndex: 15,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "'Nunito', sans-serif",
+                fontWeight: 800,
+                fontSize: creamText.length > 22 ? '14px' : creamText.length > 15 ? '16px' : '18px',
+                lineHeight: '1.2',
+                color: '#17181B',
+                letterSpacing: '-0.02em',
+                wordBreak: 'break-word',
+                maxWidth: '100%',
+              }}
+            >
+              {creamText}
+            </span>
+          </div>
         </div>
 
-        {/* Green Blob: x 213, y 456, w 142 (right edge at 355) */}
+        {/* Green Blob (Right Column): x 213, y 456, w 142, check badge on top left */}
         <div
           onClick={() => handleSelect('green')}
           style={{
@@ -506,9 +646,11 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
           }}
         >
           <img
-            src="/assets/guess/answer-blob-green.png"
+            src="/assets/guess/answer-blob-green.webp"
             alt={greenText}
             style={{
+              position: 'relative',
+              zIndex: 1,
               width: '100%',
               height: 'auto',
               display: 'block',
@@ -517,205 +659,131 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
             }}
             draggable={false}
           />
+          {selectedId === 'green' && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '12px',
+                left: '16px',
+                width: '22px',
+                height: '22px',
+                borderRadius: '9999px',
+                backgroundColor: '#17181B',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 5,
+                pointerEvents: 'none',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+          )}
+          {/* Centered & Responsive Text inside Blob */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              padding: '0 16px',
+              pointerEvents: 'none',
+              zIndex: 15,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "'Nunito', sans-serif",
+                fontWeight: 800,
+                fontSize: greenText.length > 22 ? '14px' : greenText.length > 15 ? '16px' : '18px',
+                lineHeight: '1.2',
+                color: '#17181B',
+                letterSpacing: '-0.02em',
+                wordBreak: 'break-word',
+                maxWidth: '100%',
+              }}
+            >
+              {greenText}
+            </span>
+          </div>
         </div>
 
-        {/* ---------------- OPTION LABELS (NUNITO 800 19PX, CENTERED ON EACH BLOB) ---------------- */}
-
-        {/* Option 1 (Pink) center (108, 381) */}
+        {/* ---------------- 1. STARBURST "+15 if right" (WEBP, TILTED TO MATCH MOCKUP) ---------------- */}
         <div
           style={{
             position: 'absolute',
-            left: '108px',
-            top: `${pinkLabelCenterY}px`,
-            transform: 'translate(-50%, -50%)',
-            fontFamily: "'Nunito', sans-serif",
-            fontWeight: 800,
-            fontSize: '18px',
-            lineHeight: '21px',
-            color: '#17181B',
-            textAlign: 'center',
-            letterSpacing: '-0.02em',
-            pointerEvents: 'none',
-            zIndex: 15,
-            width: '124px',
-          }}
-        >
-          {pinkText}
-        </div>
-
-        {/* Option 2 (Yellow) center (281, 381) */}
-        <div
-          style={{
-            position: 'absolute',
-            left: '281px',
-            top: `${yellowLabelCenterY}px`,
-            transform: 'translate(-50%, -50%)',
-            fontFamily: "'Nunito', sans-serif",
-            fontWeight: 800,
-            fontSize: '18px',
-            lineHeight: '21px',
-            color: '#17181B',
-            textAlign: 'center',
-            letterSpacing: '-0.02em',
-            pointerEvents: 'none',
-            zIndex: 15,
-            width: '124px',
-          }}
-        >
-          {yellowText}
-        </div>
-
-        {/* Option 3 (Cream) center (116, 514) */}
-        <div
-          style={{
-            position: 'absolute',
-            left: '116px',
-            top: `${creamLabelCenterY}px`,
-            transform: 'translate(-50%, -50%)',
-            fontFamily: "'Nunito', sans-serif",
-            fontWeight: 800,
-            fontSize: '18px',
-            lineHeight: '21px',
-            color: '#17181B',
-            textAlign: 'center',
-            letterSpacing: '-0.02em',
-            pointerEvents: 'none',
-            zIndex: 15,
-            width: '130px',
-          }}
-        >
-          {creamText}
-        </div>
-
-        {/* Option 4 (Green) center (284, 516) */}
-        <div
-          style={{
-            position: 'absolute',
-            left: '284px',
-            top: `${greenLabelCenterY}px`,
-            transform: 'translate(-50%, -50%)',
-            fontFamily: "'Nunito', sans-serif",
-            fontWeight: 800,
-            fontSize: '18px',
-            lineHeight: '21px',
-            color: '#17181B',
-            textAlign: 'center',
-            letterSpacing: '-0.02em',
-            pointerEvents: 'none',
-            zIndex: 15,
-            width: '120px',
-          }}
-        >
-          {greenText}
-        </div>
-
-        {/* ---------------- 1. STARBURST "+15 if right" (SIBLING, NO DUPLICATE SHADOW) ---------------- */}
-        {/* Starburst: x 307, y 279, w 71. Text center (342, 311). Straight, NO rotation */}
-        <div
-          style={{
-            position: 'absolute',
-            left: '307px',
+            left: '305px',
             top: `${starburstY}px`,
-            width: '71px',
-            height: '71px',
+            width: '74px',
+            height: '74px',
+            transform: 'rotate(10deg)',
+            transformOrigin: 'center center',
             pointerEvents: 'none',
             zIndex: 25,
           }}
         >
           <img
-            src="/assets/guess/badge-starburst-yellow.png"
+            src="/assets/guess/badge-starburst-yellow.webp"
             alt=""
             style={{ width: '100%', height: '100%', objectFit: 'contain' }}
             draggable={false}
           />
-        </div>
-
-        {/* Starburst text center (342, 311) */}
-        <div
-          style={{
-            position: 'absolute',
-            left: '342px',
-            top: `${starburstTextCenterY}px`,
-            transform: 'translate(-50%, -50%)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            textAlign: 'center',
-            pointerEvents: 'none',
-            zIndex: 26,
-          }}
-        >
-          <span
-            style={{
-              fontFamily: "'Nunito', sans-serif",
-              fontWeight: 900,
-              fontSize: '16px',
-              lineHeight: '17px',
-              color: '#17181B',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            +15
-          </span>
-          <span
-            style={{
-              fontFamily: "'Nunito', sans-serif",
-              fontWeight: 800,
-              fontSize: '11px',
-              lineHeight: '12px',
-              color: '#17181B',
-              letterSpacing: '-0.01em',
-            }}
-          >
-            if right
-          </span>
-        </div>
-
-        {/* ---------------- 3. CHECK BADGE (SIBLING, RENDERS ABOVE STARBURST) ---------------- */}
-        {/* 21px ink circle, white check, 35px in from blob right edge & 22px down from top */}
-        {checkBadgeCoords && (
           <div
             style={{
               position: 'absolute',
-              left: `${checkBadgeCoords.cx - 10.5}px`,
-              top: `${checkBadgeCoords.cy - 10.5}px`,
-              width: '21px',
-              height: '21px',
-              borderRadius: '9999px',
-              backgroundColor: '#17181B',
+              inset: 0,
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              zIndex: 35, // Above starburst!
+              textAlign: 'center',
               pointerEvents: 'none',
+              zIndex: 26,
             }}
           >
-            <svg
-              width="11"
-              height="11"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#FFFFFF"
-              strokeWidth="3.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+            <span
+              style={{
+                fontFamily: "'Nunito', sans-serif",
+                fontWeight: 900,
+                fontSize: '16px',
+                lineHeight: '17px',
+                color: '#17181B',
+                letterSpacing: '-0.02em',
+              }}
             >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
+              +15
+            </span>
+            <span
+              style={{
+                fontFamily: "'Nunito', sans-serif",
+                fontWeight: 800,
+                fontSize: '11px',
+                lineHeight: '12px',
+                color: '#17181B',
+                letterSpacing: '-0.01em',
+              }}
+            >
+              if right
+            </span>
           </div>
-        )}
+        </div>
 
         {/* ---------------- HINT & LOCK BUTTON ---------------- */}
 
-        {/* Hint "Only one is what they really said.": centered x 195, Nunito 500, 15px, ink 55%, ~209px wide */}
+        {/* Hint "Only one is what they really said.": centered in ONE SINGLE ROW */}
         <div
           style={{
             position: 'absolute',
             left: '195px',
             top: `${hintTop}px`,
             transform: 'translateX(-50%)',
-            width: '209px',
+            width: 'auto',
+            whiteSpace: 'nowrap',
             fontFamily: "'Nunito', sans-serif",
             fontWeight: 500,
             fontSize: '15px',
@@ -733,7 +801,7 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
         <button
           type="button"
           onClick={handleLock}
-          disabled={!selectedId}
+          disabled={!selectedId || isLocking}
           className="btn-press cursor-pointer focus:outline-none"
           style={{
             position: 'absolute',
@@ -754,9 +822,15 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
             justifyContent: 'center',
             border: 'none',
             zIndex: 10,
+            opacity: !selectedId || isLocking ? 0.75 : 1,
+            cursor: !selectedId || isLocking ? 'not-allowed' : 'pointer',
           }}
         >
-          Lock my guess
+          {isLocking ? (
+            <div className="w-[20px] h-[20px] border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            'Lock my guess'
+          )}
         </button>
 
         {/* ---------------- 10. DEBUG & OVERLAY ---------------- */}

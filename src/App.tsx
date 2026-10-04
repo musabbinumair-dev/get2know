@@ -21,13 +21,14 @@ import { ProfileScreen } from './screens/ProfileScreen';
 import { FriendProfileScreen } from './screens/FriendProfileScreen';
 import { HomeScreen } from './screens/HomeScreen';
 import { GameSettingsScreen } from './screens/GameSettingsScreen';
+import { LobbyScreen } from './screens/LobbyScreen';
 import { MemoryCardProps } from './components/MemoryCard';
 import { NavTab } from './components/BottomNav';
 import { QUESTION_BANK } from './data/gameData';
 
 // ── ENTRY GUARD COMPONENT ──
 function EntryGuard({ children }: { children: React.ReactNode }) {
-  const { sessionType, isLoading, profile, setPendingInviteCode } = useSession();
+  const { isLoading, profile, setPendingInviteCode } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -41,35 +42,21 @@ function EntryGuard({ children }: { children: React.ReactNode }) {
     // Capture invite deep link code: /join?code=XXXXXX
     if (pathname === '/join' && codeParam) {
       setPendingInviteCode(codeParam);
-      if (sessionType === 'NEW' || !profile) {
-        navigate('/welcome', { replace: true });
-        return;
-      }
     }
 
-    // 1. Signed in with Google but NO profile in Firestore -> redirect to /create-profile
-    if (sessionType === 'GOOGLE' && !profile) {
-      if (pathname !== '/create-profile') {
-        navigate('/create-profile', { replace: true });
-      }
+    // If user has a profile, visiting /welcome or root / redirects to /home
+    if (profile && (pathname === '/welcome' || pathname === '/')) {
+      navigate('/home', { replace: true });
       return;
     }
 
-    // 2. NEW session (no profile, not signed in) -> any route except /welcome and /join redirects to /welcome
-    if (sessionType === 'NEW' || !profile) {
-      if (pathname !== '/welcome' && pathname !== '/join') {
-        navigate('/welcome', { replace: true });
-      }
+    // Protected game routes require a profile
+    const protectedRoutes = ['/home', '/guess', '/scores', '/memory', '/profile', '/friend-profile', '/lobby', '/settings-game'];
+    if (!profile && protectedRoutes.includes(pathname)) {
+      navigate('/welcome', { replace: true });
       return;
     }
-
-    // 3. GUEST or GOOGLE session WITH a profile -> visiting /welcome or root / redirects to /home
-    if (profile) {
-      if (pathname === '/welcome' || pathname === '/') {
-        navigate('/home', { replace: true });
-      }
-    }
-  }, [isLoading, sessionType, profile, location.pathname, location.search, navigate, setPendingInviteCode]);
+  }, [isLoading, profile, location.pathname, location.search, navigate, setPendingInviteCode]);
 
   return <>{children}</>;
 }
@@ -269,7 +256,10 @@ function AppContent() {
                     }
                   : profile || undefined
               }
-              onBack={() => navigate('/welcome')}
+              onBack={async () => {
+                await signOut();
+                navigate('/welcome', { replace: true });
+              }}
               onContinue={handleContinueProfile}
             />
           }
@@ -315,12 +305,29 @@ function AppContent() {
           }
         />
         <Route path="/today" element={<Navigate to="/home" replace />} />
-        <Route path="/lobby" element={<Navigate to="/home" replace />} />
+        
+        {/* Lobby */}
+        <Route
+          path="/lobby"
+          element={
+            <LobbyScreen
+              onBack={() => navigate('/settings-game')}
+              onChangeSettings={() => navigate('/settings-game')}
+              onLeave={() => navigate('/home')}
+              onStartGame={() => navigate('/guess')}
+            />
+          }
+        />
 
         {/* Game Settings */}
         <Route
           path="/settings-game"
-          element={<GameSettingsScreen onBack={() => navigate('/home')} />}
+          element={
+            <GameSettingsScreen
+              onBack={() => navigate('/home')}
+              onCreateGame={() => navigate('/lobby')}
+            />
+          }
         />
         <Route
           path="/game-settings"

@@ -1,9 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { gameStore } from '../store';
 
 interface GameSettingsScreenProps {
   onBack: () => void;
-  onGoToLobby?: () => void;
+  onCreateGame?: (settings: {
+    mode: 'know-me' | 'trivia' | 'mixed';
+    categories: string[];
+    difficulty: 'Easy' | 'Medium' | 'Hard';
+    timer: '10s' | '20s' | '30s' | 'Off';
+    rounds: 5 | 10 | 15;
+    speedBonus: boolean;
+    soundEffects: boolean;
+  }) => void;
 }
 
 interface DebugItem {
@@ -14,7 +21,7 @@ interface DebugItem {
   isOff: boolean;
 }
 
-export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack, onGoToLobby }) => {
+export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack, onCreateGame }) => {
   // 1) Viewport tracking
   const [viewport, setViewport] = useState({
     w: typeof window !== 'undefined' ? window.innerWidth : 390,
@@ -98,17 +105,20 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack, 
   };
 
   const handleCreateGame = () => {
-    gameStore.updateGameSettings({
+    const settings = {
       mode: selectedMode,
       categories: selectedCategories,
       difficulty,
-      timerSeconds: timer === 'Off' ? null : parseInt(timer, 10),
+      timer,
       rounds,
       speedBonus,
-      sound: soundEffects,
-    });
-    if (onGoToLobby) {
-      onGoToLobby();
+      soundEffects,
+    };
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('gty_game_settings', JSON.stringify(settings));
+    }
+    if (onCreateGame) {
+      onCreateGame(settings);
     } else {
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
       setToastMessage('Lobby coming soon');

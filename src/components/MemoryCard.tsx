@@ -32,20 +32,6 @@ const COLOR_MAP: Record<string, string> = {
   olive: '#B5C68B',
 };
 
-const DEFAULT_DECO_OFFSETS: Record<'moon' | 'star' | 'cross' | 'heart', { top: number; right: number; w: number }> = {
-  moon: { top: 18, right: 9, w: 30 },
-  star: { top: 6, right: 7, w: 29 },
-  cross: { top: 9, right: 8, w: 32 },
-  heart: { top: 10, right: 12, w: 32 },
-};
-
-const DECO_SRC_MAP: Record<'moon' | 'star' | 'cross' | 'heart', string> = {
-  moon: '/assets/memorywall/deco-moon-yellow.webp',
-  star: '/assets/memorywall/deco-star-blue.webp',
-  cross: '/assets/memorywall/deco-cross-olive.webp',
-  heart: '/assets/memorywall/deco-heart-pink.webp',
-};
-
 export const getAvatarBlobSrc = (avatarId: number = 1, color?: string): string => {
   if (color === 'salmon') return '/assets/blobs/color-blob-salmon.png';
   if (color === 'teal') return '/assets/blobs/color-blob-teal.png';
@@ -74,7 +60,7 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
   p2Name = 'Player 2',
   color,
   cardBg,
-  deco,
+  deco: _deco,
   decoOffset,
   matched = false,
   onClick,
@@ -90,30 +76,30 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
       style={{ backgroundColor: bgColor }}
       className={`relative w-full rounded-[16px] p-[12px] select-none flex flex-col justify-between overflow-hidden transition-transform duration-150 active:scale-[0.98] cursor-pointer shadow-sm ${className}`}
     >
-      {/* ---------------- DECORATION OR MATCHED BADGE (TOP-RIGHT) ---------------- */}
-      {matched ? (
+      {/* ---------------- MATCHED SUN BADGE (TOP-RIGHT) ---------------- */}
+      {matched && (
         <div
           className="absolute pointer-events-none select-none z-10"
           style={{
-            top: `${decoOffset?.top ?? 8}px`,
-            right: `${decoOffset?.right ?? 7}px`,
-            width: `${decoOffset?.w ?? 44}px`,
-            height: `${decoOffset?.w ?? 44}px`,
+            top: `${decoOffset?.top ?? 6}px`,
+            right: `${decoOffset?.right ?? 6}px`,
+            width: `${decoOffset?.w ?? 40}px`,
+            height: `${decoOffset?.w ?? 40}px`,
           }}
         >
           <img
-            src="/assets/memorywall/badge-starburst-yellow.webp"
-            alt=""
+            src="/assets/memorywall/badge-starburst-yellow.png"
+            alt="Matched"
             className="w-full h-full object-contain pointer-events-none select-none"
             draggable={false}
           />
-          {/* Matched text as code on top: Nunito 800 9px ink, rotated -8deg, centered */}
+          {/* Matched text on top of sun badge: Nunito 900 8.5px ink, rotated -8deg, centered */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
             <span
               style={{
                 fontFamily: "'Nunito', sans-serif",
-                fontSize: '9px',
-                fontWeight: 800,
+                fontSize: '8.5px',
+                fontWeight: 900,
                 color: '#17181B',
                 transform: 'rotate(-8deg)',
                 letterSpacing: '-0.02em',
@@ -124,24 +110,7 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
             </span>
           </div>
         </div>
-      ) : deco && DECO_SRC_MAP[deco] ? (
-        <div
-          className="absolute pointer-events-none select-none z-10"
-          style={{
-            top: `${decoOffset?.top ?? DEFAULT_DECO_OFFSETS[deco].top}px`,
-            right: `${decoOffset?.right ?? DEFAULT_DECO_OFFSETS[deco].right}px`,
-            width: `${decoOffset?.w ?? DEFAULT_DECO_OFFSETS[deco].w}px`,
-            height: 'auto',
-          }}
-        >
-          <img
-            src={DECO_SRC_MAP[deco]}
-            alt=""
-            className="w-full h-auto object-contain pointer-events-none select-none"
-            draggable={false}
-          />
-        </div>
-      ) : null}
+      )}
 
       {/* ---------------- CARD CONTENT (QUESTION NEVER OVERLAPS DECORATION) ---------------- */}
       <div className="relative z-0 flex flex-col">
@@ -171,7 +140,7 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
             letterSpacing: '-0.025em',
             color: '#17181B',
             marginBottom: '10px',
-            paddingRight: matched ? '46px' : (deco ? '36px' : '0px'),
+            paddingRight: matched ? '44px' : '0px',
             wordBreak: 'break-word',
           }}
         >

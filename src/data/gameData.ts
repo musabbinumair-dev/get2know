@@ -117,8 +117,25 @@ export function getAvatarBlobSrc(avatarId?: number, color?: string): string {
 }
 
 export const INITIAL_CATEGORY_STATS = [
-  { name: 'Food', pct: '88%', bg: '#F8B6D2', iconSrc: '/assets/scores/cat-noodles.webp', iconW: 'w-[36px] sm:w-[40px]' },
-  { name: 'Hot takes', pct: '72%', bg: '#FAD968', iconSrc: '/assets/scores/cat-lemon.webp', iconW: 'w-[32px] sm:w-[35px]' },
-  { name: 'Childhood', pct: '65%', bg: '#B3C378', iconSrc: '/assets/scores/cat-flower.webp', iconW: 'w-[30px] sm:w-[33px]' },
-  { name: 'Deep', pct: '80%', bg: '#91A9D4', iconSrc: '/assets/scores/cat-clover.webp', iconW: 'w-[32px] sm:w-[35px]' },
+  {
+    name: 'Food',
+    pct: '85%',
+    bg: '#FAD968',
+    iconSrc: '/assets/scores/icon-category-food-pink-pizza.webp',
+    iconW: 'w-[28px] sm:w-[32px]',
+  },
+  {
+    name: 'Dreams',
+    pct: '80%',
+    bg: '#F8B6D2',
+    iconSrc: '/assets/scores/icon-category-dreams-blue-moon.webp',
+    iconW: 'w-[28px] sm:w-[32px]',
+  },
+  {
+    name: 'Fears',
+    pct: '65%',
+    bg: '#91A9D4',
+    iconSrc: '/assets/scores/icon-category-fears-green-scream.webp',
+    iconW: 'w-[28px] sm:w-[32px]',
+  },
 ];
