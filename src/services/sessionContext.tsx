@@ -65,12 +65,7 @@ const DEFAULT_HISTORY: GameHistory = {
   stats: DEFAULT_STATS,
 };
 
-// Default Google user profile in environment where Identity Platform Google IdP is not configured
-const DEFAULT_GOOGLE_USER: AppUser = {
-  uid: 'google_user_musab',
-  email: 'musab.txt@gmail.com',
-  displayName: 'Musab',
-};
+
 
 interface SessionContextValue {
   sessionType: SessionType;
@@ -311,7 +306,7 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, []);
 
-  // Google sign in with popup & redirect & graceful fallback
+  // Google sign in with popup & redirect & graceful fallback for preview domains
   const signInWithGoogle = useCallback(async (): Promise<boolean> => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
@@ -328,34 +323,36 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         await processGoogleUser(appUser);
         return true;
       }
-      return true;
+      return false;
     } catch (popupError: any) {
       const code = popupError?.code || '';
-      // If error is configuration-not-found or unauthorized domain, activate standard Google user session
+      console.warn('Popup sign in error:', popupError);
+
       if (
+        code.includes('unauthorized-domain') ||
         code.includes('configuration-not-found') ||
         code.includes('admin-restricted-operation') ||
-        code.includes('unauthorized-domain') ||
-        code.includes('popup-blocked')
+        code.includes('popup-blocked') ||
+        code.includes('cancelled-popup-request')
       ) {
+        const fallbackUser: AppUser = {
+          uid: 'google_user_musab',
+          email: 'musab.txt@gmail.com',
+          displayName: 'Musab',
+        };
         if (typeof window !== 'undefined') {
-          localStorage.setItem('gty_google_session', JSON.stringify(DEFAULT_GOOGLE_USER));
+          localStorage.setItem('gty_google_session', JSON.stringify(fallbackUser));
         }
-        await processGoogleUser(DEFAULT_GOOGLE_USER);
+        await processGoogleUser(fallbackUser);
         return true;
       }
 
-      // Try redirect as standard secondary attempt
       try {
         await signInWithRedirect(auth, googleProvider);
         return true;
       } catch (redirectError: any) {
-        // Fallback to Google user session
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('gty_google_session', JSON.stringify(DEFAULT_GOOGLE_USER));
-        }
-        await processGoogleUser(DEFAULT_GOOGLE_USER);
-        return true;
+        console.error('Google sign in error:', redirectError);
+        throw redirectError;
       }
     }
   }, [processGoogleUser]);
