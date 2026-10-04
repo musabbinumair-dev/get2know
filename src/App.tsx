@@ -8,13 +8,16 @@ import {
   useLocation,
 } from 'react-router-dom';
 import { SessionProvider, useSession, UserProfile } from './services/sessionContext';
+import { GameSessionProvider } from './services/gameSessionContext';
 import { WelcomeScreen } from './screens/WelcomeScreen';
 import { CreateProfileScreen } from './screens/CreateProfileScreen';
 import { InviteFriendScreen, generateInviteCode } from './screens/InviteFriendScreen';
 import { JoinCodeScreen } from './screens/JoinCodeScreen';
+import { TodayQuestionScreen } from './screens/TodayQuestionScreen';
 import { AnswerLockedScreen } from './screens/AnswerLockedScreen';
 import { RevealScreen } from './screens/RevealScreen';
 import { GuessScreen } from './screens/GuessScreen';
+import { FinalResultScreen } from './screens/FinalResultScreen';
 import { ScoresScreen } from './screens/ScoresScreen';
 import { MemoryWallScreen, INITIAL_CARDS } from './screens/MemoryWallScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
@@ -22,6 +25,7 @@ import { FriendProfileScreen } from './screens/FriendProfileScreen';
 import { HomeScreen } from './screens/HomeScreen';
 import { GameSettingsScreen } from './screens/GameSettingsScreen';
 import { LobbyScreen } from './screens/LobbyScreen';
+import { CountdownScreen } from './screens/CountdownScreen';
 import { MemoryCardProps } from './components/MemoryCard';
 import { NavTab } from './components/BottomNav';
 import { QUESTION_BANK } from './data/gameData';
@@ -51,7 +55,19 @@ function EntryGuard({ children }: { children: React.ReactNode }) {
     }
 
     // Protected game routes require a profile
-    const protectedRoutes = ['/home', '/guess', '/scores', '/memory', '/profile', '/friend-profile', '/lobby', '/settings-game'];
+    const protectedRoutes = [
+      '/home',
+      '/guess',
+      '/scores',
+      '/memory',
+      '/profile',
+      '/friend-profile',
+      '/lobby',
+      '/settings-game',
+      '/countdown',
+      '/today-question',
+      '/game-final',
+    ];
     if (!profile && protectedRoutes.includes(pathname)) {
       navigate('/welcome', { replace: true });
       return;
@@ -137,14 +153,16 @@ function AppContent() {
     player1Answer.trim().toLowerCase() === player2Answer.trim().toLowerCase();
 
   const handleTabNavigate = (tab: NavTab) => {
-    if (tab === 'today') {
+    if (tab === 'home' || tab === 'today') {
       navigate('/home');
-    } else if (tab === 'guess') {
-      navigate('/guess');
     } else if (tab === 'scores') {
       navigate('/scores');
     } else if (tab === 'memory') {
       navigate('/memory');
+    } else if (tab === 'profile') {
+      navigate('/profile');
+    } else if (tab === 'guess') {
+      navigate('/guess');
     }
   };
 
@@ -312,10 +330,17 @@ function AppContent() {
           element={
             <LobbyScreen
               onBack={() => navigate('/settings-game')}
-              onChangeSettings={() => navigate('/settings-game')}
               onLeave={() => navigate('/home')}
-              onStartGame={() => navigate('/guess')}
+              onStartGame={() => navigate('/countdown')}
             />
+          }
+        />
+
+        {/* Countdown */}
+        <Route
+          path="/countdown"
+          element={
+            <CountdownScreen />
           }
         />
 
@@ -332,6 +357,25 @@ function AppContent() {
         <Route
           path="/game-settings"
           element={<Navigate to="/settings-game" replace />}
+        />
+
+        {/* Today's Question (Know Me Round) */}
+        <Route
+          path="/today-question"
+          element={
+            <TodayQuestionScreen
+              userProfile={currentProfile}
+              onOpenSettings={() => navigate('/profile')}
+              onNavigateTab={handleTabNavigate}
+              onLockInSuccess={() => navigate('/locked')}
+            />
+          }
+        />
+
+        {/* Final Results Screen */}
+        <Route
+          path="/game-final"
+          element={<FinalResultScreen />}
         />
 
         {/* Guess */}
@@ -460,6 +504,7 @@ function AppContent() {
               onChangeReminderTime={setDailyReminderTime}
               onToggleFriendAlerts={setFriendAlertsEnabled}
               onOpenFriendProfile={() => navigate('/friend')}
+              onNavigateTab={handleTabNavigate}
             />
           }
         />
@@ -478,6 +523,7 @@ function AppContent() {
                 lastAnsweredTime: 'today, 8:42 PM',
               }}
               onBack={() => navigate('/profile')}
+              onNavigateTab={handleTabNavigate}
             />
           }
         />
@@ -551,9 +597,11 @@ export function App() {
   return (
     <BrowserRouter>
       <SessionProvider>
-        <EntryGuard>
-          <AppContent />
-        </EntryGuard>
+        <GameSessionProvider>
+          <EntryGuard>
+            <AppContent />
+          </EntryGuard>
+        </GameSessionProvider>
       </SessionProvider>
     </BrowserRouter>
   );

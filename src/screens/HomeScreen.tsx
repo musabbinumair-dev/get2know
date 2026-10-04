@@ -362,7 +362,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           6. GLOBAL BOTTOM NAVIGATION DOCK
          ========================================================================= */}
       <div className="absolute bottom-2 sm:bottom-3 left-0 right-0 flex justify-center z-30 pointer-events-auto">
-        <BottomNav activeTab="today" onTabChange={onNavigateTab} className="mb-0" />
+        <BottomNav activeTab="home" onTabChange={onNavigateTab} className="mb-0" />
       </div>
     </Screen>
   );

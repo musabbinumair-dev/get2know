@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ProfileAvatar, getBlobColorName } from '../components/ProfileAvatar';
+import { BottomNav, NavTab } from '../components/BottomNav';
 
 export interface FriendProfileData {
   name: string;
-  subtitle: string;
+  subtitle?: string;
   avatarId?: number;
   color?: string;
   streakDays: number;
@@ -15,10 +16,11 @@ export interface FriendProfileData {
 export interface FriendProfileScreenProps {
   friendData?: FriendProfileData;
   onBack: () => void;
+  onNavigateTab?: (tab: NavTab) => void;
 }
 
 const DEFAULT_FRIEND: FriendProfileData = {
-  name: 'Sam',
+  name: 'Alex',
   subtitle: 'Teal player, joined Sep 12',
   avatarId: 2,
   color: 'teal',
@@ -28,84 +30,25 @@ const DEFAULT_FRIEND: FriendProfileData = {
   lastAnsweredTime: 'today, 8:42 PM',
 };
 
-const IMAGE_ASSETS = [
-  {
-    file: 'deco-crescent-yellow-top-left-cropped.webp',
-    x: 0,
-    y: 0,
-    w: 38.9,
-    h: 53.1,
-    snap: 'left-top',
-    zIndex: 5,
-  },
-  {
-    file: 'deco-heart-pink-top-right-cropped.webp',
-    x: 325.9,
-    y: 13.7,
-    w: 64.1,
-    h: 74.2,
-    snap: 'right',
-    zIndex: 5,
-  },
-  {
-    file: 'deco-starburst-blue-bottom-left-cropped.webp',
-    x: 0,
-    y: 752.1,
-    w: 91.5,
-    h: 92.9,
-    snap: 'left-bottom',
-    zIndex: 5,
-  },
-  // Increased Stats Decorations Sizes
-  {
-    file: 'stat-starburst-yellow-streak.webp',
-    x: 24.5,
-    y: 404,
-    w: 105,
-    h: 105,
-    zIndex: 8,
-  },
-  {
-    file: 'stat-teardrop-blue-matches.webp',
-    x: 147,
-    y: 404,
-    w: 96,
-    h: 105,
-    zIndex: 8,
-  },
-  {
-    file: 'stat-cross-olive-guess-wins.webp',
-    x: 261,
-    y: 404,
-    w: 105,
-    h: 105,
-    zIndex: 8,
-  },
-  // Last Answered Clock Blob Icon
-  {
-    file: 'icon-clock-teal-blob.webp',
-    x: 34.8,
-    y: 559.4,
-    w: 41.2,
-    h: 42.6,
-    zIndex: 20,
-  },
-];
-
 export const FriendProfileScreen: React.FC<FriendProfileScreenProps> = ({
   friendData = DEFAULT_FRIEND,
   onBack,
+  onNavigateTab,
 }) => {
   // Nudge Toast & Disabled Countdown State
   const [nudgeCooldown, setNudgeCountdown] = useState<number>(0);
   const [showToast, setShowToast] = useState<boolean>(false);
 
-  // Preload all webp image assets on mount
+  // Sync background color
   useEffect(() => {
-    IMAGE_ASSETS.forEach((asset) => {
-      const img = new Image();
-      img.src = `/${asset.file}`;
-    });
+    const prevBodyBg = document.body.style.backgroundColor;
+    const prevHtmlBg = document.documentElement.style.backgroundColor;
+    document.body.style.backgroundColor = '#F5EEDA';
+    document.documentElement.style.backgroundColor = '#F5EEDA';
+    return () => {
+      document.body.style.backgroundColor = prevBodyBg;
+      document.documentElement.style.backgroundColor = prevHtmlBg;
+    };
   }, []);
 
   // Cooldown timer
@@ -126,196 +69,87 @@ export const FriendProfileScreen: React.FC<FriendProfileScreenProps> = ({
     }, 2500);
   };
 
-  // Viewport Measurements (supports visualViewport)
-  const [viewport, setViewport] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const vv = window.visualViewport;
-      return {
-        width: vv ? vv.width : window.innerWidth,
-        height: vv ? vv.height : window.innerHeight,
-      };
-    }
-    return { width: 390, height: 844 };
+  // Window viewport measurements matching ProfileScreen
+  const [viewport, setViewport] = useState({
+    width: typeof window !== 'undefined' ? window.innerWidth : 390,
+    height: typeof window !== 'undefined' ? window.innerHeight : 844,
   });
 
   useEffect(() => {
-    const updateSize = () => {
-      const vv = window.visualViewport;
+    const handleResize = () => {
       setViewport({
-        width: vv ? vv.width : window.innerWidth,
-        height: vv ? vv.height : window.innerHeight,
+        width: window.innerWidth,
+        height: window.innerHeight,
       });
     };
-
-    window.addEventListener('resize', updateSize);
-    window.addEventListener('orientationchange', updateSize);
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', updateSize);
-      window.visualViewport.addEventListener('scroll', updateSize);
-    }
-
-    return () => {
-      window.removeEventListener('resize', updateSize);
-      window.removeEventListener('orientationchange', updateSize);
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', updateSize);
-        window.visualViewport.removeEventListener('scroll', updateSize);
-      }
-    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Scale Factors
-  const vw = Math.min(viewport.width, 430);
-  const vh = viewport.height;
-  const sx = vw / 390;
-  const sy = vh / 844;
-  const u = Math.min(sx, sy);
-
-  // Stage scaling matching ProfileScreen
-  const stageH = vh / sx;
+  // Scale by viewport width so stage spans 100% width with ZERO side margins
+  const scale = viewport.width / 390;
+  // Stage height in stage coordinate units
+  const stageH = viewport.height / scale;
+  // Detect compact / short mobile viewports (stageH < 780)
   const isCompact = stageH < 780;
 
-  // Exact positions inherited from Profile page
+  // Exact positions matching ProfileScreen
   const backBtnTop = isCompact ? 28 : 52;
   const titleTop = isCompact ? 72 : 110;
 
-  // Debug Query Parameter
-  const isDebug =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('debug') === '1';
-
-  // Helper for computing image styles
-  const getImageStyle = (asset: (typeof IMAGE_ASSETS)[0]) => {
-    const w = asset.w * u;
-    const h = asset.h * u;
-
-    if (asset.snap === 'left-top') {
-      return {
-        position: 'absolute' as const,
-        left: 0,
-        top: 0,
-        width: `${w}px`,
-        height: `${h}px`,
-        zIndex: asset.zIndex || 5,
-      };
-    }
-
-    if (asset.snap === 'right') {
-      return {
-        position: 'absolute' as const,
-        right: 0,
-        top: `${asset.y * sy}px`,
-        width: `${w}px`,
-        height: `${h}px`,
-        zIndex: asset.zIndex || 5,
-      };
-    }
-
-    if (asset.snap === 'left-bottom') {
-      return {
-        position: 'absolute' as const,
-        left: 0,
-        bottom: 0,
-        width: `${w}px`,
-        height: `${h}px`,
-        zIndex: asset.zIndex || 5,
-      };
-    }
-
-    // Default center formula
-    const centerX = (asset.x + asset.w / 2) * sx;
-    const centerY = (asset.y + asset.h / 2) * sy;
-    return {
-      position: 'absolute' as const,
-      left: `${centerX - w / 2}px`,
-      top: `${centerY - h / 2}px`,
-      width: `${w}px`,
-      height: `${h}px`,
-      zIndex: asset.zIndex || 10,
-    };
-  };
-
-  // Row background (x 22, y 551, 347 x 58.7)
-  const rowW = 347 * sx;
-  const rowH = 58.7 * u;
-  const rowCenterX = (22 + 347 / 2) * sx;
-  const rowCenterY = (551 + 58.7 / 2) * sy;
-  const rowStyle = {
-    position: 'absolute' as const,
-    left: `${rowCenterX - rowW / 2}px`,
-    top: `${rowCenterY - rowH / 2}px`,
-    width: `${rowW}px`,
-    height: `${rowH}px`,
-  };
-
-  // Nudge button (x 22, y 629.3, 347 x 48.7)
-  const btnW = 347 * sx;
-  const btnH = 48.7 * u;
-  const btnCenterX = (22 + 347 / 2) * sx;
-  const btnCenterY = (629.3 + 48.7 / 2) * sy;
-  const btnStyle = {
-    position: 'absolute' as const,
-    left: `${btnCenterX - btnW / 2}px`,
-    top: `${btnCenterY - btnH / 2}px`,
-    width: `${btnW}px`,
-    height: `${btnH}px`,
-  };
-
-  // Print Table of File -> Rendered Size on Mount
-  useEffect(() => {
-    console.table(
-      IMAGE_ASSETS.map((a) => ({
-        File: a.file,
-        'Rendered Width (px)': (a.w * u).toFixed(1),
-        'Rendered Height (px)': (a.h * u).toFixed(1),
-      }))
-    );
-  }, [u]);
-
-  const avatarCenterX = (103 + 184 / 2) * sx;
-  const avatarCenterY = (168.5 + 193.6 / 2) * sy;
-  const avatarW = 184 * u;
-  const avatarH = 193.6 * u;
+  // Derived positions for content layout
+  const avatarTop = isCompact ? 124 : 168;
+  const avatarSize = isCompact ? 130 : 155;
+  const subtitleTop = isCompact ? 258 : 332;
+  const statsTop = isCompact ? 292 : 374;
+  const rowTop = isCompact ? 438 : 526;
+  const nudgeBtnTop = isCompact ? 506 : 596;
 
   return (
-    <div className="w-full h-[100dvh] bg-[#F5EEDA] flex justify-center items-center overflow-hidden font-['Nunito',sans-serif] select-none">
-      {/* ── STAGE CONTAINER ── */}
+    <div className="relative w-full h-[100dvh] bg-[#F5EEDA] flex justify-center items-start overflow-hidden font-['Nunito',sans-serif]">
+      {/* ---------------- 390 DESIGN STAGE CONTAINER ---------------- */}
       <div
-        className="relative overflow-hidden bg-[#F5EEDA]"
-        style={{ width: `${vw}px`, height: `${vh}px` }}
+        className="relative bg-[#F5EEDA] overflow-hidden select-none"
+        style={{
+          width: '390px',
+          height: `${stageH}px`,
+          transform: `scale(${scale})`,
+          transformOrigin: 'top center',
+        }}
       >
-        {/* ── 1. DECORATION & STAT IMAGES ── */}
-        {IMAGE_ASSETS.map((asset) => (
-          <img
-            key={asset.file}
-            src={`/${asset.file}`}
-            alt=""
-            style={getImageStyle(asset)}
-            className="pointer-events-none select-none object-contain"
-            draggable={false}
-          />
-        ))}
+        {/* ---------------- DECORATIONS (BEHIND EVERYTHING) ---------------- */}
+        {/* deco-crescent-yellow: top-left corner */}
+        <img
+          src="/deco-crescent-yellow-top-left-cropped.webp"
+          alt=""
+          className={`absolute top-0 left-0 pointer-events-none select-none z-0 ${
+            isCompact ? 'w-[34px]' : 'w-[40px]'
+          }`}
+          draggable={false}
+        />
 
-        {/* ── 2. DYNAMIC FRIEND AVATAR & BLOB ── */}
-        <div
-          style={{
-            position: 'absolute',
-            left: `${avatarCenterX - avatarW / 2}px`,
-            top: `${avatarCenterY - avatarH / 2}px`,
-            width: `${avatarW}px`,
-            height: `${avatarH}px`,
-            zIndex: 10,
-          }}
-          className="flex items-center justify-center pointer-events-none select-none"
-        >
-          <ProfileAvatar
-            avatarId={friendData.avatarId ?? 2}
-            blobId={friendData.color ?? 'teal'}
-            size={avatarW}
-          />
-        </div>
+        {/* deco-heart-pink: top-right corner */}
+        <img
+          src="/deco-heart-pink-top-right-cropped.webp"
+          alt=""
+          className={`absolute right-0 pointer-events-none select-none z-0 ${
+            isCompact ? 'top-[12px] w-[54px]' : 'top-[20px] w-[64px]'
+          }`}
+          draggable={false}
+        />
 
-        {/* ── 3. BACK BUTTON (Inherited exact position, size & style from Profile page) ── */}
+        {/* deco-starburst-blue: bottom-left corner */}
+        <img
+          src="/deco-starburst-blue-bottom-left-cropped.webp"
+          alt=""
+          className={`absolute bottom-0 left-0 pointer-events-none select-none z-0 ${
+            isCompact ? 'w-[75px]' : 'w-[92px]'
+          }`}
+          draggable={false}
+        />
+
+        {/* ---------------- 1. BACK BUTTON (EXACT POSITION, SIZE & STYLE AS PROFILE SCREEN) ---------------- */}
         <button
           type="button"
           onClick={onBack}
@@ -337,9 +171,9 @@ export const FriendProfileScreen: React.FC<FriendProfileScreenProps> = ({
           </svg>
         </button>
 
-        {/* ── 4. HEADING / TITLE (Inherited exact position, size & style from Profile page) ── */}
+        {/* ---------------- 2. HEADING / TITLE (EXACT POSITION, SIZE & STYLE AS PROFILE SCREEN) ---------------- */}
         <h1
-          className={`absolute left-[24px] font-black text-[#17181B] tracking-[-0.02em] leading-none z-15 ${
+          className={`absolute left-[24px] font-black text-[#17181B] tracking-[-0.02em] leading-none z-10 ${
             isCompact ? 'text-[42px]' : 'text-[52px]'
           }`}
           style={{ top: `${titleTop}px` }}
@@ -347,260 +181,146 @@ export const FriendProfileScreen: React.FC<FriendProfileScreenProps> = ({
           {friendData.name}
         </h1>
 
-        {/* ── 5. TEXT: Subtitle "Teal player, joined Sep 12" (Anchor c at 194.5, 385.8, size 16, weight 700, muted) ── */}
+        {/* ---------------- 3. FRIEND AVATAR & BLOB ---------------- */}
         <div
-          style={{
-            position: 'absolute',
-            left: `${194.5 * sx}px`,
-            top: `${385.8 * sy}px`,
-            transform: 'translate(-50%, -50%)',
-            fontSize: `${16 * u}px`,
-            fontWeight: 700,
-            color: '#11131980',
-            whiteSpace: 'nowrap',
-            lineHeight: 1,
-            zIndex: 15,
-          }}
+          className="absolute left-1/2 -translate-x-1/2 z-20 flex items-center justify-center"
+          style={{ top: `${avatarTop}px`, width: `${avatarSize}px`, height: `${avatarSize}px` }}
         >
-          {friendData.subtitle || `${getBlobColorName(friendData.color, friendData.avatarId)} player, joined Sep 12`}
+          <ProfileAvatar
+            avatarId={friendData.avatarId ?? 2}
+            blobId={friendData.color ?? 'teal'}
+            size={avatarSize}
+          />
         </div>
 
-        {/* ── 6. STAT VALUE 1: "12" Streak (c at 78.3, 449.5, size 34, weight 900) ── */}
+        {/* ---------------- 4. SUBTITLE ---------------- */}
         <div
-          style={{
-            position: 'absolute',
-            left: `${78.3 * sx}px`,
-            top: `${449.5 * sy}px`,
-            transform: 'translate(-50%, -50%)',
-            fontSize: `${34 * u}px`,
-            fontWeight: 900,
-            color: '#111319',
-            whiteSpace: 'nowrap',
-            lineHeight: 1,
-            zIndex: 15,
-          }}
+          className="absolute left-0 right-0 text-center z-15 px-4"
+          style={{ top: `${subtitleTop}px` }}
         >
-          {friendData.streakDays}
+          <span className="font-bold text-[15.5px] text-[#111319]/60 leading-none">
+            {friendData.subtitle ||
+              `${getBlobColorName(friendData.color, friendData.avatarId)} player, joined Sep 12`}
+          </span>
         </div>
 
-        {/* ── 7. STAT UNIT 1: "days" (c at 78.3, 472.4, size 15, weight 800) ── */}
+        {/* ---------------- 5. STATS ROW (3 COLUMNS) ---------------- */}
         <div
-          style={{
-            position: 'absolute',
-            left: `${78.3 * sx}px`,
-            top: `${472.4 * sy}px`,
-            transform: 'translate(-50%, -50%)',
-            fontSize: `${15 * u}px`,
-            fontWeight: 800,
-            color: '#111319',
-            whiteSpace: 'nowrap',
-            lineHeight: 1,
-            zIndex: 15,
-          }}
+          className="absolute left-[22px] w-[346px] flex items-center justify-between z-15"
+          style={{ top: `${statsTop}px`, height: '110px' }}
         >
-          days
+          {/* Stat 1: Streak */}
+          <div className="relative w-[104px] h-[104px] flex flex-col items-center justify-center select-none">
+            <img
+              src="/stat-starburst-yellow-streak.webp"
+              alt=""
+              className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
+              draggable={false}
+            />
+            <div className="relative z-10 flex flex-col items-center justify-center -mt-1">
+              <span className="font-black text-[29px] text-[#111319] leading-none">
+                {friendData.streakDays}
+              </span>
+              <span className="font-extrabold text-[12px] text-[#111319]/80 leading-tight">
+                days
+              </span>
+              <span className="font-bold text-[13px] text-[#111319]/60 mt-0.5">
+                Streak
+              </span>
+            </div>
+          </div>
+
+          {/* Stat 2: Matches */}
+          <div className="relative w-[100px] h-[104px] flex flex-col items-center justify-center select-none">
+            <img
+              src="/stat-teardrop-blue-matches.webp"
+              alt=""
+              className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
+              draggable={false}
+            />
+            <div className="relative z-10 flex flex-col items-center justify-center -mt-1">
+              <span className="font-black text-[29px] text-[#111319] leading-none">
+                {friendData.matchesCount}
+              </span>
+              <span className="font-bold text-[13px] text-[#111319]/60 mt-2">
+                Matches
+              </span>
+            </div>
+          </div>
+
+          {/* Stat 3: Guess Wins */}
+          <div className="relative w-[104px] h-[104px] flex flex-col items-center justify-center select-none">
+            <img
+              src="/stat-cross-olive-guess-wins.webp"
+              alt=""
+              className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
+              draggable={false}
+            />
+            <div className="relative z-10 flex flex-col items-center justify-center -mt-1">
+              <span className="font-black text-[29px] text-[#111319] leading-none">
+                {friendData.guessWinsCount}
+              </span>
+              <span className="font-bold text-[13px] text-[#111319]/60 mt-2">
+                Guess wins
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* ── 8. STAT VALUE 2: "38" Matches (c at 194.5, 459, size 34, weight 900) ── */}
+        {/* ---------------- 6. LAST ANSWERED ROW ---------------- */}
         <div
-          style={{
-            position: 'absolute',
-            left: `${194.5 * sx}px`,
-            top: `${459 * sy}px`,
-            transform: 'translate(-50%, -50%)',
-            fontSize: `${34 * u}px`,
-            fontWeight: 900,
-            color: '#111319',
-            whiteSpace: 'nowrap',
-            lineHeight: 1,
-            zIndex: 15,
-          }}
+          className="absolute left-[22px] w-[346px] h-[58px] rounded-full bg-[#D5E9DE] flex items-center justify-between px-4 z-20 shadow-xs"
+          style={{ top: `${rowTop}px` }}
         >
-          {friendData.matchesCount}
+          <div className="flex items-center gap-2.5">
+            <img
+              src="/icon-clock-teal-blob.webp"
+              alt=""
+              className="w-[36px] h-[36px] object-contain pointer-events-none select-none"
+              draggable={false}
+            />
+            <span className="font-black text-[17px] text-[#111319] tracking-tight">
+              Last answered
+            </span>
+          </div>
+          <span className="font-semibold text-[15px] text-[#111319]/60 tracking-tight">
+            {friendData.lastAnsweredTime}
+          </span>
         </div>
 
-        {/* ── 9. STAT VALUE 3: "21" Guess wins (c at 313.5, 457.3, size 34, weight 900) ── */}
-        <div
-          style={{
-            position: 'absolute',
-            left: `${313.5 * sx}px`,
-            top: `${457.3 * sy}px`,
-            transform: 'translate(-50%, -50%)',
-            fontSize: `${34 * u}px`,
-            fontWeight: 900,
-            color: '#111319',
-            whiteSpace: 'nowrap',
-            lineHeight: 1,
-            zIndex: 15,
-          }}
-        >
-          {friendData.guessWinsCount}
-        </div>
-
-        {/* ── 10. STAT LABELS: Streak (78.3, 518), Matches (194.5, 518), Guess wins (313.5, 518) ── */}
-        <div
-          style={{
-            position: 'absolute',
-            left: `${78.3 * sx}px`,
-            top: `${518 * sy}px`,
-            transform: 'translate(-50%, -50%)',
-            fontSize: `${16 * u}px`,
-            fontWeight: 700,
-            color: '#11131980',
-            whiteSpace: 'nowrap',
-            lineHeight: 1,
-            zIndex: 15,
-          }}
-        >
-          Streak
-        </div>
-
-        <div
-          style={{
-            position: 'absolute',
-            left: `${194.5 * sx}px`,
-            top: `${518 * sy}px`,
-            transform: 'translate(-50%, -50%)',
-            fontSize: `${16 * u}px`,
-            fontWeight: 700,
-            color: '#11131980',
-            whiteSpace: 'nowrap',
-            lineHeight: 1,
-            zIndex: 15,
-          }}
-        >
-          Matches
-        </div>
-
-        <div
-          style={{
-            position: 'absolute',
-            left: `${313.5 * sx}px`,
-            top: `${518 * sy}px`,
-            transform: 'translate(-50%, -50%)',
-            fontSize: `${16 * u}px`,
-            fontWeight: 700,
-            color: '#11131980',
-            whiteSpace: 'nowrap',
-            lineHeight: 1,
-            zIndex: 15,
-          }}
-        >
-          Guess wins
-        </div>
-
-        {/* ── 11. ROW BACKGROUND: (22, 551, 347 x 58.7, bg #D5E9DE) ── */}
-        <div
-          style={rowStyle}
-          className="rounded-full bg-[#D5E9DE] pointer-events-none z-10"
-        />
-
-        {/* ── 12. "Last answered" (Anchor l at 90.2, 580.4, size 18, weight 800) ── */}
-        <div
-          style={{
-            position: 'absolute',
-            left: `${90.2 * sx}px`,
-            top: `${580.4 * sy}px`,
-            transform: 'translateY(-50%)',
-            fontSize: `${18 * u}px`,
-            fontWeight: 800,
-            color: '#111319',
-            whiteSpace: 'nowrap',
-            lineHeight: 1,
-            zIndex: 25,
-          }}
-        >
-          Last answered
-        </div>
-
-        {/* ── 13. "today, 8:42 PM" (Anchor r at 353.3, 580.4, size 17, weight 600, muted) ── */}
-        <div
-          style={{
-            position: 'absolute',
-            left: `${353.3 * sx}px`,
-            top: `${580.4 * sy}px`,
-            transform: 'translate(-100%, -50%)',
-            fontSize: `${17 * u}px`,
-            fontWeight: 600,
-            color: '#11131980',
-            whiteSpace: 'nowrap',
-            lineHeight: 1,
-            zIndex: 25,
-          }}
-        >
-          {friendData.lastAnsweredTime}
-        </div>
-
-        {/* ── 14. NUDGE BUTTON: (22, 629.3, 347 x 48.7, bg #121419) ── */}
+        {/* ---------------- 7. NUDGE BUTTON ---------------- */}
         <button
           type="button"
           onClick={handleSendNudge}
           disabled={nudgeCooldown > 0}
-          style={btnStyle}
-          className={`rounded-full bg-[#121419] flex items-center justify-center gap-2.5 cursor-pointer transition-all active:scale-[0.98] z-25 ${
+          style={{ top: `${nudgeBtnTop}px` }}
+          className={`absolute left-[22px] w-[346px] h-[48px] rounded-full bg-[#121419] flex items-center justify-center gap-2.5 cursor-pointer transition-all active:scale-[0.99] z-25 ${
             nudgeCooldown > 0 ? 'opacity-80 cursor-not-allowed' : 'hover:bg-[#20222a]'
           }`}
         >
-          {/* "Send a nudge" text (c at 184, 654.5, size 19, weight 800, white) */}
-          <span
-            style={{
-              fontSize: `${19 * u}px`,
-              fontWeight: 800,
-              color: '#FFFFFF',
-              whiteSpace: 'nowrap',
-            }}
-          >
+          <span className="font-extrabold text-[17.5px] text-white tracking-tight">
             {nudgeCooldown > 0 ? `Nudge sent (${nudgeCooldown}s)` : 'Send a nudge'}
           </span>
-          {/* Wave hand emoji icon inside button */}
           <img
             src="/icon-wave-hand.webp"
             alt=""
-            style={{
-              width: `${21 * u}px`,
-              height: `${23 * u}px`,
-            }}
-            className="object-contain pointer-events-none select-none"
+            className="w-[22px] h-[22px] object-contain pointer-events-none select-none"
             draggable={false}
           />
         </button>
 
-        {/* ── 15. TOAST NOTIFICATION: "Nudge sent 👋" ── */}
+        {/* ---------------- 8. TOAST NOTIFICATION: "Nudge sent 👋" ---------------- */}
         {showToast && (
-          <div className="absolute top-[80px] left-1/2 -translate-x-1/2 bg-[#121419] text-white px-5 py-2.5 rounded-full font-black text-[15px] shadow-lg animate-pop z-50 flex items-center gap-2">
+          <div className="absolute top-[80px] left-1/2 -translate-x-1/2 bg-[#121419] text-white px-5 py-2.5 rounded-full font-black text-[15px] shadow-lg animate-pop z-50 flex items-center gap-2 pointer-events-none">
             <span>Nudge sent</span>
             <span>👋</span>
           </div>
         )}
 
-        {/* ── 16. SELF-CHECK DEBUG OVERLAY (?debug=1) ── */}
-        {isDebug && (
-          <div className="absolute top-2 left-2 z-50 bg-black/90 text-white p-3 rounded-xl text-[11px] font-mono max-w-[350px] shadow-2xl overflow-auto max-h-[300px]">
-            <div className="font-bold text-yellow-300 mb-1">
-              DEBUG OVERLAY (Friend Profile)
-            </div>
-            <div>vw: {vw.toFixed(1)}px | vh: {vh.toFixed(1)}px</div>
-            <div>sx: {sx.toFixed(4)} | sy: {sy.toFixed(4)} | u: {u.toFixed(4)}</div>
-            <div className="mt-2 border-t border-gray-700 pt-1">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="text-gray-400">
-                    <th>Asset</th>
-                    <th>Rendered WxH</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {IMAGE_ASSETS.map((a) => (
-                    <tr key={a.file} className="border-b border-gray-800">
-                      <td className="truncate max-w-[150px]">{a.file}</td>
-                      <td>
-                        {(a.w * u).toFixed(1)}x{(a.h * u).toFixed(1)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+        {/* ---------------- 9. BOTTOM NAVIGATION DOCK (EXACT SAME POSITION & SIZE AS PROFILE SCREEN) ---------------- */}
+        {onNavigateTab && (
+          <div className="absolute bottom-2 left-0 right-0 flex justify-center z-30 pointer-events-auto">
+            <BottomNav activeTab="profile" onTabChange={onNavigateTab} className="mb-0" />
           </div>
         )}
       </div>

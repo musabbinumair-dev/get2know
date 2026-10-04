@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Screen } from '../components/Screen';
 import { BottomNav, NavTab } from '../components/BottomNav';
 import { QuestionData } from '../data/gameData';
+import { useGameSession } from '../services/gameSessionContext';
+import { GameHeader } from '../components/GameHeader';
+import { TriviaQuestion, KnowMeQuestion } from '../data/gameQuestions';
 
 export type OptionId = 'pink' | 'yellow' | 'cream' | 'green';
 
@@ -25,6 +28,9 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
   onBack,
   onNavigateTab,
 }) => {
+  const gameSession = useGameSession();
+  const isInGame = gameSession.isActive;
+
   // Default selected is the first option or cream
   const defaultSelected = questionData?.correctOptionId || 'cream';
   const [selectedId, setSelectedId] = useState<OptionId | null>(defaultSelected);
@@ -33,10 +39,12 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
 
   // Update selection when question changes
   useEffect(() => {
-    if (questionData?.correctOptionId) {
+    if (isInGame && gameSession.currentQuestion) {
+      setSelectedId(null);
+    } else if (questionData?.correctOptionId) {
       setSelectedId(questionData.correctOptionId);
     }
-  }, [questionData?.id]);
+  }, [isInGame, gameSession.currentRound, questionData?.id]);
 
   // Viewport tracking for Stage 390 system (capped at 1.0 inside Screen container)
   const [viewport, setViewport] = useState({
@@ -134,27 +142,72 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
 
   const [isLocking, setIsLocking] = useState(false);
 
-  const handleLock = async () => {
-    if (!selectedId || isLocking) return;
-    setIsLocking(true);
-    await new Promise((r) => setTimeout(r, 400));
-    const correctId = questionData?.correctOptionId || 'cream';
-    const isCorrect = selectedId === correctId;
-    const selectedOption = questionData?.guessOptions?.find((o) => o.id === selectedId);
-    onLockGuess?.(selectedOption?.text || selectedId, isCorrect);
-    setIsLocking(false);
-  };
-
-  const questionLines = questionData?.questionLines || [
+  // Determine question lines and option texts based on in-game vs standalone
+  let questionLines = questionData?.questionLines || [
     "What’s the worst",
     "food you’ve ever",
     "tried?",
   ];
+  let pinkText = questionData?.guessOptions?.find((o) => o.id === 'pink')?.text || 'Fried crickets';
+  let yellowText = questionData?.guessOptions?.find((o) => o.id === 'yellow')?.text || 'Raw oysters';
+  let creamText = questionData?.guessOptions?.find((o) => o.id === 'cream')?.text || 'Anchovies on pizza';
+  let greenText = questionData?.guessOptions?.find((o) => o.id === 'green')?.text || 'Durian';
 
-  const pinkText = questionData?.guessOptions?.find((o) => o.id === 'pink')?.text || 'Fried crickets';
-  const yellowText = questionData?.guessOptions?.find((o) => o.id === 'yellow')?.text || 'Raw oysters';
-  const creamText = questionData?.guessOptions?.find((o) => o.id === 'cream')?.text || 'Anchovies on pizza';
-  const greenText = questionData?.guessOptions?.find((o) => o.id === 'green')?.text || 'Durian';
+  if (isInGame && gameSession.currentQuestion) {
+    if (gameSession.currentRoundType === 'trivia') {
+      const tQ = gameSession.currentQuestion as TriviaQuestion;
+      questionLines = tQ.questionLines || [tQ.question];
+      pinkText = tQ.options?.find((o) => o.id === 'pink')?.text || 'A';
+      yellowText = tQ.options?.find((o) => o.id === 'yellow')?.text || 'B';
+      creamText = tQ.options?.find((o) => o.id === 'cream')?.text || 'C';
+      greenText = tQ.options?.find((o) => o.id === 'green')?.text || 'D';
+    } else {
+      const kQ = gameSession.currentQuestion as KnowMeQuestion;
+      questionLines = kQ.questionLines || [kQ.question];
+      pinkText = kQ.guessOptions?.find((o) => o.id === 'pink')?.text || 'A';
+      yellowText = kQ.guessOptions?.find((o) => o.id === 'yellow')?.text || 'B';
+      creamText = kQ.guessOptions?.find((o) => o.id === 'cream')?.text || 'C';
+      greenText = kQ.guessOptions?.find((o) => o.id === 'green')?.text || 'D';
+    }
+  }
+
+  const handleLock = async (overrideId?: OptionId) => {
+    const chosenId = overrideId || selectedId || 'cream';
+    if (isLocking) return;
+    setIsLocking(true);
+    await new Promise((r) => setTimeout(r, 300));
+
+    const selectedText =
+      chosenId === 'pink'
+        ? pinkText
+        : chosenId === 'yellow'
+        ? yellowText
+        : chosenId === 'cream'
+        ? creamText
+        : greenText;
+
+    if (isInGame) {
+      gameSession.submitGuess(chosenId, selectedText);
+    } else {
+      const correctId = questionData?.correctOptionId || 'cream';
+      const isCorrect = chosenId === correctId;
+      onLockGuess?.(selectedText, isCorrect);
+    }
+    setIsLocking(false);
+  };
+
+  // Auto-submit when timer expires
+  const hasAutoSubmitted = useRef(false);
+  useEffect(() => {
+    if (isInGame && gameSession.timer === 0 && !hasAutoSubmitted.current) {
+      hasAutoSubmitted.current = true;
+      handleLock();
+    }
+  }, [isInGame, gameSession.timer]);
+
+  useEffect(() => {
+    hasAutoSubmitted.current = false;
+  }, [gameSession.currentRound]);
 
   return (
     <Screen bg="#96B9FC" className="h-[100dvh] sm:h-[844px]">
@@ -253,106 +306,127 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
           />
         </div>
 
-        {/* ---------------- 5. HEADER (SIDE PADDING STRICTLY CONTROLLED) ---------------- */}
-
-        {/* Back button: dashed 1.5px circle, 35px, at x 22, y 31 */}
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label="Back"
-          className="btn-press cursor-pointer focus:outline-none"
-          style={{
-            position: 'absolute',
-            left: '22px',
-            top: '31px',
-            width: '35px',
-            height: '35px',
-            borderRadius: '9999px',
-            border: '1.5px dashed #17181B',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: 'transparent',
-            zIndex: 20,
-          }}
-        >
-          <svg
-            width="17"
-            height="17"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#17181B"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M19 12H5" />
-            <path d="M11 18l-6-6 6-6" />
-          </svg>
-        </button>
-
-        {/* Title "Guess": absolutely centered on x 195, Nunito 900 26px */}
-        <h1
-          style={{
-            position: 'absolute',
-            left: '195px',
-            top: '34px',
-            transform: 'translateX(-50%)',
-            fontFamily: "'Nunito', sans-serif",
-            fontWeight: 900,
-            fontSize: '26px',
-            lineHeight: 1,
-            color: '#17181B',
-            letterSpacing: '-0.025em',
-            margin: 0,
-            zIndex: 20,
-          }}
-        >
-          Guess
-        </h1>
-
-        {/* Streak pill: x 304, y 32, 67x32, right edge at 371 */}
-        <div
-          style={{
-            position: 'absolute',
-            left: '304px',
-            top: '32px',
-            width: '67px',
-            height: '32px',
-            backgroundColor: '#17181B',
-            borderRadius: '9999px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '5px',
-            zIndex: 20,
-            pointerEvents: 'none',
-          }}
-        >
-          {/* Flame asset at x 319.5, y 38.5, w 16 */}
-          <img
-            src="/assets/guess/icon-flame.webp"
-            alt=""
-            style={{ width: '16px', height: 'auto', objectFit: 'contain' }}
-            draggable={false}
-          />
-          <span
+        {/* ---------------- 5. HEADER: GAME HEADER IN-GAME OR STANDARD TOP BAR ---------------- */}
+        {isInGame ? (
+          <div
             style={{
-              fontFamily: "'Nunito', sans-serif",
-              fontWeight: 800,
-              fontSize: '17px',
-              color: '#FFFFFF',
-              lineHeight: 1,
-              letterSpacing: '-0.02em',
+              position: 'absolute',
+              top: '18px',
+              left: 0,
+              width: '390px',
+              zIndex: 30,
             }}
           >
-            {streak}
-          </span>
-        </div>
+            <GameHeader
+              currentRound={gameSession.currentRound}
+              totalRounds={gameSession.totalRounds}
+              timer={gameSession.timer}
+              showTimer={true}
+              onExit={gameSession.exitGame}
+            />
+          </div>
+        ) : (
+          <>
+            {/* Back button: dashed 1.5px circle, 35px, at x 22, y 31 */}
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label="Back"
+              className="btn-press cursor-pointer focus:outline-none"
+              style={{
+                position: 'absolute',
+                left: '22px',
+                top: '31px',
+                width: '35px',
+                height: '35px',
+                borderRadius: '9999px',
+                border: '1.5px dashed #17181B',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'transparent',
+                zIndex: 20,
+              }}
+            >
+              <svg
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#17181B"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M19 12H5" />
+                <path d="M11 18l-6-6 6-6" />
+              </svg>
+            </button>
+
+            {/* Title "Guess": absolutely centered on x 195, Nunito 900 26px */}
+            <h1
+              style={{
+                position: 'absolute',
+                left: '195px',
+                top: '34px',
+                transform: 'translateX(-50%)',
+                fontFamily: "'Nunito', sans-serif",
+                fontWeight: 900,
+                fontSize: '26px',
+                lineHeight: 1,
+                color: '#17181B',
+                letterSpacing: '-0.025em',
+                margin: 0,
+                zIndex: 20,
+              }}
+            >
+              Guess
+            </h1>
+
+            {/* Streak pill: x 304, y 32, 67x32, right edge at 371 */}
+            <div
+              style={{
+                position: 'absolute',
+                left: '304px',
+                top: '32px',
+                width: '67px',
+                height: '32px',
+                backgroundColor: '#17181B',
+                borderRadius: '9999px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '5px',
+                zIndex: 20,
+                pointerEvents: 'none',
+              }}
+            >
+              {/* Flame asset at x 319.5, y 38.5, w 16 */}
+              <img
+                src="/assets/guess/icon-flame.webp"
+                alt=""
+                style={{ width: '16px', height: 'auto', objectFit: 'contain' }}
+                draggable={false}
+              />
+              <span
+                style={{
+                  fontFamily: "'Nunito', sans-serif",
+                  fontWeight: 800,
+                  fontSize: '17px',
+                  color: '#FFFFFF',
+                  lineHeight: 1,
+                  letterSpacing: '-0.02em',
+                }}
+              >
+                {streak}
+              </span>
+            </div>
+          </>
+        )}
 
         {/* ---------------- 4. QUESTION TEXT & LABELS ---------------- */}
 
-        {/* Label "Guess their answer": x 36, Nunito 600, 16px, ink 55% */}
+        {/* Label "Guess their answer" / "Trivia question": x 36, Nunito 600, 16px, ink 55% */}
         <span
           style={{
             position: 'absolute',
@@ -367,7 +441,9 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
             zIndex: 10,
           }}
         >
-          Guess their answer
+          {isInGame && gameSession.currentRoundType === 'trivia'
+            ? 'Trivia question'
+            : 'Guess their answer'}
         </span>
 
         {/* Forced 3 lines, Nunito 900, line pitch 43.3px, left x 30, spans 330px (x 30 to 360) */}
@@ -756,7 +832,7 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
                 letterSpacing: '-0.02em',
               }}
             >
-              +15
+              {isInGame && gameSession.currentRoundType === 'trivia' ? '+10' : '+15'}
             </span>
             <span
               style={{
@@ -775,7 +851,7 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
 
         {/* ---------------- HINT & LOCK BUTTON ---------------- */}
 
-        {/* Hint "Only one is what they really said.": centered in ONE SINGLE ROW */}
+        {/* Hint: centered in ONE SINGLE ROW */}
         <div
           style={{
             position: 'absolute',
@@ -794,13 +870,15 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
             zIndex: 10,
           }}
         >
-          Only one is what they really said.
+          {isInGame && gameSession.currentRoundType === 'trivia'
+            ? 'Only one option is correct!'
+            : 'Only one is what they really said.'}
         </div>
 
         {/* Lock Button: x 44, w 302, h 44, #17181B, white Nunito 700 18px */}
         <button
           type="button"
-          onClick={handleLock}
+          onClick={() => handleLock()}
           disabled={!selectedId || isLocking}
           className="btn-press cursor-pointer focus:outline-none"
           style={{
@@ -905,14 +983,16 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
         )}
       </div>
 
-      {/* ---------------- 7. BOTTOM NAV (FIXED & IDENTICAL TO OTHER SCREENS) ---------------- */}
-      <div className="absolute bottom-0 left-0 right-0 pb-1 z-30 pointer-events-auto flex justify-center">
-        <BottomNav
-          activeTab="guess"
-          onTabChange={onNavigateTab}
-          className="mb-1"
-        />
-      </div>
+      {/* ---------------- 7. BOTTOM NAV (HIDDEN DURING GAMEPLAY) ---------------- */}
+      {!isInGame && (
+        <div className="absolute bottom-0 left-0 right-0 pb-1 z-30 pointer-events-auto flex justify-center">
+          <BottomNav
+            activeTab="guess"
+            onTabChange={onNavigateTab}
+            className="mb-1"
+          />
+        </div>
+      )}
     </Screen>
   );
 };

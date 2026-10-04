@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Screen } from '../components/Screen';
 import { PillButton } from '../components/PillButton';
 import { BottomNav, NavTab } from '../components/BottomNav';
 import { TopBar } from '../components/TopBar';
+import { GameHeader } from '../components/GameHeader';
 import { UserProfile } from './CreateProfileScreen';
-import { QuestionData, getAvatarBlobSrc, getAvatarFaceSrc } from '../data/gameData';
+import { QuestionData } from '../data/gameData';
+import { useGameSession } from '../services/gameSessionContext';
 
 interface TodayQuestionScreenProps {
   userProfile?: UserProfile;
@@ -17,7 +19,7 @@ interface TodayQuestionScreenProps {
 }
 
 export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
-  userProfile = { avatarId: 1, name: 'Player 1', color: 'salmon' },
+  userProfile: _userProfile = { avatarId: 1, name: 'Player 1', color: 'salmon' },
   questionData,
   streak = 12,
   onOpenSettings,
@@ -25,8 +27,12 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
   onLockInSuccess,
   onShuffleQuestion,
 }) => {
-  const currentQuestionText =
-    questionData?.question || "What’s a fear you’d never tell anyone?";
+  const gameSession = useGameSession();
+  const isInGame = gameSession.isActive;
+
+  const currentQuestionText = isInGame
+    ? gameSession.currentQuestion.question
+    : questionData?.question || "What’s a fear you’d never tell anyone?";
 
   const [answer, setAnswer] = useState<string>(() => {
     return localStorage.getItem('today_answer') || questionData?.player1DefaultAnswer || '';
@@ -35,21 +41,18 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
     return localStorage.getItem('today_answer_locked') === 'true';
   });
   const [showLockedToast, setShowLockedToast] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<NavTab>('today');
+  const [activeTab, setActiveTab] = useState<NavTab>('home');
 
   const maxChars = 200;
 
-  // Update answer when question changes if not already locked
+  // Clear answer on new round in game
   useEffect(() => {
-    if (!isLocked && questionData) {
-      const saved = localStorage.getItem(`today_answer_${questionData.id}`);
-      if (saved) {
-        setAnswer(saved);
-      } else {
-        setAnswer(questionData.player1DefaultAnswer || '');
-      }
+    if (isInGame) {
+      setAnswer('');
+      setIsLocked(false);
+      setShowLockedToast(false);
     }
-  }, [questionData?.id, isLocked]);
+  }, [isInGame, gameSession.currentRound]);
 
   // Sync body & html background to bright warm yellow
   useEffect(() => {
@@ -71,22 +74,37 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
   };
 
   const handleLockIn = () => {
-    if (!answer.trim()) return;
+    const finalAnswer = answer.trim() || 'My secret answer';
     setIsLocked(true);
-    localStorage.setItem('today_answer_locked', 'true');
-    if (questionData) {
-      localStorage.setItem(`today_answer_${questionData.id}`, answer);
-    }
     setShowLockedToast(true);
-    setTimeout(() => {
-      onLockInSuccess?.(answer);
-    }, 450);
+
+    if (isInGame) {
+      setTimeout(() => {
+        gameSession.submitAnswer(finalAnswer);
+      }, 400);
+    } else {
+      localStorage.setItem('today_answer_locked', 'true');
+      if (questionData) {
+        localStorage.setItem(`today_answer_${questionData.id}`, finalAnswer);
+      }
+      setTimeout(() => {
+        onLockInSuccess?.(finalAnswer);
+      }, 450);
+    }
   };
 
-  const handleUnlockForEdit = () => {
-    setIsLocked(false);
-    localStorage.setItem('today_answer_locked', 'false');
-  };
+  // Auto-submit when timer expires in game
+  const hasAutoSubmitted = useRef(false);
+  useEffect(() => {
+    if (isInGame && gameSession.timer === 0 && !hasAutoSubmitted.current && !isLocked) {
+      hasAutoSubmitted.current = true;
+      handleLockIn();
+    }
+  }, [isInGame, gameSession.timer, isLocked]);
+
+  useEffect(() => {
+    hasAutoSubmitted.current = false;
+  }, [gameSession.currentRound]);
 
   const handleTabChange = (tab: NavTab) => {
     setActiveTab(tab);
@@ -95,9 +113,7 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
 
   return (
     <Screen bg="#FEE273" className="h-[100dvh] sm:h-[844px]">
-      {/* ---------------- DECORATIVE BACKGROUND BLOBS (MATCHING REFERENCE IMAGE) ---------------- */}
-
-      {/* Top-Left: Pink Heart (below top bar left) */}
+      {/* ---------------- DECORATIVE BACKGROUND BLOBS ---------------- */}
       <div
         className="absolute top-[102px] -left-[24px] pointer-events-none select-none z-0"
         style={{ width: '92px', height: '92px' }}
@@ -110,7 +126,6 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
         />
       </div>
 
-      {/* Top-Right: Olive 4-Leaf Cross */}
       <div
         className="absolute top-[96px] right-[88px] pointer-events-none select-none z-0"
         style={{ width: '76px', height: '80px' }}
@@ -123,7 +138,6 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
         />
       </div>
 
-      {/* Top-Right: Periwinkle Blue Starburst (peaking from right edge) */}
       <div
         className="absolute top-[128px] -right-[16px] pointer-events-none select-none z-0"
         style={{ width: '92px', height: '92px' }}
@@ -136,7 +150,6 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
         />
       </div>
 
-      {/* Bottom-Left: Pink Heart (above bottom nav) */}
       <div
         className="absolute bottom-[98px] -left-[16px] pointer-events-none select-none z-0"
         style={{ width: '96px', height: '96px' }}
@@ -149,7 +162,6 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
         />
       </div>
 
-      {/* Bottom-Right: Periwinkle Blue Starburst (above bottom nav) */}
       <div
         className="absolute bottom-[108px] -right-[16px] pointer-events-none select-none z-0"
         style={{ width: '96px', height: '96px' }}
@@ -163,19 +175,29 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
       </div>
 
       {/* ---------------- MAIN CONTENT ---------------- */}
-      <div className="relative z-10 flex flex-col justify-between h-full overflow-y-auto overflow-x-hidden pt-9 pb-[84px] select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className={`relative z-10 flex flex-col justify-between h-full overflow-y-auto overflow-x-hidden ${isInGame ? 'pt-4 pb-6' : 'pt-9 pb-[84px]'} select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}>
         <div>
-          {/* Unified Top Bar: Duo Icon | Streak | Settings Gear */}
-          <TopBar streak={streak} onSettingsClick={onOpenSettings} />
+          {/* Top Bar: GameHeader when in game, else standard TopBar */}
+          {isInGame ? (
+            <GameHeader
+              currentRound={gameSession.currentRound}
+              totalRounds={gameSession.totalRounds}
+              timer={gameSession.timer}
+              showTimer={true}
+              onExit={gameSession.exitGame}
+            />
+          ) : (
+            <TopBar streak={streak} onSettingsClick={onOpenSettings} />
+          )}
 
-          <div className="px-7 sm:px-8">
+          <div className="px-7 sm:px-8 mt-2">
             {/* Question Heading Section */}
-            <div className="mt-5">
+            <div>
               <div className="flex items-center justify-between">
                 <h2 className="text-[17.5px] sm:text-[18.5px] font-bold text-[#4E5244] tracking-tight">
-                  Today’s question {questionData?.category ? `· ${questionData.category}` : ''}
+                  {isInGame ? 'Tell about yourself' : `Today’s question ${questionData?.category ? `· ${questionData.category}` : ''}`}
                 </h2>
-                {onShuffleQuestion && (
+                {!isInGame && onShuffleQuestion && (
                   <button
                     type="button"
                     onClick={onShuffleQuestion}
@@ -185,85 +207,53 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
                   </button>
                 )}
               </div>
-              <h1 className="mt-2 text-[32px] sm:text-[38px] font-black text-[#1A1C22] leading-[1.1] tracking-[-0.035em]">
+              <h1 className="mt-2 text-[30px] sm:text-[36px] font-black text-[#1A1C22] leading-[1.1] tracking-[-0.035em] font-['Nunito',sans-serif]">
                 {currentQuestionText}
               </h1>
             </div>
 
-            {/* Cream Textarea Card (rounded ~34px, comfortable padding) */}
-            <div className="mt-5 relative w-full max-w-[342px] mx-auto bg-[#FAF6EB] rounded-[34px] p-6 flex flex-col justify-between min-h-[178px]">
+            {/* Cream Textarea Card */}
+            <div className="mt-5 relative w-full max-w-[342px] mx-auto bg-[#FAF6EB] rounded-[34px] p-6 flex flex-col justify-between min-h-[178px] shadow-sm border border-[#1A1C22]/5">
               <textarea
                 value={answer}
                 onChange={handleTextChange}
                 disabled={isLocked}
                 placeholder="Type your answer..."
                 rows={4}
-                maxLength={maxChars}
-                className={`w-full bg-transparent resize-none outline-none font-bold text-[17.5px] text-[#1A1C22] placeholder:text-[#1A1C22]/35 leading-relaxed ${
-                  isLocked ? 'cursor-default opacity-85' : 'cursor-text'
-                }`}
+                className="w-full bg-transparent resize-none border-none outline-none font-medium text-[19px] sm:text-[21px] text-[#1A1C22] placeholder:text-[#1A1C22]/30 leading-[1.3] font-['Nunito',sans-serif]"
+                autoFocus={!isLocked}
               />
 
-              {/* Character Counter & Edit button */}
-              <div className="flex items-center justify-between mt-2 pt-1 border-t border-[#1A1C22]/5">
-                {isLocked ? (
-                  <button
-                    type="button"
-                    onClick={handleUnlockForEdit}
-                    className="text-[12px] font-extrabold text-[#1A1C22]/60 hover:text-[#1A1C22] underline cursor-pointer"
-                  >
-                    Edit answer
-                  </button>
-                ) : (
-                  <div />
+              {/* Character counter & lock status */}
+              <div className="flex justify-between items-center text-[13px] font-bold text-[#1A1C22]/40 pt-2 border-t border-[#1A1C22]/10">
+                <span>{answer.length}/{maxChars}</span>
+                {answer.trim().length > 0 && !isLocked && (
+                  <span className="text-[#1A1C22]/70 font-semibold">Ready to lock in</span>
                 )}
-                <span className="text-[13px] font-extrabold text-[#1A1C22]/40 tracking-tight">
-                  {answer.length} / {maxChars}
-                </span>
               </div>
             </div>
 
-            {/* Privacy Note with Dynamic Avatar and Lock Badge */}
-            <div className="mt-4 flex items-center gap-3.5 w-full max-w-[342px] mx-auto px-1">
-              <div
-                onClick={onOpenSettings}
-                className="relative w-[54px] h-[54px] flex items-center justify-center flex-shrink-0 cursor-pointer active:scale-95 transition-transform"
-              >
-                <img
-                  src={getAvatarBlobSrc(userProfile.avatarId, userProfile.color)}
-                  alt=""
-                  className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
-                  draggable={false}
-                />
-                <img
-                  src={getAvatarFaceSrc(userProfile.avatarId)}
-                  alt={userProfile.name || 'You'}
-                  className="relative z-10 w-[74%] h-[74%] object-contain pointer-events-none select-none"
-                  draggable={false}
-                />
-                {/* Black Lock Circle Badge on bottom right */}
-                <div className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full bg-[#1A1C22] flex items-center justify-center z-20">
-                  <svg
-                    width="10"
-                    height="10"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#FFFFFF"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
-                </div>
+            {/* Privacy info note */}
+            <div className="mt-4 flex items-center justify-center gap-2.5 text-center max-w-[320px] mx-auto">
+              <div className="w-[26px] h-[26px] rounded-full bg-[#FAF6EB] flex items-center justify-center flex-shrink-0 shadow-sm">
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#1A1C22"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
               </div>
-
-              {/* Note text */}
-              <p className="text-[15px] font-bold text-[#4E5244] leading-[1.25]">
+              <p className="text-[14px] font-bold text-[#4E5244] leading-[1.25]">
                 {isLocked
-                  ? "Locked! They can't see it until you both answer."
-                  : 'They can’t see it until you both answer.'}
+                  ? "Locked! Friend will guess your answer."
+                  : 'Your friend will have to guess what you wrote.'}
               </p>
             </div>
 
@@ -272,12 +262,12 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
               <PillButton
                 variant="black"
                 onClick={handleLockIn}
-                disabled={!answer.trim()}
-                className={`w-full h-[56px] text-[17.5px] font-bold tracking-tight shadow-none transition-all ${
+                disabled={!answer.trim() && !isInGame}
+                className={`w-full h-[54px] text-[17.5px] font-black tracking-tight shadow-sm transition-all ${
                   isLocked
                     ? 'bg-[#1A1C22] opacity-90 cursor-default'
-                    : answer.trim()
-                    ? 'hover:bg-[#2A2C34] cursor-pointer'
+                    : answer.trim() || isInGame
+                    ? 'hover:bg-[#2A2C34] cursor-pointer active:scale-98'
                     : 'opacity-50 cursor-not-allowed'
                 }`}
               >
@@ -288,17 +278,19 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
             {/* Feedback message when locked */}
             {showLockedToast && (
               <p className="mt-2 text-center text-[13px] font-extrabold text-[#1A1C22]/80 animate-pop">
-                Saved! Waiting for your friend’s answer ✨
+                Saved! Waiting for friend... ✨
               </p>
             )}
           </div>
         </div>
       </div>
 
-      {/* Bottom Navigation Dock */}
-      <div className="absolute bottom-0 left-0 right-0 pb-1 z-30 pointer-events-auto">
-        <BottomNav activeTab={activeTab} onTabChange={handleTabChange} className="mb-1" />
-      </div>
+      {/* Bottom Navigation Dock (Hidden during gameplay) */}
+      {!isInGame && (
+        <div className="absolute bottom-0 left-0 right-0 pb-1 z-30 pointer-events-auto">
+          <BottomNav activeTab={activeTab} onTabChange={handleTabChange} className="mb-1" />
+        </div>
+      )}
     </Screen>
   );
 };

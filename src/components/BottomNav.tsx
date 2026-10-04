@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export type NavTab = 'today' | 'guess' | 'scores' | 'memory';
+export type NavTab = 'home' | 'scores' | 'memory' | 'profile' | 'today' | 'guess';
 
 interface BottomNavProps {
   activeTab?: NavTab;
@@ -10,12 +10,17 @@ interface BottomNavProps {
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({
-  activeTab = 'today',
+  activeTab = 'home',
   onTabChange,
   onPlusClick,
   className = '',
 }) => {
   const [showPlusMenu, setShowPlusMenu] = useState<boolean>(false);
+
+  const isHomeActive = activeTab === 'home' || activeTab === 'today';
+  const isScoresActive = activeTab === 'scores';
+  const isMemoryActive = activeTab === 'memory';
+  const isProfileActive = activeTab === 'profile';
 
   const handlePlusClick = () => {
     if (onPlusClick) {
@@ -49,19 +54,25 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           <div className="flex flex-col gap-2">
             <button
               type="button"
-              onClick={() => setShowPlusMenu(false)}
+              onClick={() => {
+                setShowPlusMenu(false);
+                onTabChange?.('home');
+              }}
               className="flex items-center gap-2.5 px-3 py-2.5 rounded-[16px] bg-white/5 hover:bg-white/10 text-left transition-colors cursor-pointer"
             >
-              <span className="text-[17px]">✨</span>
-              <span className="text-[14px] font-bold">Surprise Prompt</span>
+              <span className="text-[17px]">🎮</span>
+              <span className="text-[14px] font-bold">Start New Game</span>
             </button>
             <button
               type="button"
-              onClick={() => setShowPlusMenu(false)}
+              onClick={() => {
+                setShowPlusMenu(false);
+                onTabChange?.('memory');
+              }}
               className="flex items-center gap-2.5 px-3 py-2.5 rounded-[16px] bg-white/5 hover:bg-white/10 text-left transition-colors cursor-pointer"
             >
-              <span className="text-[17px]">🎲</span>
-              <span className="text-[14px] font-bold">Shuffle Question</span>
+              <span className="text-[17px]">✨</span>
+              <span className="text-[14px] font-bold">View Memory Wall</span>
             </button>
           </div>
         </div>
@@ -83,7 +94,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       <button
         type="button"
         onClick={handlePlusClick}
-        aria-label="Add"
+        aria-label="Quick Actions"
         className="btn-press absolute rounded-full bg-[#F9A2CE] flex items-center justify-center text-[#1C1F23] shadow-none outline-none cursor-pointer z-20 transition-transform hover:scale-105 active:scale-95"
         style={{
           left: '50%',
@@ -112,13 +123,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       {/* Black Capsule Body: 377x60 rounded-full #1C1F23 */}
       <div className="w-full h-full bg-[#1C1F23] rounded-full flex items-center justify-between px-2 relative z-0">
         
-        {/* Left Tabs (Today, Guess) */}
+        {/* Left Tabs (1st: Home, 2nd: Scores) */}
         <div className="flex items-center justify-around flex-1 h-full pr-5">
-          {/* Today Tab */}
+          {/* 1st Tab: Home */}
           <button
             type="button"
-            onClick={() => onTabChange?.('today')}
-            aria-label="Today"
+            onClick={() => onTabChange?.('home')}
+            aria-label="Home"
             className="group flex flex-col items-center justify-center flex-1 h-full cursor-pointer focus:outline-none py-1"
           >
             <div className="w-[20px] h-[20px] flex items-center justify-center">
@@ -127,78 +138,32 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 height="20"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke={activeTab === 'today' ? '#FFFFFF' : '#A5A5AD'}
+                stroke={isHomeActive ? '#FFFFFF' : '#A5A5AD'}
                 strokeWidth="2.3"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="3" y1="10" x2="21" y2="10" />
+                <path d="M3 9.5L12 3l9 6.5V20a1.5 1.5 0 0 1-1.5 1.5H4.5A1.5 1.5 0 0 1 3 20V9.5z" />
+                <polyline points="9 21 9 12 15 12 15 21" />
               </svg>
             </div>
             <span
               className={`text-[11px] font-bold leading-none mt-[3px] select-none ${
-                activeTab === 'today' ? 'text-white' : 'text-[#A5A5AD]'
+                isHomeActive ? 'text-white' : 'text-[#A5A5AD]'
               }`}
             >
-              Today
+              Home
             </span>
             <div className="h-[3px] mt-[3px] flex items-center justify-center w-full">
               <div
                 className={`h-[3px] rounded-full transition-all ${
-                  activeTab === 'today' ? 'w-[21px] bg-[#FDD960]' : 'w-0 bg-transparent'
+                  isHomeActive ? 'w-[21px] bg-[#FDD960]' : 'w-0 bg-transparent'
                 }`}
               />
             </div>
           </button>
 
-          {/* Guess Tab */}
-          <button
-            type="button"
-            onClick={() => onTabChange?.('guess')}
-            aria-label="Guess"
-            className="group flex flex-col items-center justify-center flex-1 h-full cursor-pointer focus:outline-none py-1"
-          >
-            <div className="w-[20px] h-[20px] flex items-center justify-center">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={activeTab === 'guess' ? '#FFFFFF' : '#A5A5AD'}
-                strokeWidth="2.3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="10.5" cy="10.5" r="6.5" />
-                <line x1="21" y1="21" x2="15.2" y2="15.2" />
-              </svg>
-            </div>
-            <span
-              className={`text-[11px] font-bold leading-none mt-[3px] select-none ${
-                activeTab === 'guess' ? 'text-white' : 'text-[#A5A5AD]'
-              }`}
-            >
-              Guess
-            </span>
-            <div className="h-[3px] mt-[3px] flex items-center justify-center w-full">
-              <div
-                className={`h-[3px] rounded-full transition-all ${
-                  activeTab === 'guess' ? 'w-[21px] bg-[#FDD960]' : 'w-0 bg-transparent'
-                }`}
-              />
-            </div>
-          </button>
-        </div>
-
-        {/* Center Clearance for Pink Button */}
-        <div className="w-[46px] flex-shrink-0" />
-
-        {/* Right Tabs (Scores, Memory Wall) */}
-        <div className="flex items-center justify-around flex-1 h-full pl-5">
-          {/* Scores Tab */}
+          {/* 2nd Tab: Scores */}
           <button
             type="button"
             onClick={() => onTabChange?.('scores')}
@@ -211,7 +176,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 height="20"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke={activeTab === 'scores' ? '#FFFFFF' : '#A5A5AD'}
+                stroke={isScoresActive ? '#FFFFFF' : '#A5A5AD'}
                 strokeWidth="2.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -225,7 +190,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             </div>
             <span
               className={`text-[11px] font-bold leading-none mt-[3px] select-none ${
-                activeTab === 'scores' ? 'text-white' : 'text-[#A5A5AD]'
+                isScoresActive ? 'text-white' : 'text-[#A5A5AD]'
               }`}
             >
               Scores
@@ -233,17 +198,23 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             <div className="h-[3px] mt-[3px] flex items-center justify-center w-full">
               <div
                 className={`h-[3px] rounded-full transition-all ${
-                  activeTab === 'scores' ? 'w-[21px] bg-[#FDD960]' : 'w-0 bg-transparent'
+                  isScoresActive ? 'w-[21px] bg-[#FDD960]' : 'w-0 bg-transparent'
                 }`}
               />
             </div>
           </button>
+        </div>
 
-          {/* Memory Wall Tab */}
+        {/* Center Clearance for Pink Button */}
+        <div className="w-[46px] flex-shrink-0" />
+
+        {/* Right Tabs (3rd: Memory, 4th: Profile) */}
+        <div className="flex items-center justify-around flex-1 h-full pl-5">
+          {/* 3rd Tab: Memory */}
           <button
             type="button"
             onClick={() => onTabChange?.('memory')}
-            aria-label="Memory Wall"
+            aria-label="Memory"
             className="group flex flex-col items-center justify-center flex-1 h-full cursor-pointer focus:outline-none py-1"
           >
             <div className="w-[20px] h-[20px] flex items-center justify-center">
@@ -252,27 +223,65 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 height="20"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke={activeTab === 'memory' ? '#FFFFFF' : '#A5A5AD'}
+                stroke={isMemoryActive ? '#FFFFFF' : '#A5A5AD'}
                 strokeWidth="2.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" fill={activeTab === 'memory' ? '#FFFFFF' : '#A5A5AD'} />
+                <circle cx="8.5" cy="8.5" r="1.5" fill={isMemoryActive ? '#FFFFFF' : '#A5A5AD'} />
                 <polyline points="21 15 16 10 5 21" />
               </svg>
             </div>
             <span
               className={`text-[11px] font-bold leading-none mt-[3px] select-none whitespace-nowrap ${
-                activeTab === 'memory' ? 'text-white' : 'text-[#A5A5AD]'
+                isMemoryActive ? 'text-white' : 'text-[#A5A5AD]'
               }`}
             >
-              Memory Wall
+              Memory
             </span>
             <div className="h-[3px] mt-[3px] flex items-center justify-center w-full">
               <div
                 className={`h-[3px] rounded-full transition-all ${
-                  activeTab === 'memory' ? 'w-[21px] bg-[#FDD960]' : 'w-0 bg-transparent'
+                  isMemoryActive ? 'w-[21px] bg-[#FDD960]' : 'w-0 bg-transparent'
+                }`}
+              />
+            </div>
+          </button>
+
+          {/* 4th Tab: Profile */}
+          <button
+            type="button"
+            onClick={() => onTabChange?.('profile')}
+            aria-label="Profile"
+            className="group flex flex-col items-center justify-center flex-1 h-full cursor-pointer focus:outline-none py-1"
+          >
+            <div className="w-[20px] h-[20px] flex items-center justify-center">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke={isProfileActive ? '#FFFFFF' : '#A5A5AD'}
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </div>
+            <span
+              className={`text-[11px] font-bold leading-none mt-[3px] select-none whitespace-nowrap ${
+                isProfileActive ? 'text-white' : 'text-[#A5A5AD]'
+              }`}
+            >
+              Profile
+            </span>
+            <div className="h-[3px] mt-[3px] flex items-center justify-center w-full">
+              <div
+                className={`h-[3px] rounded-full transition-all ${
+                  isProfileActive ? 'w-[21px] bg-[#FDD960]' : 'w-0 bg-transparent'
                 }`}
               />
             </div>

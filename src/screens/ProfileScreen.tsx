@@ -3,6 +3,7 @@ import { ProfileAvatar, getBlobColorName } from '../components/ProfileAvatar';
 import { ReminderTimeModal } from '../components/ReminderTimeModal';
 import { LeaveDuoModal } from '../components/LeaveDuoModal';
 import { SignOutModal } from '../components/SignOutModal';
+import { BottomNav, NavTab } from '../components/BottomNav';
 import { UserProfile } from './CreateProfileScreen';
 
 export interface ProfileScreenProps {
@@ -24,6 +25,7 @@ export interface ProfileScreenProps {
   onChangeReminderTime?: (time: string) => void;
   onToggleFriendAlerts?: (enabled: boolean) => void;
   onOpenFriendProfile?: () => void;
+  onNavigateTab?: (tab: NavTab) => void;
   showDebugOverlay?: boolean;
   sessionType?: 'NEW' | 'GUEST' | 'GOOGLE';
   userEmail?: string | null;
@@ -60,6 +62,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onChangeReminderTime,
   onToggleFriendAlerts,
   onOpenFriendProfile,
+  onNavigateTab,
   showDebugOverlay = false,
 }) => {
   // Local state for interactive toggles & time
@@ -650,6 +653,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             Leave duo and delete my data
           </button>
         </div>
+
+        {/* ---------------- BOTTOM NAVIGATION DOCK ---------------- */}
+        {onNavigateTab && (
+          <div className="absolute bottom-2 left-0 right-0 flex justify-center z-30 pointer-events-auto">
+            <BottomNav activeTab="profile" onTabChange={onNavigateTab} className="mb-0" />
+          </div>
+        )}
 
         {/* ---------------- DEBUG MOCKUP OVERLAY ---------------- */}
         {renderOverlay && (

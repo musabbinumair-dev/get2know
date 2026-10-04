@@ -16,7 +16,7 @@ interface CreateProfileScreenProps {
   onContinue: (profile: UserProfile) => void;
 }
 
-const AVATAR_OPTIONS = [
+export const AVATAR_OPTIONS = [
   {
     id: 1,
     color: 'salmon',

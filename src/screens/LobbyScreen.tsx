@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSession } from '../services/sessionContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';
+import { GameSettingsModal } from '../components/GameSettingsModal';
+import { triggerHaptic } from '../utils/haptics';
 
 export interface GameSettingsState {
   mode: 'know-me' | 'trivia' | 'mixed';
@@ -60,7 +62,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   const { profile } = useSession();
 
   // Saved or initial game settings from GameSettings page
-  const [gameSettings] = useState<GameSettingsState>(() => {
+  const [gameSettings, setGameSettings] = useState<GameSettingsState>(() => {
     if (initialSettings) return initialSettings;
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('gty_game_settings');
@@ -176,11 +178,9 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   };
 
   const handleChangeSettingsClick = () => {
-    if (onChangeSettings) {
-      onChangeSettings();
-    } else {
-      navigate('/settings-game');
-    }
+    triggerHaptic(10);
+    setShowAllSettingsModal(true);
+    onChangeSettings?.();
   };
 
   const handleConfirmLeave = () => {
@@ -1052,7 +1052,10 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
 
             {shouldTruncate && (
               <div
-                onClick={() => setShowAllSettingsModal(true)}
+                onClick={() => {
+                  triggerHaptic(10);
+                  setShowAllSettingsModal(true);
+                }}
                 style={{
                   height: '34.3px',
                   borderRadius: '34.3px',
@@ -1244,73 +1247,13 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
         </div>
       )}
 
-      {/* ---------------- ALL SETTINGS MODAL ---------------- */}
-      {showAllSettingsModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 bg-[#17181B]/60 backdrop-blur-xs flex items-center justify-center p-4 animate-pop select-none"
-          onClick={() => setShowAllSettingsModal(false)}
-        >
-          <div
-            className="w-full max-w-[320px] rounded-[24px] bg-[#F6EFDD] p-6 shadow-2xl relative border border-[#17181B]/10"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2
-              style={{
-                fontFamily: "'Nunito', sans-serif",
-                fontWeight: 900,
-                fontSize: '22px',
-                color: '#17181B',
-                marginBottom: '12px',
-              }}
-            >
-              Game Settings
-            </h2>
-            <div className="flex flex-col gap-3 mb-5">
-              <div className="flex justify-between items-center text-[15px] font-bold text-[#17181B] border-b border-[#17181B]/10 pb-2">
-                <span className="text-[#686A75]">Mode</span>
-                <span className="capitalize">{gameSettings.mode}</span>
-              </div>
-              <div className="flex justify-between items-start text-[15px] font-bold text-[#17181B] border-b border-[#17181B]/10 pb-2">
-                <span className="text-[#686A75]">Categories</span>
-                <span className="text-right max-w-[180px]">{gameSettings.categories?.join(', ')}</span>
-              </div>
-              <div className="flex justify-between items-center text-[15px] font-bold text-[#17181B] border-b border-[#17181B]/10 pb-2">
-                <span className="text-[#686A75]">Difficulty</span>
-                <span>{gameSettings.difficulty}</span>
-              </div>
-              <div className="flex justify-between items-center text-[15px] font-bold text-[#17181B] border-b border-[#17181B]/10 pb-2">
-                <span className="text-[#686A75]">Timer</span>
-                <span>{gameSettings.timer}</span>
-              </div>
-              <div className="flex justify-between items-center text-[15px] font-bold text-[#17181B]">
-                <span className="text-[#686A75]">Rounds</span>
-                <span>{gameSettings.rounds} rounds</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowAllSettingsModal(false)}
-              style={{
-                width: '100%',
-                height: '42px',
-                borderRadius: '9999px',
-                backgroundColor: '#17181B',
-                color: '#FFFFFF',
-                fontFamily: "'Nunito', sans-serif",
-                fontWeight: 800,
-                fontSize: '15px',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+      {/* ---------------- GAME SETTINGS (MORE...) MODAL ---------------- */}
+      <GameSettingsModal
+        isOpen={showAllSettingsModal}
+        onClose={() => setShowAllSettingsModal(false)}
+        settings={gameSettings}
+        onUpdateSettings={setGameSettings}
+      />
 
       {/* ---------------- LEAVE MODAL ---------------- */}
       {showLeaveModal && (
