@@ -1,110 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { BottomNav, NavTab } from '../components/BottomNav';
-import { QuestionData, getAvatarFaceSrc } from '../data/gameData';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { NavTab } from '../components/BottomNav';
+import { QuestionData } from '../data/gameData';
 import { useGameSession } from '../services/gameSessionContext';
-import { GameHeader } from '../components/GameHeader';
+import { useSession } from '../services/sessionContext';
 import { TriviaQuestion } from '../data/gameQuestions';
-
-export interface SpecBox {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  centerX?: number;
-  centerY?: number;
-}
-
-export const layoutSpec: Record<string, SpecBox> = {
-  stage: { x: 0, y: 0, width: 390, height: 844 },
-  backButton: { x: 22, y: 30, width: 35, height: 35 },
-  title: { x: 155, y: 31, width: 80, height: 28, centerX: 195, centerY: 45 },
-
-  // Date row columns (MON 12 - SAT 17) + selected SUN 18 pill
-  monLabel: { x: 31, y: 80, width: 32, height: 14, centerX: 47, centerY: 87 },
-  monNum: { x: 31, y: 94, width: 32, height: 20, centerX: 47, centerY: 104 },
-  tueLabel: { x: 80, y: 80, width: 32, height: 14, centerX: 96, centerY: 87 },
-  tueNum: { x: 80, y: 94, width: 32, height: 20, centerX: 96, centerY: 104 },
-  wedLabel: { x: 128, y: 80, width: 32, height: 14, centerX: 144, centerY: 87 },
-  wedNum: { x: 128, y: 94, width: 32, height: 20, centerX: 144, centerY: 104 },
-  thuLabel: { x: 177, y: 80, width: 32, height: 14, centerX: 193, centerY: 87 },
-  thuNum: { x: 177, y: 94, width: 32, height: 20, centerX: 193, centerY: 104 },
-  friLabel: { x: 226, y: 80, width: 32, height: 14, centerX: 242, centerY: 87 },
-  friNum: { x: 226, y: 94, width: 32, height: 20, centerX: 242, centerY: 104 },
-  satLabel: { x: 274, y: 80, width: 32, height: 14, centerX: 290, centerY: 87 },
-  satNum: { x: 274, y: 94, width: 32, height: 20, centerX: 290, centerY: 104 },
-  sunPill: { x: 320, y: 76, width: 43, height: 43 },
-  sunLabel: { x: 325.5, y: 80, width: 32, height: 14, centerX: 341.5, centerY: 87 },
-  sunNum: { x: 325.5, y: 94, width: 32, height: 20, centerX: 341.5, centerY: 104 },
-
-  // Question
-  question: { x: 24, y: 132, width: 342, height: 130 },
-
-  // Cards & Avatars
-  cardBlobPink: { x: 22, y: 268, width: 152, height: 156 },
-  cardBlobBlue: { x: 216, y: 268, width: 152, height: 156 },
-  matchStarburst: { x: 151, y: 288, width: 88, height: 92 },
-  player1Avatar: { x: 65, y: 282, width: 50, height: 53 },
-  player2Avatar: { x: 267, y: 282, width: 50, height: 53 },
-
-  // Card text & answers
-  player1Label: { x: 35, y: 334, width: 120, height: 16, centerX: 95, centerY: 342 },
-  player2Label: { x: 232, y: 334, width: 120, height: 16, centerX: 292, centerY: 342 },
-  matchBadgeText: { x: 151, y: 311, width: 88, height: 46, centerX: 195, centerY: 334 },
-
-  // Middle status / score & decorations
-  crescentYellow: { x: 60, y: 442, width: 44, height: 47 },
-  starburstBlue: { x: 285, y: 438, width: 49, height: 54 },
-  crossOlive: { x: 295, y: 500, width: 41, height: 42 },
-  heartPinkSmall: { x: 48, y: 506, width: 41, height: 37 },
-  syncScoreLabel: { x: 120, y: 430, width: 150, height: 20, centerX: 195, centerY: 440 },
-  syncScoreValue: { x: 60, y: 454, width: 270, height: 55 },
-  syncCaption: { x: 40, y: 524, width: 310, height: 22, centerX: 195, centerY: 535 },
-
-  // 6 Reaction emoji circles (45x45 centered at y 585)
-  emojiCircle0: { x: 29.5, y: 564, width: 45, height: 45, centerX: 52, centerY: 586.5 },
-  emojiCircle1: { x: 86.5, y: 564, width: 45, height: 45, centerX: 109, centerY: 586.5 },
-  emojiCircle2: { x: 143.5, y: 564, width: 45, height: 45, centerX: 166, centerY: 586.5 },
-  emojiCircle3: { x: 200.5, y: 564, width: 45, height: 45, centerX: 223, centerY: 586.5 },
-  emojiCircle4: { x: 258.5, y: 564, width: 45, height: 45, centerX: 281, centerY: 586.5 },
-  emojiCircle5: { x: 315.5, y: 564, width: 45, height: 45, centerX: 338, centerY: 586.5 },
-
-  // 6 Reaction emoji PNGs (23x23)
-  emojiImg0: { x: 40.5, y: 575, width: 23, height: 23, centerX: 52, centerY: 586.5 },
-  emojiImg1: { x: 97.5, y: 575, width: 23, height: 23, centerX: 109, centerY: 586.5 },
-  emojiImg2: { x: 154.5, y: 575, width: 23, height: 23, centerX: 166, centerY: 586.5 },
-  emojiImg3: { x: 211.5, y: 575, width: 23, height: 23, centerX: 223, centerY: 586.5 },
-  emojiImg4: { x: 269.5, y: 575, width: 23, height: 23, centerX: 281, centerY: 586.5 },
-  emojiImg5: { x: 326.5, y: 575, width: 23, height: 23, centerX: 338, centerY: 586.5 },
-
-  // Action pills
-  saveButton: { x: 31, y: 636, width: 328, height: 40 },
-  nextQuestionPill: { x: 31, y: 686, width: 328, height: 42 },
-
-  // Bottom corner decorations (behind tab bar)
-  decoBottomLeft: { x: -6, y: 738, width: 48, height: 43 },
-  decoBottomRight: { x: 352, y: 738, width: 42, height: 38 },
-
-  // Shared BottomNav
-  bottomNav: { x: 6.5, y: 776, width: 377, height: 60 },
-};
-
-const DATE_DAYS = [
-  { key: 'mon', day: 'MON', num: '12', labelSpec: layoutSpec.monLabel, numSpec: layoutSpec.monNum },
-  { key: 'tue', day: 'TUE', num: '13', labelSpec: layoutSpec.tueLabel, numSpec: layoutSpec.tueNum },
-  { key: 'wed', day: 'WED', num: '14', labelSpec: layoutSpec.wedLabel, numSpec: layoutSpec.wedNum },
-  { key: 'thu', day: 'THU', num: '15', labelSpec: layoutSpec.thuLabel, numSpec: layoutSpec.thuNum },
-  { key: 'fri', day: 'FRI', num: '16', labelSpec: layoutSpec.friLabel, numSpec: layoutSpec.friNum },
-  { key: 'sat', day: 'SAT', num: '17', labelSpec: layoutSpec.satLabel, numSpec: layoutSpec.satNum },
-] as const;
-
-const REACTION_EMOJIS = [
-  { id: 'smile', file: '/assets/reveal/emoji-smile.png', label: 'Smile' },
-  { id: 'heart', file: '/assets/reveal/emoji-heart.png', label: 'Heart' },
-  { id: 'laugh', file: '/assets/reveal/emoji-laugh.png', label: 'Laugh' },
-  { id: 'surprised', file: '/assets/reveal/emoji-surprised.png', label: 'Surprised' },
-  { id: 'smirk', file: '/assets/reveal/emoji-smirk.png', label: 'Smirk' },
-  { id: 'cry', file: '/assets/reveal/emoji-cry.png', label: 'Cry' },
-] as const;
+import { GameHeader } from '../components/GameHeader';
 
 export interface RevealScreenProps {
   player1Name?: string;
@@ -124,38 +25,33 @@ export interface RevealScreenProps {
   onNextQuestion?: () => void;
   onBack?: () => void;
   onNavigateTab?: (tab: NavTab) => void;
+  onOpenSettings?: () => void;
 }
 
-function formatBlobAnswer(answer: string, maxLength = 36): {
-  text: string;
-  isTruncated: boolean;
-  fontSize: string;
-  lineHeight: string;
-} {
-  const trimmed = (answer || '').trim();
-  const isTruncated = trimmed.length > maxLength;
-  const displayText = isTruncated ? trimmed.slice(0, maxLength).trim() + '…' : trimmed;
+const DATE_DAYS = [
+  { key: 'mon', day: 'MON', num: '12' },
+  { key: 'tue', day: 'TUE', num: '13' },
+  { key: 'wed', day: 'WED', num: '14' },
+  { key: 'thu', day: 'THU', num: '15' },
+  { key: 'fri', day: 'FRI', num: '16' },
+  { key: 'sat', day: 'SAT', num: '17' },
+  { key: 'sun', day: 'SUN', num: '18', isActive: true },
+];
 
-  let fontSize = '17px';
-  let lineHeight = '20px';
-  if (displayText.length > 28) {
-    fontSize = '12px';
-    lineHeight = '14.5px';
-  } else if (displayText.length > 16) {
-    fontSize = '14px';
-    lineHeight = '16.5px';
-  }
-
-  return { text: displayText, isTruncated, fontSize, lineHeight };
-}
+const REACTION_EMOJIS = [
+  { id: 'smile', file: '/assets/reveal/emoji-smile.webp', alt: 'Smile' },
+  { id: 'heart', file: '/assets/reveal/emoji-heart.webp', alt: 'Heart' },
+  { id: 'laugh', file: '/assets/reveal/emoji-laugh.webp', alt: 'Laugh' },
+  { id: 'surprised', file: '/assets/reveal/emoji-surprised.webp', alt: 'Surprised' },
+  { id: 'smirk', file: '/assets/reveal/emoji-smirk.webp', alt: 'Smirk' },
+  { id: 'cry', file: '/assets/reveal/emoji-cry.webp', alt: 'Cry' },
+];
 
 export const RevealScreen: React.FC<RevealScreenProps> = ({
   player1Name = 'Player 1',
-  player1AvatarId = 1,
-  player1Color: _p1Color = 'salmon',
+  player1AvatarId: _p1AvatarId = 1,
   player2Name = 'Player 2',
-  player2AvatarId = 2,
-  player2Color: _p2Color = 'teal',
+  player2AvatarId: _p2AvatarId = 2,
   questionData,
   player1Answer = 'Anchovies on pizza.',
   player2Answer = 'Anchovies on pizza.',
@@ -165,18 +61,33 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
   onSelectReaction,
   onSaveToMemoryWall,
   onNextQuestion,
-  onBack,
-  onNavigateTab,
+  onBack: _onBack,
+  onOpenSettings,
 }) => {
+  const navigate = useNavigate();
+  const session = useSession();
   const gameSession = useGameSession();
   const isInGame = gameSession.isActive;
 
-  const stageRef = useRef<HTMLDivElement | null>(null);
+  // Sync background color to pastel pink and ensure scrolling
+  useEffect(() => {
+    const prevBodyBg = document.body.style.backgroundColor;
+    const prevHtmlBg = document.documentElement.style.backgroundColor;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
 
-  // Scale = viewportWidth / 390
-  const [scale, setScale] = useState<number>(() =>
-    typeof window !== 'undefined' ? Math.min(1.15, window.innerWidth / 390) : 1
-  );
+    document.body.style.backgroundColor = '#F5CCE2';
+    document.documentElement.style.backgroundColor = '#F5CCE2';
+    document.body.style.overflow = 'auto';
+    document.documentElement.style.overflow = 'auto';
+
+    return () => {
+      document.body.style.backgroundColor = prevBodyBg;
+      document.documentElement.style.backgroundColor = prevHtmlBg;
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, []);
 
   const [internalReaction, setInternalReaction] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
@@ -186,57 +97,17 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
   });
   const [bouncingEmojiId, setBouncingEmojiId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<NavTab>('today');
 
-  // Modal state to inspect full answer
+  // Inspect full answer modal
   const [inspectingPlayer, setInspectingPlayer] = useState<{
     name: string;
-    avatarId: number;
+    avatarSrc: string;
     answer: string;
     blobBg: string;
   } | null>(null);
 
   const activeReaction =
     controlledReaction !== undefined ? controlledReaction : internalReaction;
-
-  // Determine game mode specific details
-  const isTriviaRound = isInGame && gameSession.currentRoundType === 'trivia';
-  const isKnowMeRound = isInGame && gameSession.currentRoundType === 'know-me';
-
-  // Resolved titles
-  const p1Title = isTriviaRound
-    ? 'Your Pick'
-    : (player1Name && player1Name !== 'Player 1' ? player1Name : 'You');
-
-  const p2Title = isTriviaRound
-    ? 'Correct Answer'
-    : (player2Name && player2Name !== 'Player 2' ? player2Name : 'Alex');
-
-  // Resolved answers
-  const resolvedP1Answer = isTriviaRound
-    ? (gameSession.myGuess || 'No guess')
-    : isInGame
-    ? (gameSession.myAnswer || player1Answer)
-    : player1Answer;
-
-  const resolvedP2Answer = isTriviaRound
-    ? (((gameSession.currentQuestion as TriviaQuestion)?.options?.find(
-        (o) => o.id === (gameSession.currentQuestion as TriviaQuestion).correctOptionId
-      )?.text) || 'Correct Answer')
-    : isInGame
-    ? (gameSession.friendAnswer || player2Answer)
-    : player2Answer;
-
-  const isSuccess = isTriviaRound
-    ? gameSession.isCorrect
-    : isKnowMeRound
-    ? gameSession.isMatched
-    : (isMatched !== undefined
-      ? isMatched
-      : player1Answer.trim().toLowerCase() === player2Answer.trim().toLowerCase());
-
-  const p1Formatted = formatBlobAnswer(resolvedP1Answer);
-  const p2Formatted = formatBlobAnswer(resolvedP2Answer);
 
   const rawQuestion = isInGame
     ? gameSession.currentQuestion.question
@@ -250,14 +121,74 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
         "tried?",
       ]);
 
-  useEffect(() => {
-    const handleResize = () => {
-      setScale(Math.min(1.15, window.innerWidth / 390));
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  // Dynamic values based on game session
+  const isTriviaRound = isInGame && gameSession.currentRoundType === 'trivia';
+  const isKnowMeRound = isInGame && gameSession.currentRoundType === 'know-me';
+
+  // Username: strictly show user's username below avatar instead of "Your Pick"
+  const currentUsername =
+    session.profile?.name ||
+    session.user?.displayName ||
+    (player1Name && player1Name !== 'Player 1' && player1Name !== 'Your Pick' ? player1Name : '') ||
+    (typeof window !== 'undefined'
+      ? (() => {
+          try {
+            return JSON.parse(localStorage.getItem('gty_profile') || '{}').name;
+          } catch {
+            return null;
+          }
+        })()
+      : null) ||
+    'Player 1';
+
+  const p1LabelText = currentUsername;
+
+  const partnerUsername =
+    player2Name && player2Name !== 'Player 2'
+      ? player2Name
+      : (typeof window !== 'undefined'
+          ? (() => {
+              try {
+                return JSON.parse(localStorage.getItem('partner_profile') || '{}').name;
+              } catch {
+                return null;
+              }
+            })()
+          : null) || 'Alex';
+
+  const p2LabelText = isTriviaRound ? 'Correct Answer' : partnerUsername;
+
+  const p1AvatarSrc = session.profile?.avatarId
+    ? `/assets/avatars/avatar-${session.profile.avatarId}.png`
+    : _p1AvatarId
+    ? `/assets/avatars/avatar-${_p1AvatarId}.png`
+    : '/assets/avatars/avatar-1.png';
+
+  const p2AvatarSrc = _p2AvatarId
+    ? `/assets/avatars/avatar-${_p2AvatarId}.png`
+    : '/assets/avatars/avatar-2.png';
+
+  const resolvedP1Answer = isTriviaRound
+    ? gameSession.myGuess || 'Anchovies on pizza.'
+    : isInGame
+    ? gameSession.myAnswer || player1Answer
+    : player1Answer;
+
+  const resolvedP2Answer = isTriviaRound
+    ? (gameSession.currentQuestion as TriviaQuestion)?.options?.find(
+        (o) => o.id === (gameSession.currentQuestion as TriviaQuestion).correctOptionId
+      )?.text || 'Anchovies on pizza.'
+    : isInGame
+    ? gameSession.friendAnswer || player2Answer
+    : player2Answer;
+
+  const isSuccess = isTriviaRound
+    ? gameSession.isCorrect
+    : isKnowMeRound
+    ? gameSession.isMatched
+    : isMatched !== undefined
+    ? isMatched
+    : resolvedP1Answer.trim().toLowerCase() === resolvedP2Answer.trim().toLowerCase();
 
   const handleEmojiClick = (emojiId: string) => {
     setInternalReaction(emojiId);
@@ -268,7 +199,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
     setBouncingEmojiId(emojiId);
     setTimeout(() => {
       setBouncingEmojiId((prev) => (prev === emojiId ? null : prev));
-    }, 260);
+    }, 280);
   };
 
   const handleSave = () => {
@@ -279,743 +210,434 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
     setToastMessage('Saved to Memory Wall! ✨');
     setTimeout(() => {
       setToastMessage('');
-    }, 2200);
+    }, 2000);
   };
 
-  const handleTabChange = (tab: NavTab) => {
-    setActiveTab(tab);
-    onNavigateTab?.(tab);
+  const handleNextClick = () => {
+    if (isInGame) {
+      gameSession.nextRound();
+    } else if (onNextQuestion) {
+      onNextQuestion();
+    }
   };
-
-  const boxStyle = (spec: SpecBox): React.CSSProperties => ({
-    position: 'absolute',
-    left: `${spec.x}px`,
-    top: `${spec.y}px`,
-    width: `${spec.width}px`,
-    height: `${spec.height}px`,
-  });
-
-  const imgStyle = (spec: SpecBox): React.CSSProperties => ({
-    ...boxStyle(spec),
-    objectFit: 'contain',
-    padding: 0,
-  });
 
   return (
-    <div className="w-full h-full min-h-screen overflow-y-auto overflow-x-hidden bg-[#F5CCE2] select-none flex justify-center [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-      {/* Fixed 390x844 stage scaled by viewportWidth / 390 */}
-      <div
-        ref={stageRef}
-        data-spec="stage"
-        className="relative bg-[#F5CCE2] overflow-hidden select-none font-nunito"
-        style={{
-          width: '390px',
-          height: '844px',
-          transform: `scale(${scale})`,
-          transformOrigin: 'top center',
-          flexShrink: 0,
-        }}
-      >
-        {/* Toast notification for "Save to memory wall" */}
-        {toastMessage && (
-          <div className="absolute top-[74px] left-1/2 -translate-x-1/2 z-50 animate-pop pointer-events-none">
-            <div className="bg-[#1B1D20] text-white px-5 py-2.5 rounded-full font-black text-[14px] shadow-2xl flex items-center gap-2 whitespace-nowrap">
-              <span>{toastMessage}</span>
-            </div>
+    <div
+      id="reveal-scroll-viewport"
+      className="fixed inset-0 w-full h-full bg-[#F5CCE2] overflow-y-auto overflow-x-hidden flex justify-center items-start select-none font-['Nunito',sans-serif] z-40"
+      style={{
+        backgroundColor: '#F5CCE2',
+        WebkitOverflowScrolling: 'touch',
+        touchAction: 'pan-y',
+      }}
+    >
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 animate-pop pointer-events-none">
+          <div className="bg-[#1B1D20] text-white px-5 py-2.5 rounded-full font-black text-[14px] shadow-2xl flex items-center gap-2 whitespace-nowrap">
+            <span>{toastMessage}</span>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* ---------------- HEADER (GAME HEADER IN-GAME OR STANDARD TOP BAR) ---------------- */}
-        {isInGame ? (
-          <div
-            style={{
-              position: 'absolute',
-              top: '18px',
-              left: 0,
-              width: '390px',
-              zIndex: 40,
-            }}
-          >
-            <GameHeader
-              currentRound={gameSession.currentRound}
-              totalRounds={gameSession.totalRounds}
-              showTimer={false}
-              onExit={gameSession.exitGame}
-            />
-          </div>
-        ) : (
-          <>
-            {/* Back button: dashed circle 35px at x 22, y 30 */}
-            <button
-              type="button"
-              data-spec="backButton"
-              onClick={onBack}
-              aria-label="Back"
-              className="btn-press flex items-center justify-center rounded-full bg-transparent cursor-pointer focus:outline-none z-20 p-0"
-              style={boxStyle(layoutSpec.backButton)}
-            >
-              <svg
-                width="35"
-                height="35"
-                viewBox="0 0 35 35"
-                className="absolute inset-0 pointer-events-none"
-              >
-                <circle
-                  cx="17.5"
-                  cy="17.5"
-                  r="16.5"
-                  fill="none"
-                  stroke="rgba(27, 29, 32, 0.55)"
-                  strokeWidth="1.3"
-                  strokeDasharray="3.6 3.2"
-                />
-              </svg>
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#1B1D20"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="relative z-10"
-              >
-                <path d="M19 12H5" />
-                <path d="M11 18l-6-6 6-6" />
-              </svg>
-            </button>
+      {/* Main Full-Width Content Container starting cleanly from the top */}
+      <div className="w-full max-w-[390px] flex flex-col px-5 pt-4 pb-14 relative min-h-max">
+        {/* =========================================================================
+            1. TOP BAR: Exact Same Unified GameHeader (Rounds pill in center, Settings icon on right, no back button)
+           ========================================================================= */}
+        <GameHeader
+          showLogo={true}
+          roundPillPosition="center"
+          currentRound={isInGame ? gameSession.currentRound : 1}
+          totalRounds={isInGame ? gameSession.totalRounds : 10}
+          showTimer={false}
+          showBack={false}
+          showSettings={true}
+          onOpenSettings={onOpenSettings || (() => navigate('/profile'))}
+          className="-mx-5 mb-4"
+        />
 
-            {/* Title "Reveal": centered at x 195, y 45, Nunito 900, about 22px */}
-            <h1
-              data-spec="title"
-              className="m-0 flex items-center justify-center font-black text-[#1B1D20] select-none z-20"
-              style={{
-                ...boxStyle(layoutSpec.title),
-                fontSize: '22px',
-                lineHeight: '28px',
-                letterSpacing: '-0.02em',
-              }}
-            >
-              Reveal
-            </h1>
-
-            {/* ---------------- DATE ROW ---------------- */}
-            {DATE_DAYS.map((col) => (
-              <React.Fragment key={col.key}>
+        {/* =========================================================================
+            2. 7-DAY CALENDAR ROW (MON 12 - SUN 18)
+           ========================================================================= */}
+        <div className="w-full flex items-center justify-between mb-6 px-1">
+          {DATE_DAYS.map((day) => {
+            if (day.isActive) {
+              return (
                 <div
-                  data-spec={`${col.key}Label`}
-                  className="flex items-center justify-center font-bold select-none z-10"
-                  style={{
-                    ...boxStyle(col.labelSpec),
-                    fontSize: '11px',
-                    lineHeight: '14px',
-                    letterSpacing: '0.02em',
-                    color: 'rgba(27, 29, 32, 0.56)',
-                  }}
+                  key={day.key}
+                  className="w-[43px] h-[43px] rounded-full bg-[#1B1D20] text-white flex flex-col items-center justify-center shadow-md select-none -my-1"
                 >
-                  {col.day}
+                  <span className="text-[10px] font-bold text-white/85 tracking-wider leading-none">
+                    {day.day}
+                  </span>
+                  <span className="text-[17px] font-black text-white leading-none mt-[2px]">
+                    {day.num}
+                  </span>
                 </div>
-                <div
-                  data-spec={`${col.key}Num`}
-                  className="flex items-center justify-center font-bold select-none z-10"
-                  style={{
-                    ...boxStyle(col.numSpec),
-                    fontSize: '17px',
-                    lineHeight: '20px',
-                    color: 'rgba(27, 29, 32, 0.72)',
-                  }}
-                >
-                  {col.num}
-                </div>
-              </React.Fragment>
-            ))}
-
-            {/* SUN 18 selected black pill: 43x43 at x 320, y 76 */}
-            <div
-              data-spec="sunPill"
-              className="rounded-full bg-[#1B1D20] select-none z-10"
-              style={boxStyle(layoutSpec.sunPill)}
-            />
-            <div
-              data-spec="sunLabel"
-              className="flex items-center justify-center font-bold text-white select-none z-20"
-              style={{
-                ...boxStyle(layoutSpec.sunLabel),
-                fontSize: '11px',
-                lineHeight: '14px',
-                letterSpacing: '0.02em',
-              }}
-            >
-              SUN
-            </div>
-            <div
-              data-spec="sunNum"
-              className="flex items-center justify-center font-bold text-white select-none z-20"
-              style={{
-                ...boxStyle(layoutSpec.sunNum),
-                fontSize: '17px',
-                lineHeight: '20px',
-              }}
-            >
-              18
-            </div>
-          </>
-        )}
-
-        {/* ---------------- QUESTION TITLE / PROMPT ---------------- */}
-        <div
-          data-spec="question"
-          className="font-black text-[#1B1D20] select-none z-10 flex flex-col justify-center px-1"
-          style={{
-            ...boxStyle(layoutSpec.question),
-          }}
-        >
-          {questionLines.length > 1 ? (
-            <div className="flex flex-col gap-0 leading-[1.08] tracking-[-0.03em] font-black text-[30px] sm:text-[34px]">
-              {questionLines.map((line, idx) => (
-                <div key={idx} className="truncate">{line}</div>
-              ))}
-            </div>
-          ) : (
-            <div
-              className={`font-black tracking-[-0.03em] leading-[1.12] break-words line-clamp-3 ${
-                rawQuestion.length > 45 ? 'text-[24px]' : 'text-[28px]'
-              }`}
-            >
-              {rawQuestion}
-            </div>
-          )}
-        </div>
-
-        {/* ---------------- CARDS & AVATARS ---------------- */}
-        {/* Left Card (Pink Blob): Clickable to inspect full answer */}
-        <div
-          onClick={() =>
-            setInspectingPlayer({
-              name: p1Title,
-              avatarId: player1AvatarId,
-              answer: resolvedP1Answer,
-              blobBg: '#FCA0D1',
-            })
-          }
-          className="cursor-pointer active:scale-[0.98] transition-transform"
-          title="Click to view full answer"
-        >
-          <img
-            data-spec="cardBlobPink"
-            src="/assets/reveal/card-blob-pink.png"
-            alt=""
-            style={imgStyle(layoutSpec.cardBlobPink)}
-            className="pointer-events-none select-none z-10"
-            draggable={false}
-          />
-        </div>
-
-        {/* Right Card (Blue Blob): Clickable to inspect full answer */}
-        <div
-          onClick={() =>
-            setInspectingPlayer({
-              name: p2Title,
-              avatarId: isTriviaRound ? 4 : player2AvatarId,
-              answer: resolvedP2Answer,
-              blobBg: '#8EAFFD',
-            })
-          }
-          className="cursor-pointer active:scale-[0.98] transition-transform"
-          title="Click to view full answer"
-        >
-          <img
-            data-spec="cardBlobBlue"
-            src="/assets/reveal/card-blob-blue.png"
-            alt=""
-            style={imgStyle(layoutSpec.cardBlobBlue)}
-            className="pointer-events-none select-none z-10"
-            draggable={false}
-          />
-        </div>
-
-        {/* Left Card Avatar: Player 1 avatar */}
-        <img
-          data-spec="player1Avatar"
-          src={getAvatarFaceSrc(player1AvatarId)}
-          alt={p1Title}
-          style={imgStyle(layoutSpec.player1Avatar)}
-          className="pointer-events-none select-none z-20"
-          draggable={false}
-        />
-
-        {/* Right Card Avatar: Trivia target icon or Player 2 Avatar */}
-        {isTriviaRound ? (
-          <div
-            style={boxStyle(layoutSpec.player2Avatar)}
-            className="flex items-center justify-center rounded-full bg-[#1B1D20] text-white text-[24px] shadow-md pointer-events-none select-none z-20"
-          >
-            <span>🎯</span>
-          </div>
-        ) : (
-          <img
-            data-spec="player2Avatar"
-            src={getAvatarFaceSrc(player2AvatarId)}
-            alt={p2Title}
-            style={imgStyle(layoutSpec.player2Avatar)}
-            className="pointer-events-none select-none z-20"
-            draggable={false}
-          />
-        )}
-
-        {/* Card Header Labels: e.g. "Your Pick" / "Correct Answer" or player names */}
-        <div
-          data-spec="player1Label"
-          className="flex items-center justify-center font-bold select-none z-20 text-center px-1"
-          style={{
-            ...boxStyle(layoutSpec.player1Label),
-            fontSize: '11px',
-            lineHeight: '13px',
-            color: 'rgba(27, 29, 32, 0.65)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-          }}
-        >
-          <span className="truncate">{p1Title}</span>
-        </div>
-
-        <div
-          data-spec="player2Label"
-          className="flex items-center justify-center font-bold select-none z-20 text-center px-1"
-          style={{
-            ...boxStyle(layoutSpec.player2Label),
-            fontSize: '11px',
-            lineHeight: '13px',
-            color: 'rgba(27, 29, 32, 0.65)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-          }}
-        >
-          <span className="truncate">{p2Title}</span>
-        </div>
-
-        {/* Left Card Answer */}
-        <div
-          onClick={() =>
-            setInspectingPlayer({
-              name: p1Title,
-              avatarId: player1AvatarId,
-              answer: resolvedP1Answer,
-              blobBg: '#FCA0D1',
-            })
-          }
-          className="absolute z-20 flex items-center justify-center text-center px-2 cursor-pointer select-none"
-          style={{
-            left: '26px',
-            top: '352px',
-            width: '144px',
-            height: '62px',
-          }}
-          title="Click to view full answer"
-        >
-          <p
-            className="font-extrabold text-[#1B1D20] text-center line-clamp-2 overflow-hidden text-ellipsis m-0"
-            style={{
-              fontSize: p1Formatted.fontSize,
-              lineHeight: p1Formatted.lineHeight,
-              letterSpacing: '-0.02em',
-              wordBreak: 'break-word',
-            }}
-          >
-            “{p1Formatted.text}”
-          </p>
-        </div>
-
-        {/* Right Card Answer */}
-        <div
-          onClick={() =>
-            setInspectingPlayer({
-              name: p2Title,
-              avatarId: isTriviaRound ? 4 : player2AvatarId,
-              answer: resolvedP2Answer,
-              blobBg: '#8EAFFD',
-            })
-          }
-          className="absolute z-20 flex items-center justify-center text-center px-2 cursor-pointer select-none"
-          style={{
-            left: '220px',
-            top: '352px',
-            width: '144px',
-            height: '62px',
-          }}
-          title="Click to view full answer"
-        >
-          <p
-            className="font-extrabold text-[#1B1D20] text-center line-clamp-2 overflow-hidden text-ellipsis m-0"
-            style={{
-              fontSize: p2Formatted.fontSize,
-              lineHeight: p2Formatted.lineHeight,
-              letterSpacing: '-0.02em',
-              wordBreak: 'break-word',
-            }}
-          >
-            “{p2Formatted.text}”
-          </p>
-        </div>
-
-        {/* ---------------- MATCH / RESULT STARBURST BADGE ---------------- */}
-        <img
-          data-spec="matchStarburst"
-          src="/assets/reveal/match-starburst.png"
-          alt=""
-          style={{
-            ...imgStyle(layoutSpec.matchStarburst),
-            filter: isSuccess ? undefined : 'grayscale(1) brightness(0.92)',
-          }}
-          className="pointer-events-none select-none z-30"
-          draggable={false}
-        />
-
-        {/* Match badge text */}
-        <div
-          data-spec="matchBadgeText"
-          className="flex flex-col items-center justify-center text-center text-[#1B1D20] select-none z-30 pointer-events-none"
-          style={boxStyle(layoutSpec.matchBadgeText)}
-        >
-          {isTriviaRound ? (
-            isSuccess ? (
-              <>
-                <span className="font-black text-[11px] leading-[12px] tracking-[-0.015em] text-[#0A5C36]">
-                  CORRECT!
-                </span>
-                <span className="font-black text-[16px] leading-[17px] tracking-[-0.02em] mt-[1px]">
-                  +10 pts
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="font-black text-[11px] leading-[12px] tracking-[-0.015em] text-[#8B0000]">
-                  WRONG!
-                </span>
-                <span className="font-black text-[14px] leading-[16px] tracking-[-0.02em] mt-[1px]">
-                  +0 pts
-                </span>
-              </>
-            )
-          ) : isSuccess ? (
-            <>
-              <span className="font-extrabold text-[11px] leading-[12px] tracking-[-0.015em]">
-                You
-              </span>
-              <span className="font-extrabold text-[11px] leading-[12px] tracking-[-0.015em]">
-                matched!
-              </span>
-              <span className="font-black text-[16px] leading-[17px] tracking-[-0.02em] mt-[1px]">
-                +{isKnowMeRound ? 15 : 10}
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="font-extrabold text-[10px] leading-[11px] tracking-[-0.01em]">
-                Not quite
-              </span>
-              <span className="font-extrabold text-[10px] leading-[11px] tracking-[-0.01em]">
-                matched 😭
-              </span>
-              <span className="font-black text-[14px] leading-[16px] tracking-[-0.02em] mt-[1px]">
-                +0
-              </span>
-            </>
-          )}
-        </div>
-
-        {/* ---------------- MIDDLE SECTION: SCORE / SYNC ---------------- */}
-        {/* crescent-yellow: 44x47 */}
-        <img
-          data-spec="crescentYellow"
-          src="/assets/reveal/crescent-yellow.png"
-          alt=""
-          style={imgStyle(layoutSpec.crescentYellow)}
-          className="pointer-events-none select-none z-10 opacity-70"
-          draggable={false}
-        />
-
-        {/* starburst-blue: 49x54 */}
-        <img
-          data-spec="starburstBlue"
-          src="/assets/reveal/starburst-blue.png"
-          alt=""
-          style={imgStyle(layoutSpec.starburstBlue)}
-          className="pointer-events-none select-none z-10 opacity-70"
-          draggable={false}
-        />
-
-        {/* cross-olive: 41x42 */}
-        <img
-          data-spec="crossOlive"
-          src="/assets/reveal/cross-olive.png"
-          alt=""
-          style={imgStyle(layoutSpec.crossOlive)}
-          className="pointer-events-none select-none z-10 opacity-60"
-          draggable={false}
-        />
-
-        {/* heart-pink-small: 41x37 */}
-        <img
-          data-spec="heartPinkSmall"
-          src="/assets/reveal/heart-pink-small.png"
-          alt=""
-          style={imgStyle(layoutSpec.heartPinkSmall)}
-          className="pointer-events-none select-none z-10 opacity-60"
-          draggable={false}
-        />
-
-        {/* Header Label */}
-        <div
-          data-spec="syncScoreLabel"
-          className="flex items-center justify-center font-extrabold select-none z-20 text-center uppercase tracking-wider"
-          style={{
-            ...boxStyle(layoutSpec.syncScoreLabel),
-            fontSize: '13px',
-            lineHeight: '16px',
-            color: 'rgba(27, 29, 32, 0.65)',
-          }}
-        >
-          {isTriviaRound
-            ? `Game Standings (Round ${gameSession.currentRound}/${gameSession.totalRounds})`
-            : isKnowMeRound
-            ? `Duo Sync (Round ${gameSession.currentRound}/${gameSession.totalRounds})`
-            : 'Duo Sync score'}
-        </div>
-
-        {/* Main Value Display */}
-        {isTriviaRound ? (
-          <div
-            data-spec="syncScoreValue"
-            className="flex items-center justify-center gap-2 select-none z-20"
-            style={boxStyle(layoutSpec.syncScoreValue)}
-          >
-            <div className="bg-[#1B1D20] text-white px-3 py-1.5 rounded-full font-black text-[15px] flex items-center gap-1.5 shadow-md">
-              <span>You:</span>
-              <span className="text-[#FFD214]">{gameSession.myScore} pts</span>
-            </div>
-            <span className="font-black text-[14px] text-[#1B1D20]/40">vs</span>
-            <div className="bg-[#1B1D20]/10 border border-[#1B1D20]/20 text-[#1B1D20] px-3 py-1.5 rounded-full font-black text-[15px] flex items-center gap-1.5">
-              <span>{player2Name}:</span>
-              <span>{gameSession.friendScore} pts</span>
-            </div>
-          </div>
-        ) : (
-          <div
-            data-spec="syncScoreValue"
-            className="flex items-center justify-center font-black text-[#1B1D20] select-none z-20 whitespace-nowrap"
-            style={{
-              ...boxStyle(layoutSpec.syncScoreValue),
-              fontSize: '56px',
-              lineHeight: '52px',
-              letterSpacing: '-0.03em',
-            }}
-          >
-            {isKnowMeRound
-              ? `${gameSession.matchesCount > 0 ? Math.min(100, Math.round((gameSession.matchesCount / gameSession.currentRound) * 100)) : (isSuccess ? 100 : 50)}%`
-              : `${syncScore}%`}
-          </div>
-        )}
-
-        {/* Subtitle / Caption */}
-        <div
-          data-spec="syncCaption"
-          className="flex items-center justify-center font-bold select-none z-20 text-center px-4"
-          style={{
-            ...boxStyle(layoutSpec.syncCaption),
-            fontSize: '13px',
-            lineHeight: '17px',
-            color: 'rgba(27, 29, 32, 0.7)',
-          }}
-        >
-          {isTriviaRound ? (
-            gameSession.myScore > gameSession.friendScore ? (
-              <span className="text-[#0A5C36] font-black">👑 You’re in the lead by {gameSession.myScore - gameSession.friendScore} pts!</span>
-            ) : gameSession.myScore === gameSession.friendScore ? (
-              <span>⚔️ Tied match! Next round is crucial!</span>
-            ) : (
-              <span className="text-[#B33900] font-black">🔥 {player2Name} leads by {gameSession.friendScore - gameSession.myScore} pts — catch up!</span>
-            )
-          ) : isSuccess ? (
-            <span>Mind readers! You know each other so well ✨</span>
-          ) : (
-            <span>Different answers make conversations fun 💕</span>
-          )}
-        </div>
-
-        {/* ---------------- REACTION EMOJIS ---------------- */}
-        {REACTION_EMOJIS.map((emoji, index) => {
-          const circleSpec = layoutSpec[`emojiCircle${index}`];
-          const emojiImgSpec = layoutSpec[`emojiImg${index}`];
-          const isSelected = activeReaction === emoji.id;
-          const isBouncing = bouncingEmojiId === emoji.id;
-
-          return (
-            <React.Fragment key={emoji.id}>
-              <button
-                type="button"
-                data-spec={`emojiCircle${index}`}
-                onClick={() => handleEmojiClick(emoji.id)}
-                aria-label={emoji.label}
-                aria-pressed={isSelected}
-                style={boxStyle(circleSpec)}
-                className={`rounded-full bg-transparent p-0 flex items-center justify-center cursor-pointer focus:outline-none z-20 ${
-                  isBouncing ? 'animate-avatar-bounce' : ''
-                }`}
+              );
+            }
+            return (
+              <div
+                key={day.key}
+                className="flex flex-col items-center justify-center w-[36px] select-none text-center"
               >
-                <svg
-                  width="45"
-                  height="45"
-                  viewBox="0 0 45 45"
-                  className="absolute inset-0 pointer-events-none"
-                >
-                  <circle
-                    cx="22.5"
-                    cy="22.5"
-                    r="21.5"
-                    fill="none"
-                    stroke={isSelected ? '#1B1D20' : 'rgba(27, 29, 32, 0.6)'}
-                    strokeWidth={isSelected ? '2.5' : '1.5'}
-                    strokeDasharray={isSelected ? undefined : '4.2 3.6'}
-                  />
-                </svg>
-              </button>
+                <span className="text-[10.5px] font-bold text-[#1B1D20]/45 tracking-wider leading-none">
+                  {day.day}
+                </span>
+                <span className="text-[16.5px] font-extrabold text-[#1B1D20]/75 leading-none mt-[3px]">
+                  {day.num}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* =========================================================================
+            3. QUESTION HEADLINE (Responsive typography preventing overflow onto cards/decorations)
+           ========================================================================= */}
+        <div className="mb-6 px-1 select-none">
+          {(() => {
+            const qLen = rawQuestion.length;
+            const revealHeadingClass =
+              qLen > 75
+                ? 'text-[20px] sm:text-[23px] leading-[1.2]'
+                : qLen > 48
+                ? 'text-[24px] sm:text-[28px] leading-[1.15]'
+                : 'text-[30px] sm:text-[34px] leading-[1.1]';
+
+            if (qLen <= 48 && questionLines && questionLines.length > 1) {
+              return (
+                <h2 className={`font-black ${revealHeadingClass} text-[#1B1D20] tracking-[-0.03em] m-0 break-words`}>
+                  {questionLines.map((line, idx) => (
+                    <React.Fragment key={idx}>
+                      {line}
+                      {idx < questionLines.length - 1 && <br />}
+                    </React.Fragment>
+                  ))}
+                </h2>
+              );
+            }
+
+            return (
+              <h2 className={`font-black ${revealHeadingClass} text-[#1B1D20] tracking-[-0.03em] m-0 break-words`}>
+                {rawQuestion}
+              </h2>
+            );
+          })()}
+        </div>
+
+        {/* =========================================================================
+            4. PLAYER ANSWER BLOBS & MATCH STARBURST
+           ========================================================================= */}
+        <div className="relative w-full flex items-center justify-between mb-8 select-none">
+          {/* Left Card: Pink Organic Blob */}
+          <div
+            onClick={() =>
+              setInspectingPlayer({
+                name: p1LabelText,
+                avatarSrc: p1AvatarSrc,
+                answer: resolvedP1Answer,
+                blobBg: '#FCA0D1',
+              })
+            }
+            className="relative w-[48%] max-w-[172px] aspect-[456/468] flex flex-col items-center justify-center p-3 cursor-pointer active:scale-[0.98] transition-transform z-10"
+            title="Click to view full answer"
+          >
+            {/* Pink Blob Image as Background */}
+            <img
+              src="/assets/reveal/card-blob-pink.webp"
+              alt=""
+              className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
+              draggable={false}
+            />
+
+            {/* Inner Content Centered Inside Blob */}
+            <div className="relative z-10 flex flex-col items-center justify-center text-center w-full h-full pointer-events-none px-1 pt-1 pb-1">
+              {/* Avatar (Personalized Avatar for Player) */}
               <img
-                data-spec={`emojiImg${index}`}
-                src={emoji.file}
-                alt={emoji.label}
-                style={imgStyle(emojiImgSpec)}
-                className={`pointer-events-none select-none z-20 ${
-                  isBouncing ? 'animate-avatar-bounce' : ''
-                }`}
+                src={p1AvatarSrc}
+                alt={p1LabelText}
+                className="w-[42px] h-[42px] sm:w-[46px] sm:h-[46px] object-contain mb-1 flex-shrink-0"
                 draggable={false}
               />
-            </React.Fragment>
-          );
-        })}
-
-        {/* ---------------- ACTION BUTTONS ---------------- */}
-        {/* "Save to memory wall" */}
-        <button
-          type="button"
-          data-spec="saveButton"
-          onClick={handleSave}
-          style={boxStyle(layoutSpec.saveButton)}
-          className="btn-press rounded-full bg-[#1B1D20] text-white font-bold text-[17px] tracking-[-0.015em] flex items-center justify-center gap-2.5 cursor-pointer focus:outline-none z-20 p-0 shadow-md active:scale-[0.98]"
-        >
-          <svg
-            width="17"
-            height="19"
-            viewBox="0 0 18 20"
-            fill="none"
-            stroke="#FFFFFF"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="flex-shrink-0"
-          >
-            <path d="M15 18l-6-4-6 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v14z" />
-          </svg>
-          <span className="leading-none">Save to memory wall</span>
-        </button>
-
-        {/* "Next question" / "See final results" */}
-        <button
-          type="button"
-          data-spec="nextQuestionPill"
-          onClick={isInGame ? () => gameSession.nextRound() : onNextQuestion}
-          disabled={!isInGame && !onNextQuestion}
-          style={boxStyle(layoutSpec.nextQuestionPill)}
-          className={`rounded-full font-black text-[18px] tracking-[-0.015em] flex items-center justify-center focus:outline-none z-20 p-0 shadow-lg ${
-            isInGame || onNextQuestion
-              ? 'bg-[#1B1D20] text-white hover:bg-[#2A2D32] cursor-pointer btn-press active:scale-[0.98]'
-              : 'bg-[#D2C7D3] text-[#7D7580] cursor-default'
-          }`}
-        >
-          <span className="leading-none">
-            {isInGame
-              ? gameSession.currentRound < gameSession.totalRounds
-                ? `Next question (${gameSession.currentRound + 1}/${gameSession.totalRounds}) ➔`
-                : 'See final results 🏆 ➔'
-              : onNextQuestion
-              ? 'Next question ✨'
-              : 'Next question tomorrow'}
-          </span>
-        </button>
-
-        {/* ---------------- BOTTOM DECORATIONS ---------------- */}
-        <img
-          data-spec="decoBottomLeft"
-          src="/assets/reveal/deco-bottom-left.png"
-          alt=""
-          style={imgStyle(layoutSpec.decoBottomLeft)}
-          className="pointer-events-none select-none z-10"
-          draggable={false}
-        />
-
-        <img
-          data-spec="decoBottomRight"
-          src="/assets/reveal/deco-bottom-right.png"
-          alt=""
-          style={imgStyle(layoutSpec.decoBottomRight)}
-          className="pointer-events-none select-none z-10"
-          draggable={false}
-        />
-
-        {/* ---------------- SHARED BOTTOM NAV (HIDDEN DURING ACTIVE GAME) ---------------- */}
-        {!isInGame && (
-          <div
-            data-spec="bottomNav"
-            style={boxStyle(layoutSpec.bottomNav)}
-            className="z-30 pointer-events-auto"
-          >
-            <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
-          </div>
-        )}
-
-        {/* ---------------- FULL ANSWER INSPECTION MODAL ---------------- */}
-        {inspectingPlayer && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1B1D20]/60 backdrop-blur-xs select-auto"
-            onClick={() => setInspectingPlayer(null)}
-          >
-            <div
-              className="relative w-full max-w-[320px] bg-[#FAF6EB] rounded-[32px] p-6 shadow-2xl flex flex-col items-center text-center animate-pop border-2 border-[#1B1D20]/10"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Avatar on Color Blob */}
-              <div
-                className="relative w-[72px] h-[72px] rounded-full flex items-center justify-center mb-3 shadow-inner"
-                style={{ backgroundColor: inspectingPlayer.blobBg }}
-              >
-                <img
-                  src={getAvatarFaceSrc(inspectingPlayer.avatarId)}
-                  alt={inspectingPlayer.name}
-                  className="w-[54px] h-[54px] object-contain pointer-events-none select-none"
-                  draggable={false}
-                />
-              </div>
-
-              <span className="text-[13px] font-bold text-[#1B1D20]/60 uppercase tracking-wider">
-                {inspectingPlayer.name}’s answer
+              {/* Username strictly below avatar instead of "Your Pick" */}
+              <span className="text-[11.5px] font-bold text-[#1B1D20]/60 tracking-tight leading-none mb-1 flex-shrink-0 max-w-[124px] truncate">
+                {p1LabelText}
               </span>
-
-              <h3 className="mt-2 text-[20px] sm:text-[22px] font-black text-[#1B1D20] leading-snug tracking-tight break-words max-h-[220px] overflow-y-auto px-1">
-                “{inspectingPlayer.answer}”
-              </h3>
-
-              <button
-                type="button"
-                onClick={() => setInspectingPlayer(null)}
-                className="mt-5 w-full h-[46px] rounded-full bg-[#1B1D20] hover:bg-[#2A2D32] text-white font-bold text-[16px] tracking-tight cursor-pointer btn-press"
-              >
-                Close
-              </button>
+              {/* Answer */}
+              <p className="font-black text-[15px] sm:text-[16.5px] leading-[1.12] text-[#1B1D20] tracking-tight m-0 line-clamp-2 break-words max-w-[128px]">
+                {resolvedP1Answer}
+              </p>
             </div>
           </div>
-        )}
+
+          {/* Center Intersecting Badge: Points Blob (Solid Yellow if correct, Solid Black if incorrect) */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92px] h-[94px] z-20 pointer-events-none select-none flex items-center justify-center filter drop-shadow-md">
+            {/* Starburst Image: Yellow when correct, Solid Black when incorrect */}
+            <img
+              src={
+                isSuccess
+                  ? '/assets/reveal/match-starburst.webp'
+                  : '/assets/reveal/match-starburst-black.webp'
+              }
+              alt={isSuccess ? 'Matched Starburst' : 'Not Matched Starburst'}
+              className="w-full h-full object-contain pointer-events-none select-none"
+              draggable={false}
+            />
+            {/* Starburst Text: Dark text on Yellow, White text on Black */}
+            <div
+              className={`absolute inset-0 flex flex-col items-center justify-center text-center pt-1 ${
+                isSuccess ? 'text-[#1B1D20]' : 'text-white'
+              }`}
+            >
+              <span className="text-[11.5px] font-black leading-[1.05] tracking-tight">
+                {isSuccess ? (isTriviaRound ? 'Correct!' : 'You') : isTriviaRound ? 'Not' : 'No'}
+              </span>
+              <span className="text-[11.5px] font-black leading-[1.05] tracking-tight">
+                {isSuccess ? (isTriviaRound ? 'answer' : 'matched!') : isTriviaRound ? 'quite!' : 'match!'}
+              </span>
+              <span
+                className={`text-[15px] font-black leading-none mt-0.5 ${
+                  isSuccess ? 'text-[#1B1D20]' : 'text-white'
+                }`}
+              >
+                {isSuccess ? `+${isKnowMeRound ? 15 : 10}` : '+0'}
+              </span>
+            </div>
+          </div>
+
+          {/* Right Card: Blue Organic Blob */}
+          <div
+            onClick={() =>
+              setInspectingPlayer({
+                name: p2LabelText,
+                avatarSrc: p2AvatarSrc,
+                answer: resolvedP2Answer,
+                blobBg: '#8EAFFD',
+              })
+            }
+            className="relative w-[48%] max-w-[172px] aspect-[456/468] flex flex-col items-center justify-center p-3 cursor-pointer active:scale-[0.98] transition-transform z-10"
+            title="Click to view full answer"
+          >
+            {/* Blue Blob Image as Background */}
+            <img
+              src="/assets/reveal/card-blob-blue.webp"
+              alt=""
+              className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
+              draggable={false}
+            />
+
+            {/* Inner Content Centered Inside Blob */}
+            <div className="relative z-10 flex flex-col items-center justify-center text-center w-full h-full pointer-events-none px-1 pt-1 pb-1">
+              {/* Avatar (Partner/Opponent) */}
+              <img
+                src={p2AvatarSrc}
+                alt={p2LabelText}
+                className="w-[42px] h-[42px] sm:w-[46px] sm:h-[46px] object-contain mb-1 flex-shrink-0"
+                draggable={false}
+              />
+              {/* Label */}
+              <span className="text-[11.5px] font-bold text-[#1B1D20]/60 tracking-tight leading-none mb-1 flex-shrink-0 max-w-[124px] truncate">
+                {p2LabelText}
+              </span>
+              {/* Answer */}
+              <p className="font-black text-[15px] sm:text-[16.5px] leading-[1.12] text-[#1B1D20] tracking-tight m-0 line-clamp-2 break-words max-w-[128px]">
+                {resolvedP2Answer}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* =========================================================================
+            5. MIDDLE SYNC SCORE SECTION & 4 ORBITING DECORATIONS
+           ========================================================================= */}
+        <div className="relative w-full flex flex-col items-center mb-7 py-2">
+          {/* Label "Sync score" */}
+          <span className="text-[14px] font-bold text-[#1B1D20]/60 tracking-tight mb-0.5">
+            Sync score
+          </span>
+
+          {/* Giant Number "74%" */}
+          <span className="font-black text-[74px] sm:text-[78px] leading-none text-[#1B1D20] tracking-[-0.04em] my-1">
+            {syncScore}%
+          </span>
+
+          {/* 1. Yellow Crescent Moon (Top-Left of 74%) */}
+          <img
+            src="/assets/reveal/crescent-yellow.webp"
+            alt=""
+            className="absolute left-[12%] sm:left-[14%] top-[12px] w-[42px] h-[46px] object-contain pointer-events-none select-none z-10"
+            draggable={false}
+          />
+
+          {/* 2. Soft Pink Heart (Bottom-Left of 74%) */}
+          <img
+            src="/assets/reveal/heart-pink-small.webp"
+            alt=""
+            className="absolute left-[8%] sm:left-[10%] bottom-[20px] w-[38px] h-[35px] object-contain pointer-events-none select-none z-10"
+            draggable={false}
+          />
+
+          {/* 3. Soft Blue Starburst (Top-Right of 74%) */}
+          <img
+            src="/assets/reveal/starburst-blue.webp"
+            alt=""
+            className="absolute right-[12%] sm:right-[14%] top-[8px] w-[46px] h-[50px] object-contain pointer-events-none select-none z-10"
+            draggable={false}
+          />
+
+          {/* 4. Olive Green Cross (Bottom-Right of 74%) */}
+          <img
+            src="/assets/reveal/cross-olive.webp"
+            alt=""
+            className="absolute right-[10%] sm:right-[12%] bottom-[16px] w-[40px] h-[42px] object-contain pointer-events-none select-none z-10"
+            draggable={false}
+          />
+
+          {/* Caption "you know each other better today" */}
+          <p className="text-[14px] sm:text-[14.5px] font-bold text-[#1B1D20]/70 tracking-tight m-0 mt-1">
+            you know each other better today
+          </p>
+        </div>
+
+        {/* =========================================================================
+            6. REACTION EMOJIS ROW (6 Dashed Circles)
+           ========================================================================= */}
+        <div className="w-full flex items-center justify-between mb-7 px-1">
+          {REACTION_EMOJIS.map((emoji) => {
+            const isSelected = activeReaction === emoji.id;
+            const isBouncing = bouncingEmojiId === emoji.id;
+
+            return (
+              <button
+                key={emoji.id}
+                type="button"
+                onClick={() => handleEmojiClick(emoji.id)}
+                aria-label={emoji.alt}
+                aria-pressed={isSelected}
+                className={`w-[44px] h-[44px] rounded-full border-[1.5px] border-dashed flex items-center justify-center cursor-pointer transition-all focus:outline-none p-0 bg-transparent ${
+                  isSelected
+                    ? 'border-[#1B1D20] bg-white/40 scale-105'
+                    : 'border-[#1B1D20]/45 hover:border-[#1B1D20]/75 active:scale-95'
+                } ${isBouncing ? 'animate-avatar-bounce' : ''}`}
+              >
+                <img
+                  src={emoji.file}
+                  alt={emoji.alt}
+                  className="w-[25px] h-[25px] object-contain pointer-events-none select-none"
+                  draggable={false}
+                />
+              </button>
+            );
+          })}
+        </div>
+
+        {/* =========================================================================
+            7. ACTION BUTTONS: "Save to memory wall" & "Next question tomorrow"
+           ========================================================================= */}
+        <div className="w-full flex flex-col gap-3 mb-6 relative z-10">
+          {/* Button 1: Save to Memory Wall */}
+          <button
+            type="button"
+            onClick={handleSave}
+            className="btn-press w-full h-[48px] sm:h-[50px] rounded-full bg-[#1B1D20] hover:bg-[#282B30] text-white font-extrabold text-[16.5px] tracking-tight flex items-center justify-center gap-2 cursor-pointer shadow-md focus:outline-none active:scale-[0.98] transition-transform"
+          >
+            {/* Bookmark Ribbon Icon */}
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+            </svg>
+            <span>Save to memory wall</span>
+          </button>
+
+          {/* Button 2: Next Question Tomorrow / Next Round */}
+          <button
+            type="button"
+            onClick={handleNextClick}
+            className="btn-press w-full h-[48px] sm:h-[50px] rounded-full bg-[#D5C7D7] hover:bg-[#C9B9CB] text-[#7A7380] font-extrabold text-[16px] tracking-tight flex items-center justify-center cursor-pointer focus:outline-none active:scale-[0.98] transition-transform"
+          >
+            <span>
+              {isInGame
+                ? gameSession.currentRound < gameSession.totalRounds
+                  ? `Next question (${gameSession.currentRound + 1}/${gameSession.totalRounds}) ➔`
+                  : 'See final results 🏆 ➔'
+                : 'Next question tomorrow'}
+            </span>
+          </button>
+        </div>
+
+        {/* =========================================================================
+            8. BOTTOM CORNER DECORATIONS (Peeking at the bottom corners)
+           ========================================================================= */}
+        {/* Bottom-Left Yellow Star */}
+        <img
+          src="/assets/reveal/deco-bottom-left.webp"
+          alt=""
+          className="absolute -left-[10px] bottom-[10px] w-[54px] h-[50px] object-contain pointer-events-none select-none z-0"
+          draggable={false}
+        />
+
+        {/* Bottom-Right Pink Heart / Blob */}
+        <img
+          src="/assets/reveal/deco-bottom-right.webp"
+          alt=""
+          className="absolute -right-[8px] bottom-[8px] w-[50px] h-[48px] object-contain pointer-events-none select-none z-0"
+          draggable={false}
+        />
       </div>
+
+      {/* =========================================================================
+          FULL ANSWER INSPECTION MODAL (When clicking on blob answer)
+         ========================================================================= */}
+      {inspectingPlayer && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1B1D20]/60 backdrop-blur-xs select-auto"
+          onClick={() => setInspectingPlayer(null)}
+        >
+          <div
+            className="relative w-full max-w-[320px] bg-[#FAF6EB] rounded-[32px] p-6 shadow-2xl flex flex-col items-center text-center animate-pop border-2 border-[#1B1D20]/10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Avatar on Color Blob */}
+            <div
+              className="relative w-[72px] h-[72px] rounded-full flex items-center justify-center mb-3 shadow-inner"
+              style={{ backgroundColor: inspectingPlayer.blobBg }}
+            >
+              <img
+                src={inspectingPlayer.avatarSrc}
+                alt={inspectingPlayer.name}
+                className="w-[54px] h-[54px] object-contain pointer-events-none select-none"
+                draggable={false}
+              />
+            </div>
+
+            <span className="text-[13px] font-bold text-[#1B1D20]/60 uppercase tracking-wider">
+              {inspectingPlayer.name}’s answer
+            </span>
+
+            <h3 className="mt-2 text-[20px] sm:text-[22px] font-black text-[#1B1D20] leading-snug tracking-tight break-words max-h-[220px] overflow-y-auto px-1">
+              “{inspectingPlayer.answer}”
+            </h3>
+
+            <button
+              type="button"
+              onClick={() => setInspectingPlayer(null)}
+              className="mt-5 w-full h-[46px] rounded-full bg-[#1B1D20] hover:bg-[#2A2D32] text-white font-bold text-[16px] tracking-tight cursor-pointer btn-press"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

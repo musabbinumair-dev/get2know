@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { DesktopLanding } from '../components/DesktopLanding';
 
 interface WelcomeScreenProps {
   onGetStarted?: () => void;
@@ -81,8 +82,28 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     };
   }, []);
 
-  // Seamless full-bleed ivory background #FAF6EA on body and html
+  // Check URL frame parameter e.g. ?frame=1440x900
+  const frameParam =
+    typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('frame')
+      : null;
+  let effectiveWidth = viewport.width;
+  let effectiveHeight = viewport.height;
+  if (frameParam) {
+    const [fw, fh] = frameParam.split('x').map(Number);
+    if (fw && fh) {
+      effectiveWidth = fw;
+      effectiveHeight = fh;
+    }
+  }
+
+  // Desktop + landscape tablet condition: width >= 900 AND width/height >= 1.15
+  const isDesktopLandscape =
+    effectiveWidth >= 900 && effectiveWidth / effectiveHeight >= 1.15;
+
+  // Seamless full-bleed ivory background #FAF6EA on body and html for mobile
   useEffect(() => {
+    if (isDesktopLandscape) return;
     const prevBodyBg = document.body.style.backgroundColor;
     const prevHtmlBg = document.documentElement.style.backgroundColor;
     document.body.style.backgroundColor = '#FAF6EA';
@@ -91,7 +112,19 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       document.body.style.backgroundColor = prevBodyBg;
       document.documentElement.style.backgroundColor = prevHtmlBg;
     };
-  }, []);
+  }, [isDesktopLandscape]);
+
+  if (isDesktopLandscape) {
+    return (
+      <DesktopLanding
+        onGetStarted={onGetStarted}
+        onContinueWithGoogle={onContinueWithGoogle}
+        onJoinCode={onJoinCode}
+        forcedWidth={effectiveWidth !== viewport.width ? effectiveWidth : undefined}
+        forcedHeight={effectiveHeight !== viewport.height ? effectiveHeight : undefined}
+      />
+    );
+  }
 
   // Width scale: fill full width on mobile, cap at 1.3 on desktop/tablets
   const scale = Math.min(viewport.width / 390, 1.3);

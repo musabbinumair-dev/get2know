@@ -96,11 +96,11 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
   // Auto-submit when timer expires in game
   const hasAutoSubmitted = useRef(false);
   useEffect(() => {
-    if (isInGame && gameSession.timer === 0 && !hasAutoSubmitted.current && !isLocked) {
+    if (isInGame && gameSession.isTimerActive && gameSession.timer === 0 && !hasAutoSubmitted.current && !isLocked) {
       hasAutoSubmitted.current = true;
       handleLockIn();
     }
-  }, [isInGame, gameSession.timer, isLocked]);
+  }, [isInGame, gameSession.isTimerActive, gameSession.timer, isLocked]);
 
   useEffect(() => {
     hasAutoSubmitted.current = false;
@@ -139,8 +139,8 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
       </div>
 
       <div
-        className="absolute top-[128px] -right-[16px] pointer-events-none select-none z-0"
-        style={{ width: '92px', height: '92px' }}
+        className="absolute top-[64px] -right-[28px] pointer-events-none select-none z-0 opacity-75"
+        style={{ width: '74px', height: '74px' }}
       >
         <img
           src="/assets/blobs/starburst-blue-join.svg"
@@ -180,10 +180,14 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
           {/* Top Bar: GameHeader when in game, else standard TopBar */}
           {isInGame ? (
             <GameHeader
+              showLogo={true}
+              roundPillPosition="center"
               currentRound={gameSession.currentRound}
               totalRounds={gameSession.totalRounds}
               timer={gameSession.timer}
+              isTimerActive={gameSession.isTimerActive}
               showTimer={true}
+              showBack={false}
               onExit={gameSession.exitGame}
             />
           ) : (
@@ -207,9 +211,21 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
                   </button>
                 )}
               </div>
-              <h1 className="mt-2 text-[30px] sm:text-[36px] font-black text-[#1A1C22] leading-[1.1] tracking-[-0.035em] font-['Nunito',sans-serif]">
-                {currentQuestionText}
-              </h1>
+              {/* Responsive Question Heading */}
+              {(() => {
+                const qLen = currentQuestionText.length;
+                const qHeadingFontClass =
+                  qLen > 75
+                    ? 'text-[20px] sm:text-[23px] leading-[1.2]'
+                    : qLen > 48
+                    ? 'text-[24px] sm:text-[28px] leading-[1.16]'
+                    : 'text-[28px] sm:text-[34px] leading-[1.12]';
+                return (
+                  <h1 className={`mt-2 ${qHeadingFontClass} font-black text-[#1A1C22] tracking-[-0.03em] font-['Nunito',sans-serif] pr-3 sm:pr-4 break-words`}>
+                    {currentQuestionText}
+                  </h1>
+                );
+              })()}
             </div>
 
             {/* Cream Textarea Card */}

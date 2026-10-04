@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Screen } from '../components/Screen';
-import { BottomNav, NavTab } from '../components/BottomNav';
+import { NavTab } from '../components/BottomNav';
 import { QuestionData } from '../data/gameData';
 import { useGameSession } from '../services/gameSessionContext';
 import { GameHeader } from '../components/GameHeader';
@@ -23,10 +23,10 @@ const BLOB_OUTLINE_FILTER =
 export const GuessScreen: React.FC<GuessScreenProps> = ({
   questionData,
   realAnswer: _realAnswer = 'Anchovies on pizza.',
-  streak = 12,
+  streak: _streak = 12,
   onLockGuess,
-  onBack,
-  onNavigateTab,
+  onBack: _onBack,
+  onNavigateTab: _onNavigateTab,
 }) => {
   const gameSession = useGameSession();
   const isInGame = gameSession.isActive;
@@ -83,58 +83,14 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
   }, []);
 
   // ---------------- STAGE 390 SCALING CALCULATIONS ----------------
-  // Scale by width capped at 1.0 so desktop bottom nav and layout match other screens exactly
+  // Scale by width capped at 1.0 so desktop container and layout match 390px base
   const scale = Math.min(1.0, viewport.width / 390);
-  const stageHeight = viewport.height / scale; // Height in design pixels (844 base, 677 on 360x625)
+  const stageHeight = viewport.height / scale; // Height in design pixels (844 base)
 
-  // Vertical Gaps Calculation (Section 8)
-  // Shortage (844 - stageHeight) distributed in proportion to (design - min)
-  // Total shrinkable deltas = 44 + 4 + 18 + 9 + 13 + 8 + 71 + 12 = 179 px
+  // Vertical space distribution with NO bottom bar (extra vertical headroom)
+  // Shortage distributed gracefully when viewport is less than 844px
   const shortage = Math.max(0, 844 - stageHeight);
-  const t = Math.min(1, shortage / 179);
-
-  const gapA = 66 - (66 - 22) * t; // top bar bottom to label top (66 -> 22)
-  const gapB = 8 - (8 - 4) * t;    // label bottom to question top (8 -> 4)
-  const gapC = 30 - (30 - 12) * t; // question bottom to blob row 1 (30 -> 12)
-  const gapD = 9 - (9 - 0) * t;    // row 1 to row 2 (9 -> 0)
-  const gapE = 21 - (21 - 8) * t;  // row 2 to hint (21 -> 8)
-  const gapF = 16 - (16 - 8) * t;  // hint to button (16 -> 8)
-  const gapH = 22 - (22 - 10) * t; // nav bottom margin (22 -> 10)
-
-  // Fixed header geometry
-  const topBarBottom = 66; // y: 31 + h: 35
-
-  // Label "Guess their answer"
-  const labelTop = topBarBottom + gapA;
-  const labelBottom = labelTop + 20;
-
-  // Question "What's the worst..."
-  const questionTop = labelBottom + gapB;
-  const questionHeight = 124.6; // 43.3 line pitch * 2 + 38 font size
-  const questionBottom = questionTop + questionHeight;
-
-  // Blob Row 1
-  const row1Top = questionBottom + gapC;
-  const pinkY = row1Top + 1;  // base 315
-  const yellowY = row1Top;    // base 314
-
-  // Starburst Badge ("+15 if right")
-  const starburstY = row1Top - 35; // base 279
-
-  // Blob Row 2
-  const row2Top = row1Top + 126 + gapD; // base 449
-  const creamY = row2Top;     // base 449
-  const greenY = row2Top + 7; // base 456
-
-  // Hint "Only one is what they really said."
-  const hintTop = row2Top + 130 + gapE; // base 600
-  const hintBottom = hintTop + 20;
-
-  // Lock Button
-  const buttonTop = hintBottom + gapF; // base 636
-
-  // Bottom Nav
-  const navTop = stageHeight - gapH - 59; // base 763 (844 - 22 - 59)
+  const t = Math.min(1, shortage / 180);
 
   const handleSelect = (id: OptionId) => {
     setSelectedId(id);
@@ -142,7 +98,8 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
 
   const [isLocking, setIsLocking] = useState(false);
 
-  // Determine question lines and option texts based on in-game vs standalone
+  // Determine question text, lines, and option texts based on in-game vs standalone
+  let rawQuestionText = questionData?.question || "What’s the worst food you’ve ever tried?";
   let questionLines = questionData?.questionLines || [
     "What’s the worst",
     "food you’ve ever",
@@ -154,6 +111,7 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
   let greenText = questionData?.guessOptions?.find((o) => o.id === 'green')?.text || 'Durian';
 
   if (isInGame && gameSession.currentQuestion) {
+    rawQuestionText = gameSession.currentQuestion.question;
     if (gameSession.currentRoundType === 'trivia') {
       const tQ = gameSession.currentQuestion as TriviaQuestion;
       questionLines = tQ.questionLines || [tQ.question];
@@ -170,6 +128,59 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
       greenText = kQ.guessOptions?.find((o) => o.id === 'green')?.text || 'D';
     }
   }
+
+  const qLen = rawQuestionText.length;
+  // Increased question text size & bold weight 900, responsive across screen heights
+  let qFontSize = Math.round(34 - 4 * t);
+  let qLineHeight = Math.round(40 - 4 * t);
+  if (qLen > 70) {
+    qFontSize = Math.round(24 - 3 * t);
+    qLineHeight = Math.round(30 - 3 * t);
+  } else if (qLen > 45) {
+    qFontSize = Math.round(29 - 4 * t);
+    qLineHeight = Math.round(35 - 4 * t);
+  }
+
+  // Estimated lines & bounded question height
+  const estLines = qLen > 65 ? 3 : qLen > 35 ? 2.5 : 2;
+  const maxAllowedQHeight = t > 0.5 ? 96 : 124;
+  const questionHeight = Math.min(maxAllowedQHeight, Math.ceil(estLines * qLineHeight));
+
+  const gapA = 26 - 12 * t; // top bar bottom to label top (26 -> 14)
+  const gapB = 8 - 3 * t;   // label bottom to question top (8 -> 5)
+  const gapC = 28 - 10 * t; // question bottom to blob row 1 (28 -> 18)
+  const gapD = 12 - 6 * t;  // row 1 to row 2 (12 -> 6)
+  const gapF = 60 - 20 * t;  // row 2 bottom to lock button (60 -> 40)
+
+  // Fixed header geometry
+  const topBarBottom = 66; // y: 31 + h: 35
+
+  // Label "Guess their answer"
+  const labelTop = topBarBottom + gapA;
+  const labelBottom = labelTop + 20;
+
+  // Question "What's the worst..."
+  const questionTop = labelBottom + gapB;
+  const questionBottom = questionTop + questionHeight;
+
+  // Blob Row 1
+  const row1Top = Math.max(280 - 40 * t, questionBottom + gapC);
+  const pinkY = row1Top;
+  const yellowY = row1Top;
+
+  // Starburst Badge ("+15 if right")
+  const starburstY = row1Top - 34;
+
+  // Blob Row 2
+  const row2Top = row1Top + 138 + gapD;
+  const creamY = row2Top;
+  const greenY = row2Top + 6;
+
+  // Bottom edge of Row 2 blobs (for vertical centering of hint text below blobs)
+  const row2Bottom = row2Top + 152;
+
+  // Lock Button
+  const buttonTop = row2Bottom + gapF;
 
   const handleLock = async (overrideId?: OptionId) => {
     const chosenId = overrideId || selectedId || 'cream';
@@ -199,11 +210,11 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
   // Auto-submit when timer expires
   const hasAutoSubmitted = useRef(false);
   useEffect(() => {
-    if (isInGame && gameSession.timer === 0 && !hasAutoSubmitted.current) {
+    if (isInGame && gameSession.isTimerActive && gameSession.timer === 0 && !hasAutoSubmitted.current) {
       hasAutoSubmitted.current = true;
       handleLock();
     }
-  }, [isInGame, gameSession.timer]);
+  }, [isInGame, gameSession.isTimerActive, gameSession.timer]);
 
   useEffect(() => {
     hasAutoSubmitted.current = false;
@@ -226,16 +237,17 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
       >
         {/* ---------------- 9. DECORATIONS (WEBP ASSETS, MATCHING MOCKUP EXACTLY) ---------------- */}
 
-        {/* deco-moon-yellow: Upper-left, peeking from left edge next to back button and question */}
+        {/* deco-moon-yellow: Upper-left, safely on edge away from question */}
         <div
           style={{
             position: 'absolute',
-            left: '-22px',
-            top: '84px',
-            width: '84px',
-            height: '84px',
+            left: '-34px',
+            top: `${86 - 8 * t}px`,
+            width: '68px',
+            height: '68px',
             pointerEvents: 'none',
-            zIndex: 4,
+            zIndex: 1,
+            opacity: 0.85,
           }}
         >
           <img
@@ -246,16 +258,17 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
           />
         </div>
 
-        {/* deco-heart-pink: Upper-right, peeking from right edge below streak pill */}
+        {/* deco-heart-pink: Upper-right, safely on edge away from question */}
         <div
           style={{
             position: 'absolute',
-            left: '332px',
-            top: '94px',
-            width: '88px',
-            height: '88px',
+            left: '352px',
+            top: `${88 - 8 * t}px`,
+            width: '66px',
+            height: '66px',
             pointerEvents: 'none',
-            zIndex: 4,
+            zIndex: 1,
+            opacity: 0.85,
           }}
         >
           <img
@@ -266,14 +279,14 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
           />
         </div>
 
-        {/* deco-star-blue: Lower-left, below lock button and above bottom nav */}
+        {/* deco-star-blue: Lower-left, moved downwards into bottom space */}
         <div
           style={{
             position: 'absolute',
-            left: '10px',
-            top: `${buttonTop + 48}px`,
-            width: '78px',
-            height: '78px',
+            left: '14px',
+            top: `${buttonTop + 60}px`,
+            width: '76px',
+            height: '76px',
             pointerEvents: 'none',
             zIndex: 5,
           }}
@@ -286,14 +299,14 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
           />
         </div>
 
-        {/* deco-cross-olive: Lower-right, below lock button and above bottom nav */}
+        {/* deco-cross-olive: Lower-right, moved downwards into bottom space */}
         <div
           style={{
             position: 'absolute',
-            left: '322px',
-            top: `${buttonTop + 52}px`,
-            width: '68px',
-            height: '68px',
+            left: '318px',
+            top: `${buttonTop + 64}px`,
+            width: '66px',
+            height: '66px',
             pointerEvents: 'none',
             zIndex: 5,
           }}
@@ -306,123 +319,28 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
           />
         </div>
 
-        {/* ---------------- 5. HEADER: GAME HEADER IN-GAME OR STANDARD TOP BAR ---------------- */}
-        {isInGame ? (
-          <div
-            style={{
-              position: 'absolute',
-              top: '18px',
-              left: 0,
-              width: '390px',
-              zIndex: 30,
-            }}
-          >
-            <GameHeader
-              currentRound={gameSession.currentRound}
-              totalRounds={gameSession.totalRounds}
-              timer={gameSession.timer}
-              showTimer={true}
-              onExit={gameSession.exitGame}
-            />
-          </div>
-        ) : (
-          <>
-            {/* Back button: dashed 1.5px circle, 35px, at x 22, y 31 */}
-            <button
-              type="button"
-              onClick={onBack}
-              aria-label="Back"
-              className="btn-press cursor-pointer focus:outline-none"
-              style={{
-                position: 'absolute',
-                left: '22px',
-                top: '31px',
-                width: '35px',
-                height: '35px',
-                borderRadius: '9999px',
-                border: '1.5px dashed #17181B',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: 'transparent',
-                zIndex: 20,
-              }}
-            >
-              <svg
-                width="17"
-                height="17"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#17181B"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M19 12H5" />
-                <path d="M11 18l-6-6 6-6" />
-              </svg>
-            </button>
-
-            {/* Title "Guess": absolutely centered on x 195, Nunito 900 26px */}
-            <h1
-              style={{
-                position: 'absolute',
-                left: '195px',
-                top: '34px',
-                transform: 'translateX(-50%)',
-                fontFamily: "'Nunito', sans-serif",
-                fontWeight: 900,
-                fontSize: '26px',
-                lineHeight: 1,
-                color: '#17181B',
-                letterSpacing: '-0.025em',
-                margin: 0,
-                zIndex: 20,
-              }}
-            >
-              Guess
-            </h1>
-
-            {/* Streak pill: x 304, y 32, 67x32, right edge at 371 */}
-            <div
-              style={{
-                position: 'absolute',
-                left: '304px',
-                top: '32px',
-                width: '67px',
-                height: '32px',
-                backgroundColor: '#17181B',
-                borderRadius: '9999px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '5px',
-                zIndex: 20,
-                pointerEvents: 'none',
-              }}
-            >
-              {/* Flame asset at x 319.5, y 38.5, w 16 */}
-              <img
-                src="/assets/guess/icon-flame.webp"
-                alt=""
-                style={{ width: '16px', height: 'auto', objectFit: 'contain' }}
-                draggable={false}
-              />
-              <span
-                style={{
-                  fontFamily: "'Nunito', sans-serif",
-                  fontWeight: 800,
-                  fontSize: '17px',
-                  color: '#FFFFFF',
-                  lineHeight: 1,
-                  letterSpacing: '-0.02em',
-                }}
-              >
-                {streak}
-              </span>
-            </div>
-          </>
-        )}
+        {/* ---------------- 5. HEADER: UNIFIED GAME HEADER ACROSS ALL GAME PAGES ---------------- */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '16px',
+            left: 0,
+            width: '390px',
+            zIndex: 30,
+          }}
+        >
+          <GameHeader
+            showLogo={true}
+            roundPillPosition="center"
+            currentRound={isInGame ? gameSession.currentRound : 1}
+            totalRounds={isInGame ? gameSession.totalRounds : 10}
+            timer={isInGame ? gameSession.timer : 20}
+            isTimerActive={isInGame ? gameSession.isTimerActive : undefined}
+            showTimer={true}
+            showBack={false}
+            onExit={isInGame ? gameSession.exitGame : _onBack}
+          />
+        </div>
 
         {/* ---------------- 4. QUESTION TEXT & LABELS ---------------- */}
 
@@ -446,25 +364,30 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
             : 'Guess their answer'}
         </span>
 
-        {/* Forced 3 lines, Nunito 900, line pitch 43.3px, left x 30, spans 330px (x 30 to 360) */}
+        {/* Question Text (Increased size & bold weight 900, zero overlay on decorations) */}
         <h2
           style={{
             position: 'absolute',
-            left: '30px',
+            left: '36px',
             top: `${questionTop}px`,
-            width: '330px',
+            width: '314px',
+            maxHeight: `${questionHeight + 8}px`,
             fontFamily: "'Nunito', sans-serif",
             fontWeight: 900,
-            fontSize: '34px',
-            lineHeight: '40px',
-            letterSpacing: '-0.03em',
+            fontSize: `${qFontSize}px`,
+            lineHeight: `${qLineHeight}px`,
+            letterSpacing: '-0.025em',
             color: '#17181B',
             margin: 0,
             zIndex: 10,
-            whiteSpace: 'pre-line',
+            display: '-webkit-box',
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            wordBreak: 'break-word',
           }}
         >
-          {questionLines.join('\n')}
+          {qLen > 50 ? rawQuestionText : questionLines.join('\n')}
         </h2>
 
         {/* ---------------- 2. BLOBS (SIBLINGS, NOT CONTAINING STARBURST OR CHECK) ---------------- */}
@@ -477,6 +400,7 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
             left: '31px',
             top: `${pinkY}px`,
             width: '156px',
+            height: '156px',
             cursor: 'pointer',
             zIndex: 10,
           }}
@@ -488,7 +412,8 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
               position: 'relative',
               zIndex: 1,
               width: '100%',
-              height: 'auto',
+              height: '100%',
+              objectFit: 'contain',
               display: 'block',
               filter: selectedId === 'pink' ? BLOB_OUTLINE_FILTER : 'none',
               transition: 'filter 0.12s ease',
@@ -518,7 +443,7 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
               </svg>
             </div>
           )}
-          {/* Centered & Responsive Text inside Blob */}
+          {/* Centered & Responsive Text inside Blob (Vertically & Horizontally) */}
           <div
             style={{
               position: 'absolute',
@@ -537,10 +462,12 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
                 fontFamily: "'Nunito', sans-serif",
                 fontWeight: 800,
                 fontSize: pinkText.length > 22 ? '14px' : pinkText.length > 15 ? '16px' : '18px',
-                lineHeight: '1.2',
+                lineHeight: 1.25,
                 color: '#17181B',
                 letterSpacing: '-0.02em',
                 wordBreak: 'break-word',
+                textAlign: 'center',
+                display: 'inline-block',
                 maxWidth: '100%',
               }}
             >
@@ -557,6 +484,7 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
             left: '204px',
             top: `${yellowY}px`,
             width: '157px',
+            height: '126px',
             cursor: 'pointer',
             zIndex: 10,
           }}
@@ -568,7 +496,8 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
               position: 'relative',
               zIndex: 1,
               width: '100%',
-              height: 'auto',
+              height: '100%',
+              objectFit: 'contain',
               display: 'block',
               filter: selectedId === 'yellow' ? BLOB_OUTLINE_FILTER : 'none',
               transition: 'filter 0.12s ease',
@@ -598,7 +527,7 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
               </svg>
             </div>
           )}
-          {/* Centered & Responsive Text inside Blob */}
+          {/* Centered & Responsive Text inside Blob (Vertically & Horizontally) */}
           <div
             style={{
               position: 'absolute',
@@ -617,10 +546,12 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
                 fontFamily: "'Nunito', sans-serif",
                 fontWeight: 800,
                 fontSize: yellowText.length > 22 ? '14px' : yellowText.length > 15 ? '16px' : '18px',
-                lineHeight: '1.2',
+                lineHeight: 1.25,
                 color: '#17181B',
                 letterSpacing: '-0.02em',
                 wordBreak: 'break-word',
+                textAlign: 'center',
+                display: 'inline-block',
                 maxWidth: '100%',
               }}
             >
@@ -637,6 +568,7 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
             left: '31px',
             top: `${creamY}px`,
             width: '168px',
+            height: '168px',
             cursor: 'pointer',
             zIndex: 10,
           }}
@@ -648,7 +580,8 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
               position: 'relative',
               zIndex: 1,
               width: '100%',
-              height: 'auto',
+              height: '100%',
+              objectFit: 'contain',
               display: 'block',
               filter: selectedId === 'cream' ? BLOB_OUTLINE_FILTER : 'none',
               transition: 'filter 0.12s ease',
@@ -678,7 +611,7 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
               </svg>
             </div>
           )}
-          {/* Centered & Responsive Text inside Blob */}
+          {/* Centered & Responsive Text inside Blob (Vertically & Horizontally) */}
           <div
             style={{
               position: 'absolute',
@@ -697,10 +630,12 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
                 fontFamily: "'Nunito', sans-serif",
                 fontWeight: 800,
                 fontSize: creamText.length > 22 ? '14px' : creamText.length > 15 ? '16px' : '18px',
-                lineHeight: '1.2',
+                lineHeight: 1.25,
                 color: '#17181B',
                 letterSpacing: '-0.02em',
                 wordBreak: 'break-word',
+                textAlign: 'center',
+                display: 'inline-block',
                 maxWidth: '100%',
               }}
             >
@@ -717,6 +652,7 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
             left: '213px',
             top: `${greenY}px`,
             width: '142px',
+            height: '142px',
             cursor: 'pointer',
             zIndex: 10,
           }}
@@ -728,7 +664,8 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
               position: 'relative',
               zIndex: 1,
               width: '100%',
-              height: 'auto',
+              height: '100%',
+              objectFit: 'contain',
               display: 'block',
               filter: selectedId === 'green' ? BLOB_OUTLINE_FILTER : 'none',
               transition: 'filter 0.12s ease',
@@ -758,7 +695,7 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
               </svg>
             </div>
           )}
-          {/* Centered & Responsive Text inside Blob */}
+          {/* Centered & Responsive Text inside Blob (Vertically & Horizontally) */}
           <div
             style={{
               position: 'absolute',
@@ -777,10 +714,12 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
                 fontFamily: "'Nunito', sans-serif",
                 fontWeight: 800,
                 fontSize: greenText.length > 22 ? '14px' : greenText.length > 15 ? '16px' : '18px',
-                lineHeight: '1.2',
+                lineHeight: 1.25,
                 color: '#17181B',
                 letterSpacing: '-0.02em',
                 wordBreak: 'break-word',
+                textAlign: 'center',
+                display: 'inline-block',
                 maxWidth: '100%',
               }}
             >
@@ -851,28 +790,39 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
 
         {/* ---------------- HINT & LOCK BUTTON ---------------- */}
 
-        {/* Hint: centered in ONE SINGLE ROW */}
+        {/* Hint text under the guess blobs - Centered Vertically & Horizontally */}
         <div
           style={{
             position: 'absolute',
-            left: '195px',
-            top: `${hintTop}px`,
-            transform: 'translateX(-50%)',
-            width: 'auto',
-            whiteSpace: 'nowrap',
-            fontFamily: "'Nunito', sans-serif",
-            fontWeight: 500,
-            fontSize: '15px',
-            lineHeight: '18px',
-            color: 'rgba(23, 24, 27, 0.55)',
+            left: 0,
+            width: '390px',
+            top: `${row2Bottom}px`,
+            height: `${Math.max(30, buttonTop - row2Bottom)}px`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             textAlign: 'center',
-            letterSpacing: '-0.01em',
+            padding: '0 20px',
+            pointerEvents: 'none',
             zIndex: 10,
           }}
         >
-          {isInGame && gameSession.currentRoundType === 'trivia'
-            ? 'Only one option is correct!'
-            : 'Only one is what they really said.'}
+          <span
+            style={{
+              fontFamily: "'Nunito', sans-serif",
+              fontWeight: 600,
+              fontSize: '15px',
+              lineHeight: '18px',
+              color: 'rgba(23, 24, 27, 0.55)',
+              letterSpacing: '-0.01em',
+              textAlign: 'center',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {isInGame && gameSession.currentRoundType === 'trivia'
+              ? 'Only one option is correct!'
+              : 'Only one is what they really said.'}
+          </span>
         </div>
 
         {/* Lock Button: x 44, w 302, h 44, #17181B, white Nunito 700 18px */}
@@ -942,9 +892,9 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
             <div
               style={{
                 position: 'absolute',
-                left: '30px',
+                left: '36px',
                 top: `${questionTop}px`,
-                width: '330px',
+                width: '314px',
                 height: `${questionHeight}px`,
                 border: '1px dashed rgba(255,0,0,0.6)',
               }}
@@ -952,10 +902,10 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
             <div
               style={{
                 position: 'absolute',
-                left: '307px',
+                left: '305px',
                 top: `${starburstY}px`,
-                width: '71px',
-                height: '71px',
+                width: '74px',
+                height: '74px',
                 border: '1px dashed rgba(0,255,0,0.6)',
               }}
             />
@@ -969,30 +919,9 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
                 border: '1px dashed rgba(0,0,255,0.6)',
               }}
             />
-            <div
-              style={{
-                position: 'absolute',
-                left: '7px',
-                top: `${navTop}px`,
-                width: '376px',
-                height: '59px',
-                border: '1px dashed rgba(255,255,0,0.6)',
-              }}
-            />
           </div>
         )}
       </div>
-
-      {/* ---------------- 7. BOTTOM NAV (HIDDEN DURING GAMEPLAY) ---------------- */}
-      {!isInGame && (
-        <div className="absolute bottom-0 left-0 right-0 pb-1 z-30 pointer-events-auto flex justify-center">
-          <BottomNav
-            activeTab="guess"
-            onTabChange={onNavigateTab}
-            className="mb-1"
-          />
-        </div>
-      )}
     </Screen>
   );
 };

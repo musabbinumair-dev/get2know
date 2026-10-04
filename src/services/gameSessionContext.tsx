@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   TRIVIA_QUESTIONS,
@@ -64,33 +64,55 @@ const GameSessionContext = createContext<GameSessionState | undefined>(undefined
 export const GameSessionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
 
-  // Mode and rounds initialized from localStorage settings
-  const [mode, setMode] = useState<GameMode>(() => {
+  const getGameSettings = useCallback(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('gty_game_settings');
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          if (parsed.mode === 'know-me') return 'Know Me';
-          if (parsed.mode === 'mixed') return 'Mixed';
-          return 'Trivia';
+          return {
+            mode: (parsed.mode === 'know-me' ? 'Know Me' : parsed.mode === 'mixed' ? 'Mixed' : 'Trivia') as GameMode,
+            categories: parsed.categories || [],
+            difficulty: parsed.difficulty || 'Medium',
+            timer: parsed.timer || '20s',
+            rounds: parsed.rounds || 10,
+            speedBonus: parsed.speedBonus ?? true,
+            soundEffects: parsed.soundEffects ?? true,
+          };
         } catch {}
       }
     }
-    return 'Trivia';
+    return {
+      mode: 'Trivia' as GameMode,
+      categories: [],
+      difficulty: 'Medium',
+      timer: '20s',
+      rounds: 10,
+      speedBonus: true,
+      soundEffects: true,
+    };
+  }, []);
+
+  const getTimerSeconds = (timerSetting: string) => {
+    if (timerSetting === '10s') return 10;
+    if (timerSetting === '20s') return 20;
+    if (timerSetting === '30s') return 30;
+    return -1; // Off
+  };
+
+  const isTimerEnabled = (timerSetting: string) => {
+    return timerSetting !== 'Off';
+  };
+
+  // Mode and rounds initialized from localStorage settings
+  const [mode, setMode] = useState<GameMode>(() => {
+    const s = getGameSettings();
+    return s.mode as GameMode;
   });
 
   const [totalRounds, setTotalRounds] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('gty_game_settings');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (parsed.rounds) return parsed.rounds;
-        } catch {}
-      }
-    }
-    return 10;
+    const s = getGameSettings();
+    return s.rounds;
   });
 
   const [isActive, setIsActive] = useState<boolean>(() => {
@@ -132,8 +154,14 @@ export const GameSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
   });
 
   // Timer state
-  const [timer, setTimer] = useState<number>(15);
-  const [isTimerActive, setIsTimerActive] = useState<boolean>(false);
+  const [timer, setTimer] = useState<number>(() => {
+    const s = getGameSettings();
+    return getTimerSeconds(s.timer);
+  });
+  const [isTimerActive, setIsTimerActive] = useState<boolean>(() => {
+    const s = getGameSettings();
+    return isTimerEnabled(s.timer);
+  });
 
   // Scores & Streak
   const [myScore, setMyScore] = useState<number>(() => {
@@ -175,15 +203,30 @@ export const GameSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
     return [];
   });
 
+  // Filtered question pools based on selected categories
+  const filteredTrivia = useMemo(() => {
+    const s = getGameSettings();
+    if (!s.categories || s.categories.length === 0) return TRIVIA_QUESTIONS;
+    const matched = TRIVIA_QUESTIONS.filter((q) => s.categories.includes(q.category));
+    return matched.length > 0 ? matched : TRIVIA_QUESTIONS;
+  }, [getGameSettings]);
+
+  const filteredKnowMe = useMemo(() => {
+    const s = getGameSettings();
+    if (!s.categories || s.categories.length === 0) return KNOW_ME_QUESTIONS;
+    const matched = KNOW_ME_QUESTIONS.filter((q) => s.categories.includes(q.category));
+    return matched.length > 0 ? matched : KNOW_ME_QUESTIONS;
+  }, [getGameSettings]);
+
   // Fetch question for current round
   const currentQuestion = React.useMemo<GameQuestion>(() => {
     const idx = (currentRound - 1);
     if (currentRoundType === 'trivia') {
-      return TRIVIA_QUESTIONS[idx % TRIVIA_QUESTIONS.length];
+      return filteredTrivia[idx % filteredTrivia.length];
     } else {
-      return KNOW_ME_QUESTIONS[idx % KNOW_ME_QUESTIONS.length];
+      return filteredKnowMe[idx % filteredKnowMe.length];
     }
-  }, [currentRound, currentRoundType]);
+  }, [currentRound, currentRoundType, filteredTrivia, filteredKnowMe]);
 
   // Persist session markers
   useEffect(() => {
@@ -204,7 +247,6 @@ export const GameSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
     const interval = setInterval(() => {
       setTimer((prev) => {
         if (prev <= 1) {
-          // Time expired! Auto-handle step
           clearInterval(interval);
           return 0;
         }
@@ -218,8 +260,11 @@ export const GameSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
   // Start new game
   const startNewGame = useCallback(
     (overrideMode?: GameMode, overrideRounds?: number) => {
-      const activeMode = overrideMode || mode;
-      const activeRounds = overrideRounds || totalRounds;
+      const s = getGameSettings();
+      const activeMode = overrideMode || s.mode;
+      const activeRounds = overrideRounds || s.rounds;
+      const timerSecs = getTimerSeconds(s.timer);
+      const timerActive = isTimerEnabled(s.timer);
 
       setMode(activeMode);
       setTotalRounds(activeRounds);
@@ -237,21 +282,19 @@ export const GameSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
       setIsCorrect(false);
       setIsMatched(false);
 
-      // In Trivia mode: first screen is Guess screen
-      // In Know Me mode: first screen is Today's question screen
       if (rType === 'trivia') {
         setCurrentStep('guess');
-        setTimer(15);
-        setIsTimerActive(true);
+        setTimer(timerSecs);
+        setIsTimerActive(timerActive);
         navigate('/guess');
       } else {
         setCurrentStep('question');
-        setTimer(20);
-        setIsTimerActive(true);
+        setTimer(timerSecs);
+        setIsTimerActive(timerActive);
         navigate('/today-question');
       }
     },
-    [mode, totalRounds, getRoundTypeForRound, navigate]
+    [getGameSettings, getRoundTypeForRound, navigate]
   );
 
   // Know Me: Submit my answer
@@ -264,7 +307,6 @@ export const GameSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
       const fAns = knowMeQ.player2Answer || 'Done is better than perfect.';
       setFriendAnswer(fAns);
 
-      // Advance to waiting
       setCurrentStep('waiting');
       navigate('/locked');
     },
@@ -273,18 +315,20 @@ export const GameSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   // Waiting: Advance after both answered
   const advanceFromWaiting = useCallback(() => {
+    const s = getGameSettings();
+    const timerSecs = getTimerSeconds(s.timer);
+    const timerActive = isTimerEnabled(s.timer);
+
     if (currentRoundType === 'trivia') {
-      // In Trivia: after waiting -> Reveal screen
       setCurrentStep('reveal');
       navigate('/reveal');
     } else {
-      // In Know Me: after waiting -> Guess screen
       setCurrentStep('guess');
-      setTimer(15);
-      setIsTimerActive(true);
+      setTimer(timerSecs);
+      setIsTimerActive(timerActive);
       navigate('/guess');
     }
-  }, [currentRoundType, navigate]);
+  }, [currentRoundType, getGameSettings, navigate]);
 
   // Guess: Submit guess
   const submitGuess = useCallback(
@@ -292,19 +336,30 @@ export const GameSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
       setMyGuess(optionText);
       setIsTimerActive(false);
 
+      const s = getGameSettings();
       let correct = false;
       let matched = false;
       let earned = 0;
 
+      let basePoints = currentRoundType === 'trivia' ? 10 : 15;
+      if (s.difficulty === 'Easy') basePoints += 5;
+      if (s.difficulty === 'Hard') basePoints = Math.max(5, basePoints - 5);
+
+      let speedBonus = 0;
+      if (s.speedBonus && s.timer !== 'Off' && timer > 0) {
+        speedBonus = Math.floor(timer / 3);
+      }
+
+      const totalPointsEarned = basePoints + speedBonus;
+
       if (currentRoundType === 'trivia') {
         const triviaQ = currentQuestion as TriviaQuestion;
         correct = optionId === triviaQ.correctOptionId;
-        earned = correct ? 10 : 0;
+        earned = correct ? totalPointsEarned : 0;
 
-        // Friend also guesses (80% chance of guessing correct)
         const friendCorrect = Math.random() > 0.25;
-        if (correct) setMyScore((s) => s + 10);
-        if (friendCorrect) setFriendScore((s) => s + 10);
+        if (correct) setMyScore((prev) => prev + totalPointsEarned);
+        if (friendCorrect) setFriendScore((prev) => prev + totalPointsEarned);
 
         if (correct && friendCorrect) {
           matched = true;
@@ -314,7 +369,6 @@ export const GameSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
         setIsCorrect(correct);
         setIsMatched(matched);
 
-        // Record history
         const result: RoundResult = {
           round: currentRound,
           type: 'trivia',
@@ -328,24 +382,20 @@ export const GameSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
         };
         setHistory((h) => [...h, result]);
 
-        // Trivia goes to waiting ("Answer locked in") briefly, then reveal
         setCurrentStep('waiting');
         navigate('/locked');
       } else {
-        // Know Me: guess friend's answer
         const knowMeQ = currentQuestion as KnowMeQuestion;
         correct = optionId === knowMeQ.correctOptionId;
-        earned = correct ? 15 : 0;
+        earned = correct ? totalPointsEarned : 0;
 
-        // Check if both had same answer
         matched =
           myAnswer.trim().toLowerCase() === knowMeQ.player2Answer.trim().toLowerCase() ||
           correct;
 
-        if (correct) setMyScore((s) => s + 15);
-        // Friend also guessed
+        if (correct) setMyScore((prev) => prev + totalPointsEarned);
         const friendGuessedRight = Math.random() > 0.3;
-        if (friendGuessedRight) setFriendScore((s) => s + 15);
+        if (friendGuessedRight) setFriendScore((prev) => prev + totalPointsEarned);
 
         if (matched) {
           setMatchesCount((m) => m + 1);
@@ -368,18 +418,16 @@ export const GameSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
         };
         setHistory((h) => [...h, result]);
 
-        // Know Me directly reveals
         setCurrentStep('reveal');
         navigate('/reveal');
       }
     },
-    [currentQuestion, currentRound, currentRoundType, myAnswer, navigate]
+    [currentQuestion, currentRound, currentRoundType, myAnswer, getGameSettings, timer, navigate]
   );
 
   // Advance to Next Round (or Final Screen if last round)
   const nextRound = useCallback(() => {
     if (currentRound >= totalRounds) {
-      // Game Finished! Go to Final Results screen
       setCurrentStep('final');
       navigate('/game-final');
       return;
@@ -395,18 +443,22 @@ export const GameSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
     setIsCorrect(false);
     setIsMatched(false);
 
+    const s = getGameSettings();
+    const timerSecs = getTimerSeconds(s.timer);
+    const timerActive = isTimerEnabled(s.timer);
+
     if (nextType === 'trivia') {
       setCurrentStep('guess');
-      setTimer(15);
-      setIsTimerActive(true);
+      setTimer(timerSecs);
+      setIsTimerActive(timerActive);
       navigate('/guess');
     } else {
       setCurrentStep('question');
-      setTimer(20);
-      setIsTimerActive(true);
+      setTimer(timerSecs);
+      setIsTimerActive(timerActive);
       navigate('/today-question');
     }
-  }, [currentRound, totalRounds, mode, getRoundTypeForRound, navigate]);
+  }, [currentRound, totalRounds, mode, getRoundTypeForRound, getGameSettings, navigate]);
 
   // Restart Game (Rematch)
   const restartGame = useCallback(() => {

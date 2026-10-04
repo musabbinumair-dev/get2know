@@ -173,15 +173,15 @@ export const TodaysQuestionScreen: React.FC<TodaysQuestionScreenProps> = ({
           Today’s question
         </div>
 
-        {/* Question: x 33, top y 195, Nunito 900, ink #191D1F. Exactly 3 lines, line spacing 46.5px */}
+        {/* Question: x 33, top y 195, Nunito 900, ink #191D1F. Responsive font size */}
         <div
-          className="absolute z-10 font-black text-[#191D1F] select-none"
+          className="absolute z-10 font-black text-[#191D1F] select-none break-words"
           style={{
             left: '33px',
             top: '195px',
             width: '320px',
-            fontSize: '38px',
-            lineHeight: '46.5px',
+            fontSize: '32px',
+            lineHeight: '38px',
             letterSpacing: '-0.03em',
           }}
         >

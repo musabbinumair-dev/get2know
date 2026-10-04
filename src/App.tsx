@@ -427,6 +427,7 @@ function AppContent() {
               onSaveToMemoryWall={handleSaveToMemoryWall}
               onNextQuestion={handleNextQuestion}
               onBack={() => navigate('/locked')}
+              onOpenSettings={() => navigate('/profile')}
               onNavigateTab={handleTabNavigate}
             />
           }
