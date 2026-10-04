@@ -11,6 +11,7 @@ import { MemoryWallScreen, INITIAL_CARDS } from './screens/MemoryWallScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { FriendProfileScreen } from './screens/FriendProfileScreen';
 import { HomeScreen } from './screens/HomeScreen';
+import { GameSettingsScreen } from './screens/GameSettingsScreen';
 import { MemoryCardProps } from './components/MemoryCard';
 import { NavTab } from './components/BottomNav';
 import { QUESTION_BANK } from './data/gameData';
@@ -31,7 +32,8 @@ type ScreenType =
   | 'friend-profile'
   | 'sign-out'
   | 'time-picker'
-  | 'leave-duo';
+  | 'leave-duo'
+  | 'game-settings';
 
 const VALID_SCREENS: ScreenType[] = [
   'home',
@@ -50,6 +52,7 @@ const VALID_SCREENS: ScreenType[] = [
   'sign-out',
   'time-picker',
   'leave-duo',
+  'game-settings',
 ];
 
 export function App() {
@@ -519,12 +522,21 @@ export function App() {
     );
   }
 
+  if (currentScreen === 'game-settings') {
+    return (
+      <GameSettingsScreen
+        onBack={() => setCurrentScreen('home')}
+      />
+    );
+  }
+
   if (currentScreen === 'home' || currentScreen === 'today') {
     return (
       <HomeScreen
         onOpenSettings={() => setCurrentScreen('profile')}
         onOpenFriendProfile={() => setCurrentScreen('friend-profile')}
         onNavigateTab={handleTabNavigate}
+        onOpenGameSettings={() => setCurrentScreen('game-settings')}
       />
     );
   }

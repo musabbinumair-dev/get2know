@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { Screen } from '../components/Screen';
 import { BottomNav, NavTab } from '../components/BottomNav';
 import { mockData } from '../mockData';
@@ -7,16 +7,15 @@ interface HomeScreenProps {
   onOpenSettings?: () => void;
   onOpenFriendProfile?: () => void;
   onNavigateTab?: (tab: NavTab) => void;
+  onOpenGameSettings?: () => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenSettings,
   onOpenFriendProfile,
   onNavigateTab,
+  onOpenGameSettings,
 }) => {
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   // Sync background color
   useEffect(() => {
     const prevHtmlBg = document.documentElement.style.backgroundColor;
@@ -28,16 +27,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       document.body.style.backgroundColor = prevBodyBg;
     };
   }, []);
-
-  const showToast = (msg: string) => {
-    if (toastTimeoutRef.current) {
-      clearTimeout(toastTimeoutRef.current);
-    }
-    setToastMessage(msg);
-    toastTimeoutRef.current = setTimeout(() => {
-      setToastMessage(null);
-    }, 2000);
-  };
 
   return (
     <Screen bg="#F8F1E1" className="text-[#191D21] font-['Nunito'] relative overflow-hidden">
@@ -247,7 +236,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <button
           type="button"
           id="box-start-btn"
-          onClick={() => showToast('Game settings coming soon')}
+          onClick={onOpenGameSettings}
           className="btn-press absolute top-[379.3px] left-[34.7px] w-[321px] h-[42px] rounded-full bg-[#1A1E22] text-white font-extrabold text-[19px] tracking-tight flex items-center justify-center cursor-pointer z-30 shadow-sm outline-none hover:opacity-95 active:scale-98 transition-all"
         >
           Start a game
@@ -263,7 +252,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <button
           type="button"
           id="quick-blob-pink"
-          onClick={() => showToast('Game settings coming soon')}
+          onClick={onOpenGameSettings}
           className="btn-press absolute top-[486px] left-[15.1px] w-[118.4px] h-[105.2px] cursor-pointer z-20 p-0 outline-none transition-transform active:scale-95 group"
         >
           <img
@@ -287,7 +276,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <button
           type="button"
           id="quick-blob-blue"
-          onClick={() => showToast('Game settings coming soon')}
+          onClick={onOpenGameSettings}
           className="btn-press absolute top-[485px] left-[140.8px] w-[111.6px] h-[106.5px] cursor-pointer z-20 p-0 outline-none transition-transform active:scale-95 group"
         >
           <img
@@ -311,7 +300,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <button
           type="button"
           id="quick-blob-green"
-          onClick={() => showToast('Game settings coming soon')}
+          onClick={onOpenGameSettings}
           className="btn-press absolute top-[486.4px] left-[259.7px] w-[115.7px] h-[106.1px] cursor-pointer z-20 p-0 outline-none transition-transform active:scale-95 group"
         >
           <img
@@ -375,15 +364,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       <div className="absolute bottom-2 sm:bottom-3 left-0 right-0 flex justify-center z-30 pointer-events-auto">
         <BottomNav activeTab="today" onTabChange={onNavigateTab} className="mb-0" />
       </div>
-
-      {/* =========================================================================
-          7. POPUP TOAST
-         ========================================================================= */}
-      {toastMessage && (
-        <div className="absolute top-[460px] left-1/2 -translate-x-1/2 bg-[#191D21] text-white px-5 py-2.5 rounded-full text-[15px] font-extrabold z-50 shadow-xl pointer-events-none animate-pop whitespace-nowrap">
-          {toastMessage}
-        </div>
-      )}
     </Screen>
   );
 };
