@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Screen } from '../components/Screen';
 import { PillButton } from '../components/PillButton';
+import { AvatarBlob } from '../components/AvatarBlob';
 
 export interface UserProfile {
   avatarId: number;
@@ -252,70 +253,62 @@ export const CreateProfileScreen: React.FC<CreateProfileScreenProps> = ({
             Your color
           </div>
 
-          {/* Color Blobs: Salmon & Teal from root folder */}
+          {/* Color Blobs: Salmon & Blue/Teal from Central Registry */}
           <div className="flex items-center gap-4 mt-1.5">
             {/* Salmon Pink Blob */}
             <div
               onClick={() => setSelectedColor('salmon')}
-              className="w-[84px] h-[72px] relative cursor-pointer active:scale-95 transition-transform"
+              className="w-[80px] h-[72px] relative cursor-pointer active:scale-95 transition-transform flex items-center justify-center"
             >
-              <img
-                src="/file_00000000199c8207ba1ef4dff8b5f719.png"
-                alt="Salmon pink color blob"
-                className="w-full h-full object-contain select-none pointer-events-none"
-                draggable={false}
-              />
-              {selectedColor === 'salmon' && (
-                <>
-                  <div className="absolute inset-[-2px] rounded-full border-[3px] border-[#1B1D20] pointer-events-none" />
-                  <div className="absolute bottom-0 right-0 w-[20px] h-[20px] bg-[#1B1D20] rounded-full flex items-center justify-center z-10">
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="white"
-                      strokeWidth="3.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </div>
-                </>
-              )}
+              <AvatarBlob color="salmon" size={72} useNewBlob={true}>
+                {selectedColor === 'salmon' && (
+                  <>
+                    <div className="absolute inset-[-2px] rounded-full border-[3px] border-[#1B1D20] pointer-events-none" />
+                    <div className="absolute bottom-0 right-0 w-[20px] h-[20px] bg-[#1B1D20] rounded-full flex items-center justify-center z-10">
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="white"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </div>
+                  </>
+                )}
+              </AvatarBlob>
             </div>
 
-            {/* Teal Blue Blob */}
+            {/* Blue Blob (New Master Blob) */}
             <div
               onClick={() => setSelectedColor('teal')}
-              className="w-[80px] h-[72px] relative cursor-pointer active:scale-95 transition-transform"
+              className="w-[80px] h-[72px] relative cursor-pointer active:scale-95 transition-transform flex items-center justify-center"
             >
-              <img
-                src="/file_00000000872c821185f1f972a55e71f3.png"
-                alt="Teal color blob"
-                className="w-full h-full object-contain select-none pointer-events-none"
-                draggable={false}
-              />
-              {selectedColor === 'teal' && (
-                <>
-                  <div className="absolute inset-[-2px] rounded-full border-[3px] border-[#1B1D20] pointer-events-none" />
-                  <div className="absolute bottom-0 right-0 w-[20px] h-[20px] bg-[#1B1D20] rounded-full flex items-center justify-center z-10">
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="white"
-                      strokeWidth="3.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </div>
-                </>
-              )}
+              <AvatarBlob color="blue" size={72} useNewBlob={true}>
+                {(selectedColor === 'teal' || selectedColor === ('blue' as any)) && (
+                  <>
+                    <div className="absolute inset-[-2px] rounded-full border-[3px] border-[#1B1D20] pointer-events-none" />
+                    <div className="absolute bottom-0 right-0 w-[20px] h-[20px] bg-[#1B1D20] rounded-full flex items-center justify-center z-10">
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="white"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </div>
+                  </>
+                )}
+              </AvatarBlob>
             </div>
           </div>
         </div>

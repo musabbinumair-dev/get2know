@@ -115,6 +115,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   const [isNudgeDisabled, setIsNudgeDisabled] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showLeaveModal, setShowLeaveModal] = useState<boolean>(false);
+  const [showAllSettingsModal, setShowAllSettingsModal] = useState<boolean>(false);
 
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const nudgeTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -231,6 +232,17 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
     }
     return list;
   }, [gameSettings]);
+
+  const allChips = useMemo(() => {
+    return [
+      ...blackChips.map((c) => ({ ...c, kind: 'black' as const })),
+      ...creamChips.map((c) => ({ ...c, kind: 'cream' as const })),
+    ];
+  }, [blackChips, creamChips]);
+
+  const shouldTruncate = allChips.length > 5;
+  const displayedChips = shouldTruncate ? allChips.slice(0, 4) : allChips;
+  const hiddenCount = allChips.length - displayedChips.length;
 
   // Dynamic Measurement of Game Chips container height
   const chipsRef = useRef<HTMLDivElement | null>(null);
@@ -731,11 +743,11 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
             </span>
           </div>
 
-          {/* Alex Avatar Slot (center: 107, alexCenterY; size: 98x98) */}
+          {/* Alex Avatar Slot (center: 117, alexCenterY; size: 98x98) */}
           <div
             style={{
               position: 'absolute',
-              left: `${107 - 49}px`,
+              left: `${117 - 49}px`,
               top: `${alexCenterY - 49}px`,
               width: '98px',
               height: '98px',
@@ -749,6 +761,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
               avatarId={currentUser.avatarId}
               blobId={currentUser.color}
               size={98}
+              useNewBlob={true}
             />
           </div>
 
@@ -756,7 +769,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
           <div
             style={{
               position: 'absolute',
-              left: '108px',
+              left: '117px',
               top: `${playerNamesY}px`,
               transform: 'translate(-50%, -50%)',
               fontFamily: "'Nunito', sans-serif",
@@ -779,7 +792,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
           <div
             style={{
               position: 'absolute',
-              left: `${108 - 43}px`,
+              left: `${117 - 43}px`,
               top: `${pillsY}px`,
               width: '86px',
               height: '26px',
@@ -818,11 +831,11 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
             )}
           </div>
 
-          {/* Sam Avatar Slot (center: 284, samCenterY; size: 98x98) */}
+          {/* Sam Avatar Slot (center: 273, samCenterY; size: 98x98) */}
           <div
             style={{
               position: 'absolute',
-              left: `${284 - 49}px`,
+              left: `${273 - 49}px`,
               top: `${samCenterY - 49}px`,
               width: '98px',
               height: '98px',
@@ -838,6 +851,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
               avatarId={partnerProfile.avatarId}
               blobId={partnerProfile.color}
               size={98}
+              useNewBlob={true}
             />
           </div>
 
@@ -846,7 +860,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
             <div
               style={{
                 position: 'absolute',
-                left: `${284 + 31 - 12}px`,
+                left: `${273 + 31 - 12}px`,
                 top: `${samCenterY + 31 - 12}px`,
                 width: '24px',
                 height: '24px',
@@ -879,7 +893,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
           <div
             style={{
               position: 'absolute',
-              left: '284px',
+              left: '273px',
               top: `${playerNamesY}px`,
               transform: 'translate(-50%, -50%)',
               fontFamily: "'Nunito', sans-serif",
@@ -902,7 +916,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
           <div
             style={{
               position: 'absolute',
-              left: `${284 - 43}px`,
+              left: `${273 - 43}px`,
               top: `${pillsY}px`,
               width: '86px',
               height: '26px',
@@ -980,63 +994,87 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
               zIndex: 5,
             }}
           >
-            {/* Dynamic Dark Chips for Selected Mode & Categories */}
-            {blackChips.map((chip) => (
-              <div
-                key={chip.id}
-                style={{
-                  height: '34.3px',
-                  borderRadius: '34.3px',
-                  backgroundColor: '#161B1E',
-                  color: '#FFFFFF',
-                  padding: chip.icon ? '0 14px 0 10px' : '0 16px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontFamily: "'Nunito', sans-serif",
-                  fontWeight: 700,
-                  fontSize: '13px',
-                  lineHeight: '1',
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0,
-                }}
-              >
-                {chip.icon && (
-                  <img
-                    src={chip.icon}
-                    alt=""
-                    style={{ width: '21px', height: '21px', objectFit: 'contain' }}
-                    draggable={false}
-                  />
-                )}
-                <span>{chip.text}</span>
-              </div>
-            ))}
+            {displayedChips.map((chip) =>
+              chip.kind === 'black' ? (
+                <div
+                  key={chip.id}
+                  style={{
+                    height: '34.3px',
+                    borderRadius: '34.3px',
+                    backgroundColor: '#161B1E',
+                    color: '#FFFFFF',
+                    padding: chip.icon ? '0 14px 0 10px' : '0 16px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontFamily: "'Nunito', sans-serif",
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    lineHeight: '1',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  {chip.icon && (
+                    <img
+                      src={chip.icon}
+                      alt=""
+                      style={{ width: '21px', height: '21px', objectFit: 'contain' }}
+                      draggable={false}
+                    />
+                  )}
+                  <span>{chip.text}</span>
+                </div>
+              ) : (
+                <div
+                  key={chip.id}
+                  style={{
+                    height: '34.3px',
+                    borderRadius: '34.3px',
+                    backgroundColor: '#FCF7EB',
+                    color: '#161B1E',
+                    padding: '0 15px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontFamily: "'Nunito', sans-serif",
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    lineHeight: '1',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  {chip.text}
+                </div>
+              )
+            )}
 
-            {/* Dynamic Cream Chips for Difficulty, Timer, Rounds */}
-            {creamChips.map((chip) => (
+            {shouldTruncate && (
               <div
-                key={chip.id}
+                onClick={() => setShowAllSettingsModal(true)}
                 style={{
                   height: '34.3px',
                   borderRadius: '34.3px',
-                  backgroundColor: '#FCF7EB',
-                  color: '#161B1E',
-                  padding: '0 15px',
+                  backgroundColor: '#EAE1CE',
+                  color: '#17181B',
+                  padding: '0 16px',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontFamily: "'Nunito', sans-serif",
-                  fontWeight: 700,
+                  fontWeight: 800,
                   fontSize: '13px',
                   lineHeight: '1',
                   whiteSpace: 'nowrap',
                   flexShrink: 0,
+                  cursor: 'pointer',
                 }}
+                className="active:scale-95 transition-transform hover:bg-[#DCD0B8]"
               >
-                {chip.text}
+                {`+${hiddenCount} more...`}
               </div>
-            ))}
+            )}
           </div>
 
           {/* ---------------- ACTION BUTTONS & LINKS (Placed dynamically below chips) ---------------- */}
@@ -1053,7 +1091,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
               width: '336.5px',
               height: '47.5px',
               borderRadius: '9999px',
-              backgroundColor: '#FBF3E1',
+              backgroundColor: '#EBE2CD',
               color: '#17181B',
               border: 'none',
               display: 'flex',
@@ -1067,7 +1105,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
               opacity: isFriendReady ? 0.5 : isNudgeDisabled ? 0.6 : 1.0,
               zIndex: 6,
             }}
-            className={!isNudgeDisabled && !isFriendReady ? 'active:scale-[0.98] transition-transform' : ''}
+            className={!isNudgeDisabled && !isFriendReady ? 'active:scale-[0.98] transition-transform hover:bg-[#E3D9C2]' : ''}
           >
             <span>{`Nudge ${friendName}`}</span>
             <img
@@ -1203,6 +1241,74 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
           }}
         >
           {toastMessage}
+        </div>
+      )}
+
+      {/* ---------------- ALL SETTINGS MODAL ---------------- */}
+      {showAllSettingsModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-[#17181B]/60 backdrop-blur-xs flex items-center justify-center p-4 animate-pop select-none"
+          onClick={() => setShowAllSettingsModal(false)}
+        >
+          <div
+            className="w-full max-w-[320px] rounded-[24px] bg-[#F6EFDD] p-6 shadow-2xl relative border border-[#17181B]/10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              style={{
+                fontFamily: "'Nunito', sans-serif",
+                fontWeight: 900,
+                fontSize: '22px',
+                color: '#17181B',
+                marginBottom: '12px',
+              }}
+            >
+              Game Settings
+            </h2>
+            <div className="flex flex-col gap-3 mb-5">
+              <div className="flex justify-between items-center text-[15px] font-bold text-[#17181B] border-b border-[#17181B]/10 pb-2">
+                <span className="text-[#686A75]">Mode</span>
+                <span className="capitalize">{gameSettings.mode}</span>
+              </div>
+              <div className="flex justify-between items-start text-[15px] font-bold text-[#17181B] border-b border-[#17181B]/10 pb-2">
+                <span className="text-[#686A75]">Categories</span>
+                <span className="text-right max-w-[180px]">{gameSettings.categories?.join(', ')}</span>
+              </div>
+              <div className="flex justify-between items-center text-[15px] font-bold text-[#17181B] border-b border-[#17181B]/10 pb-2">
+                <span className="text-[#686A75]">Difficulty</span>
+                <span>{gameSettings.difficulty}</span>
+              </div>
+              <div className="flex justify-between items-center text-[15px] font-bold text-[#17181B] border-b border-[#17181B]/10 pb-2">
+                <span className="text-[#686A75]">Timer</span>
+                <span>{gameSettings.timer}</span>
+              </div>
+              <div className="flex justify-between items-center text-[15px] font-bold text-[#17181B]">
+                <span className="text-[#686A75]">Rounds</span>
+                <span>{gameSettings.rounds} rounds</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowAllSettingsModal(false)}
+              style={{
+                width: '100%',
+                height: '42px',
+                borderRadius: '9999px',
+                backgroundColor: '#17181B',
+                color: '#FFFFFF',
+                fontFamily: "'Nunito', sans-serif",
+                fontWeight: 800,
+                fontSize: '15px',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              Close
+            </button>
+          </div>
         </div>
       )}
 
