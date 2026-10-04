@@ -279,7 +279,6 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack }
       checkText('text-label-know-me', 14.5, 61.7);
       checkText('text-label-trivia', 14.5, 35);
       checkText('text-label-mixed', 14.5, 40.7);
-      checkText('text-create-game', 14, 91);
 
       checkBox('btn-back', 20.1, 19.7, 33.4, 33.4);
       checkBox('track-diff', 22.4, 513.9, 345.6, 32);
@@ -287,7 +286,7 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack }
       checkBox('track-rounds', 22.4, 656.6, 345.6, 27.4);
       checkBox('row-speed-bonus', 22.4, 695.8, 345.2, 29.8);
       checkBox('row-sound-effects', 22.4, 732.9, 345.2, 29.8);
-      checkBox('btn-create-game', 43, 774, 304, 32);
+      checkBox('btn-create-game', 43, 774, 304, 42);
 
       setDebugItems(items);
     };
@@ -1214,49 +1213,47 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack }
         </div>
 
         {/* =========================================================================
-            BOTTOM BUTTON: "Create game"
+            BOTTOM BUTTON: "Create game" (Matching attached image exactly)
            ========================================================================= */}
-        {/* x 43, y 774, 304 x 32 -> Center Y = 790 * s * k */}
         <button
           id="btn-create-game"
           type="button"
           onClick={handleCreateGame}
+          className="btn-press cursor-pointer outline-none select-none transition-all active:scale-[0.98]"
           style={{
             position: 'absolute',
             left: `${43 * s}px`,
-            top: `${790 * s * k - (32 * s) / 2}px`,
+            top: `${795 * s * k - (42 * s) / 2}px`,
             width: `${304 * s}px`,
-            height: `${32 * s}px`,
-            borderRadius: `${32 * s}px`,
+            height: `${42 * s}px`,
+            borderRadius: '9999px',
             backgroundColor: '#161B1E',
             border: 'none',
-            cursor: 'pointer',
             padding: 0,
             zIndex: 20,
-            outline: 'none',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            transition: prefersReducedMotion ? 'none' : 'transform 120ms ease',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+            transition: prefersReducedMotion ? 'none' : 'transform 120ms ease, opacity 120ms ease',
           }}
-          onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.98)')}
-          onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-          onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
         >
-          <FitText
+          <span
             id="text-create-game"
-            centerX={0}
-            centerY={0}
-            refW={91}
-            size={14}
-            weight={800}
-            color="#FFFFFF"
-            s={s}
-            k={1}
-            style={{ position: 'relative' }}
+            style={{
+              fontFamily: "'Nunito', sans-serif",
+              fontWeight: 800,
+              fontSize: `${19.5 * s}px`,
+              color: '#FFFFFF',
+              lineHeight: 1,
+              letterSpacing: '-0.02em',
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none',
+              userSelect: 'none',
+            }}
           >
             Create game
-          </FitText>
+          </span>
         </button>
 
         {/* Toast Notification */}
