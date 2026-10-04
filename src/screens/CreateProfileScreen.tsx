@@ -6,6 +6,7 @@ export interface UserProfile {
   avatarId: number;
   name: string;
   color: 'salmon' | 'teal' | 'pink' | 'blue';
+  createdAt?: string;
 }
 
 interface CreateProfileScreenProps {

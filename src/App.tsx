@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useLocation,
+} from 'react-router-dom';
+import { SessionProvider, useSession, UserProfile } from './services/sessionContext';
 import { WelcomeScreen } from './screens/WelcomeScreen';
-import { CreateProfileScreen, UserProfile } from './screens/CreateProfileScreen';
+import { CreateProfileScreen } from './screens/CreateProfileScreen';
 import { InviteFriendScreen, generateInviteCode } from './screens/InviteFriendScreen';
 import { JoinCodeScreen } from './screens/JoinCodeScreen';
 import { AnswerLockedScreen } from './screens/AnswerLockedScreen';
@@ -16,102 +25,78 @@ import { MemoryCardProps } from './components/MemoryCard';
 import { NavTab } from './components/BottomNav';
 import { QUESTION_BANK } from './data/gameData';
 
-type ScreenType =
-  | 'home'
-  | 'welcome'
-  | 'create-profile'
-  | 'invite'
-  | 'join-code'
-  | 'today'
-  | 'locked'
-  | 'guess'
-  | 'scores'
-  | 'memory'
-  | 'reveal'
-  | 'profile'
-  | 'friend-profile'
-  | 'sign-out'
-  | 'time-picker'
-  | 'leave-duo'
-  | 'game-settings';
+// ── ENTRY GUARD COMPONENT ──
+function EntryGuard({ children }: { children: React.ReactNode }) {
+  const { sessionType, isLoading, profile, setPendingInviteCode } = useSession();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-const VALID_SCREENS: ScreenType[] = [
-  'home',
-  'welcome',
-  'create-profile',
-  'invite',
-  'join-code',
-  'today',
-  'locked',
-  'guess',
-  'scores',
-  'memory',
-  'reveal',
-  'profile',
-  'friend-profile',
-  'sign-out',
-  'time-picker',
-  'leave-duo',
-  'game-settings',
-];
-
-export function App() {
-  const [currentScreen, setCurrentScreen] = useState<ScreenType>(() => {
-    if (typeof window !== 'undefined') {
-      const param = new URLSearchParams(window.location.search).get('screen') as ScreenType | null;
-      if (param && VALID_SCREENS.includes(param)) {
-        return param;
-      }
-      const saved = localStorage.getItem('current_screen') as ScreenType | null;
-      if (saved && VALID_SCREENS.includes(saved)) {
-        return saved;
-      }
-    }
-    return 'home';
-  });
-
-  // Sync current screen to URL search param and localStorage so reload never resets
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('current_screen', currentScreen);
-      const url = new URL(window.location.href);
-      if (url.searchParams.get('screen') !== currentScreen) {
-        url.searchParams.set('screen', currentScreen);
-        window.history.replaceState({}, '', url.toString());
+    if (isLoading) return;
+
+    const pathname = location.pathname.toLowerCase().replace(/\/+$/, '') || '/';
+    const searchParams = new URLSearchParams(location.search);
+    const codeParam = searchParams.get('code');
+
+    // Capture invite deep link code: /join?code=XXXXXX
+    if (pathname === '/join' && codeParam) {
+      setPendingInviteCode(codeParam);
+      if (sessionType === 'NEW' || !profile) {
+        navigate('/welcome', { replace: true });
+        return;
       }
     }
-  }, [currentScreen]);
 
-  // Handle browser back/forward buttons
-  useEffect(() => {
-    const handlePopState = () => {
-      const param = new URLSearchParams(window.location.search).get('screen') as ScreenType | null;
-      if (param && VALID_SCREENS.includes(param)) {
-        setCurrentScreen(param);
+    // 1. Signed in with Google but NO profile in Firestore -> redirect to /create-profile
+    if (sessionType === 'GOOGLE' && !profile) {
+      if (pathname !== '/create-profile') {
+        navigate('/create-profile', { replace: true });
       }
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+      return;
+    }
 
-  // 1. Dynamic User Profile (Player 1)
-  const [profile, setProfile] = useState<UserProfile>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('user_profile');
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {}
+    // 2. NEW session (no profile, not signed in) -> any route except /welcome and /join redirects to /welcome
+    if (sessionType === 'NEW' || !profile) {
+      if (pathname !== '/welcome' && pathname !== '/join') {
+        navigate('/welcome', { replace: true });
+      }
+      return;
+    }
+
+    // 3. GUEST or GOOGLE session WITH a profile -> visiting /welcome or root / redirects to /home
+    if (profile) {
+      if (pathname === '/welcome' || pathname === '/') {
+        navigate('/home', { replace: true });
       }
     }
-    return {
-      avatarId: 1,
-      name: 'Player 1',
-      color: 'salmon',
-    };
-  });
+  }, [isLoading, sessionType, profile, location.pathname, location.search, navigate, setPendingInviteCode]);
 
-  // 2. Dynamic Duo Partner Profile (Player 2)
+  return <>{children}</>;
+}
+
+// ── MAIN APP ROUTER COMPONENT ──
+function AppContent() {
+  const navigate = useNavigate();
+  const {
+    sessionType,
+    user,
+    profile,
+    history,
+    pendingInviteCode,
+    startGuestSession,
+    signInWithGoogle,
+    saveProfile,
+    updateHistory,
+    signOut,
+    leaveDuo,
+    welcomeBackToast,
+    dismissWelcomeBackToast,
+    guestHistoryToast,
+    triggerFirstGameFinished,
+    dismissGuestHistoryToast,
+  } = useSession();
+
+  // Partner Profile state
   const [partnerProfile] = useState<UserProfile>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('partner_profile');
@@ -131,146 +116,22 @@ export function App() {
   const [inviteCode] = useState<string>(() => generateInviteCode());
 
   // Settings & Duo state
-  const [dailyReminderEnabled, setDailyReminderEnabled] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('daily_reminder_enabled');
-      if (saved !== null) return saved === 'true';
-    }
-    return true;
-  });
+  const [dailyReminderEnabled, setDailyReminderEnabled] = useState<boolean>(true);
+  const [dailyReminderTime, setDailyReminderTime] = useState<string>('9:00 PM');
+  const [friendAlertsEnabled, setFriendAlertsEnabled] = useState<boolean>(true);
+  const [duoCreatedAt] = useState<string>('2024-09-14');
 
-  const [dailyReminderTime, setDailyReminderTime] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('daily_reminder_time') || '9:00 PM';
-    }
-    return '9:00 PM';
-  });
-
-  const [friendAlertsEnabled, setFriendAlertsEnabled] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('friend_alerts_enabled');
-      if (saved !== null) return saved === 'true';
-    }
-    return true;
-  });
-
-  const [duoCreatedAt] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('duo_created_at') || '2024-09-14';
-    }
-    return '2024-09-14';
-  });
-
-  const handleToggleDailyReminder = (enabled: boolean) => {
-    setDailyReminderEnabled(enabled);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('daily_reminder_enabled', enabled.toString());
-    }
-  };
-
-  const handleChangeReminderTime = (time: string) => {
-    setDailyReminderTime(time);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('daily_reminder_time', time);
-    }
-  };
-
-  const handleToggleFriendAlerts = (enabled: boolean) => {
-    setFriendAlertsEnabled(enabled);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('friend_alerts_enabled', enabled.toString());
-    }
-  };
-
-  const handleSignOut = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('user_profile');
-      localStorage.removeItem('current_screen');
-    }
-    setCurrentScreen('welcome');
-  };
-
-  const handleLeaveDuo = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('user_profile');
-      localStorage.removeItem('partner_profile');
-      localStorage.removeItem('current_screen');
-      localStorage.removeItem('game_sync_score');
-      localStorage.removeItem('game_streak');
-      localStorage.removeItem('game_matches');
-    }
-    setCurrentScreen('welcome');
-  };
-
-  // 3. Dynamic Questions Engine
-  const [questionIndex, setQuestionIndex] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('active_question_index');
-      if (saved) {
-        const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed)) return parsed;
-      }
-    }
-    return 0;
-  });
-
+  // Dynamic Questions Engine
+  const [questionIndex, setQuestionIndex] = useState<number>(0);
   const activeQuestion = QUESTION_BANK[questionIndex % QUESTION_BANK.length];
 
-  // 4. Dynamic Answers
-  const [player1Answer, setPlayer1Answer] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem(`today_answer_${activeQuestion.id}`) || activeQuestion.player1DefaultAnswer;
-    }
-    return activeQuestion.player1DefaultAnswer;
-  });
-
+  // Dynamic Answers
+  const [player1Answer, setPlayer1Answer] = useState<string>(
+    activeQuestion.player1DefaultAnswer
+  );
   const player2Answer = activeQuestion.player2Answer;
 
-  // 5. Dynamic Scores & Stats
-  const [syncScore, setSyncScore] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('game_sync_score');
-      if (saved) {
-        const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed)) return parsed;
-      }
-    }
-    return 74;
-  });
-
-  const [streak, setStreak] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('game_streak');
-      if (saved) {
-        const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed)) return parsed;
-      }
-    }
-    return 12;
-  });
-
-  const [matches, setMatches] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('game_matches');
-      if (saved) {
-        const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed)) return parsed;
-      }
-    }
-    return 38;
-  });
-
-  const [guessWins, setGuessWins] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('game_guess_wins');
-      if (saved) {
-        const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed)) return parsed;
-      }
-    }
-    return 21;
-  });
-
+  // Memory cards
   const [memoryCards, setMemoryCards] = useState<MemoryCardProps[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('game_memory_cards');
@@ -283,67 +144,50 @@ export function App() {
     return INITIAL_CARDS;
   });
 
-  const [selectedReaction, setSelectedReaction] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('reveal_selected_reaction');
-    }
-    return null;
-  });
-
-  // Save changes to localStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('game_sync_score', syncScore.toString());
-      localStorage.setItem('game_streak', streak.toString());
-      localStorage.setItem('game_matches', matches.toString());
-      localStorage.setItem('game_guess_wins', guessWins.toString());
-      localStorage.setItem('active_question_index', questionIndex.toString());
-      localStorage.setItem('game_memory_cards', JSON.stringify(memoryCards));
-    }
-  }, [syncScore, streak, matches, guessWins, questionIndex, memoryCards]);
+  const [selectedReaction, setSelectedReaction] = useState<string | null>(null);
 
   const isMatched =
     player1Answer.trim().toLowerCase() === player2Answer.trim().toLowerCase();
 
-  const handleGetStarted = () => {
-    setCurrentScreen('create-profile');
-  };
-
-  const handleOpenJoinCode = () => {
-    setCurrentScreen('join-code');
-  };
-
-  const handleBackToWelcome = () => {
-    setCurrentScreen('welcome');
-  };
-
-  const handleContinueProfile = (savedProfile: UserProfile) => {
-    setProfile(savedProfile);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('user_profile', JSON.stringify(savedProfile));
+  const handleTabNavigate = (tab: NavTab) => {
+    if (tab === 'today') {
+      navigate('/home');
+    } else if (tab === 'guess') {
+      navigate('/guess');
+    } else if (tab === 'scores') {
+      navigate('/scores');
+    } else if (tab === 'memory') {
+      navigate('/memory');
     }
-    setCurrentScreen('invite');
   };
 
-  const handleBackToProfile = () => {
-    setCurrentScreen('create-profile');
+  const handleGetStarted = () => {
+    startGuestSession();
+    navigate('/create-profile');
   };
 
-  const handleJoinSuccess = () => {
-    setCurrentScreen('today');
+  const handleContinueWithGoogle = async () => {
+    const success = await signInWithGoogle();
+    if (success) {
+      // EntryGuard will automatically redirect to /home or /create-profile
+    }
   };
 
-  const handleStartTodayFromInvite = () => {
-    setCurrentScreen('home');
+  const handleContinueProfile = async (savedProfile: UserProfile) => {
+    await saveProfile(savedProfile);
+    if (pendingInviteCode) {
+      navigate('/join');
+    } else {
+      navigate('/invite');
+    }
   };
 
   const handleNextQuestion = () => {
     const nextIdx = (questionIndex + 1) % QUESTION_BANK.length;
     setQuestionIndex(nextIdx);
     setPlayer1Answer(QUESTION_BANK[nextIdx].player1DefaultAnswer);
-    localStorage.setItem('today_answer_locked', 'false');
     setSelectedReaction(null);
-    setCurrentScreen('today');
+    navigate('/home');
   };
 
   const handleSaveToMemoryWall = () => {
@@ -354,230 +198,357 @@ export function App() {
       date: 'TODAY',
       question: activeQuestion.question,
       isMatched: isMatched,
-      p1Name: profile.name || 'You',
-      p1AvatarId: profile.avatarId,
-      p1Color: profile.color,
+      p1Name: profile?.name || 'You',
+      p1AvatarId: profile?.avatarId || 1,
+      p1Color: (profile?.color as any) || 'salmon',
       p1Answer: player1Answer,
       p2Name: partnerProfile.name || 'Alex',
       p2AvatarId: partnerProfile.avatarId,
       p2Color: partnerProfile.color,
       p2Answer: player2Answer,
       reactions: selectedReaction
-        ? [{ emoji: selectedReaction === '1' ? '✨' : selectedReaction === '2' ? '💀' : selectedReaction === '3' ? '😍' : selectedReaction === '4' ? '🔥' : '👀', count: 1 }]
+        ? [
+            {
+              emoji:
+                selectedReaction === '1'
+                  ? '✨'
+                  : selectedReaction === '2'
+                  ? '💀'
+                  : selectedReaction === '3'
+                  ? '😍'
+                  : selectedReaction === '4'
+                  ? '🔥'
+                  : '👀',
+              count: 1,
+            },
+          ]
         : undefined,
     };
 
-    setMemoryCards((prev) => [newCard, ...prev]);
+    setMemoryCards((prev) => {
+      const updated = [newCard, ...prev];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('game_memory_cards', JSON.stringify(updated));
+      }
+      return updated;
+    });
   };
 
-  const handleTabNavigate = (tab: NavTab) => {
-    if (tab === 'today') {
-      setCurrentScreen('home');
-    } else if (tab === 'guess') {
-      setCurrentScreen('guess');
-    } else if (tab === 'scores') {
-      setCurrentScreen('scores');
-    } else if (tab === 'memory') {
-      setCurrentScreen('memory');
-    }
+  const currentProfile: UserProfile = profile || {
+    avatarId: 1,
+    name: user?.displayName || 'Player 1',
+    color: 'salmon',
   };
-
-  if (currentScreen === 'memory') {
-    return (
-      <MemoryWallScreen
-        cards={memoryCards}
-        userProfile={profile}
-        onNavigateTab={handleTabNavigate}
-      />
-    );
-  }
-
-  if (currentScreen === 'friend-profile') {
-    return (
-      <FriendProfileScreen
-        friendData={{
-          name: partnerProfile.name || 'Sam',
-          subtitle: 'Teal player, joined Sep 12',
-          streakDays: streak,
-          matchesCount: matches,
-          guessWinsCount: guessWins,
-          lastAnsweredTime: 'today, 8:42 PM',
-        }}
-        onBack={() => setCurrentScreen('profile')}
-      />
-    );
-  }
-
-  if (
-    currentScreen === 'profile' ||
-    currentScreen === 'sign-out' ||
-    currentScreen === 'time-picker' ||
-    currentScreen === 'leave-duo'
-  ) {
-    return (
-      <ProfileScreen
-        userProfile={profile}
-        partnerProfile={partnerProfile}
-        duoCreatedAt={duoCreatedAt}
-        inviteCode={inviteCode}
-        dailyReminderEnabled={dailyReminderEnabled}
-        dailyReminderTime={dailyReminderTime}
-        friendAlertsEnabled={friendAlertsEnabled}
-        autoOpenSignOutModal={currentScreen === 'sign-out'}
-        autoOpenTimePicker={currentScreen === 'time-picker'}
-        autoOpenLeaveDuoModal={currentScreen === 'leave-duo'}
-        onBack={() => setCurrentScreen('home')}
-        onEditProfile={() => setCurrentScreen('create-profile')}
-        onSignOut={handleSignOut}
-        onLeaveDuo={handleLeaveDuo}
-        onToggleDailyReminder={handleToggleDailyReminder}
-        onChangeReminderTime={handleChangeReminderTime}
-        onToggleFriendAlerts={handleToggleFriendAlerts}
-        onOpenFriendProfile={() => setCurrentScreen('friend-profile')}
-      />
-    );
-  }
-
-  if (currentScreen === 'scores') {
-    return (
-      <ScoresScreen
-        player1Profile={profile}
-        player2Profile={partnerProfile}
-        syncScore={syncScore}
-        streak={streak}
-        matches={matches}
-        guessWins={guessWins}
-        onOpenSettings={() => setCurrentScreen('profile')}
-        onNavigateTab={handleTabNavigate}
-      />
-    );
-  }
-
-  if (currentScreen === 'guess') {
-    return (
-      <GuessScreen
-        questionData={activeQuestion}
-        realAnswer={player2Answer}
-        streak={streak}
-        onBack={() => setCurrentScreen('today')}
-        onLockGuess={(_guess, isCorrect) => {
-          if (isCorrect) {
-            setSyncScore((prev) => Math.min(100, prev + 15));
-            setGuessWins((prev) => prev + 1);
-            setStreak((prev) => prev + 1);
-          }
-          if (isMatched) {
-            setMatches((prev) => prev + 1);
-          }
-          setCurrentScreen('reveal');
-        }}
-        onNavigateTab={handleTabNavigate}
-      />
-    );
-  }
-
-  if (currentScreen === 'reveal') {
-    return (
-      <RevealScreen
-        player1Name={profile.name || 'Player 1'}
-        player1AvatarId={profile.avatarId}
-        player1Color={profile.color}
-        player2Name={partnerProfile.name || 'Alex'}
-        player2AvatarId={partnerProfile.avatarId}
-        player2Color={partnerProfile.color}
-        questionData={activeQuestion}
-        player1Answer={player1Answer}
-        player2Answer={player2Answer}
-        syncScore={syncScore}
-        isMatched={isMatched}
-        selectedReaction={selectedReaction}
-        onSelectReaction={(reactionId) => {
-          setSelectedReaction(reactionId);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('reveal_selected_reaction', reactionId);
-          }
-        }}
-        onSaveToMemoryWall={handleSaveToMemoryWall}
-        onNextQuestion={handleNextQuestion}
-        onBack={() => setCurrentScreen('locked')}
-        onNavigateTab={handleTabNavigate}
-      />
-    );
-  }
-
-  if (currentScreen === 'locked') {
-    return (
-      <AnswerLockedScreen
-        friendName={partnerProfile.name || 'Alex'}
-        onEditAnswer={() => {
-          localStorage.setItem('today_answer_locked', 'false');
-          setCurrentScreen('today');
-        }}
-        onOpenSettings={() => setCurrentScreen('profile')}
-        onNavigateTab={handleTabNavigate}
-        onPlayer2Answered={() => {
-          setCurrentScreen('guess');
-        }}
-      />
-    );
-  }
-
-  if (currentScreen === 'game-settings') {
-    return (
-      <GameSettingsScreen
-        onBack={() => setCurrentScreen('home')}
-      />
-    );
-  }
-
-  if (currentScreen === 'home' || currentScreen === 'today') {
-    return (
-      <HomeScreen
-        onOpenSettings={() => setCurrentScreen('profile')}
-        onOpenFriendProfile={() => setCurrentScreen('friend-profile')}
-        onNavigateTab={handleTabNavigate}
-        onOpenGameSettings={() => setCurrentScreen('game-settings')}
-      />
-    );
-  }
-
-  if (currentScreen === 'join-code') {
-    return (
-      <JoinCodeScreen
-        validCode={inviteCode}
-        onBack={handleBackToWelcome}
-        onCreateDuo={handleGetStarted}
-        onJoinSuccess={handleJoinSuccess}
-      />
-    );
-  }
-
-  if (currentScreen === 'invite') {
-    return (
-      <InviteFriendScreen
-        userProfile={profile}
-        inviteCode={inviteCode}
-        onBack={handleBackToProfile}
-        onEnterGame={handleStartTodayFromInvite}
-      />
-    );
-  }
-
-  if (currentScreen === 'create-profile') {
-    return (
-      <CreateProfileScreen
-        initialProfile={profile}
-        onBack={handleBackToWelcome}
-        onContinue={handleContinueProfile}
-      />
-    );
-  }
 
   return (
-    <WelcomeScreen
-      onGetStarted={handleGetStarted}
-      onJoinCode={handleOpenJoinCode}
-    />
+    <>
+      <Routes>
+        {/* Welcome */}
+        <Route
+          path="/welcome"
+          element={
+            <WelcomeScreen
+              onGetStarted={handleGetStarted}
+              onContinueWithGoogle={handleContinueWithGoogle}
+              onJoinCode={() => navigate('/join')}
+            />
+          }
+        />
+
+        {/* Create Profile */}
+        <Route
+          path="/create-profile"
+          element={
+            <CreateProfileScreen
+              initialProfile={
+                user && !profile
+                  ? {
+                      avatarId: 1,
+                      name: user.displayName || '',
+                      color: 'salmon',
+                    }
+                  : profile || undefined
+              }
+              onBack={() => navigate('/welcome')}
+              onContinue={handleContinueProfile}
+            />
+          }
+        />
+
+        {/* Invite Friend */}
+        <Route
+          path="/invite"
+          element={
+            <InviteFriendScreen
+              userProfile={currentProfile}
+              inviteCode={inviteCode}
+              onBack={() => navigate('/create-profile')}
+              onEnterGame={() => navigate('/home')}
+            />
+          }
+        />
+
+        {/* Join Code */}
+        <Route
+          path="/join"
+          element={
+            <JoinCodeScreen
+              validCode={pendingInviteCode || inviteCode}
+              onBack={() => navigate('/welcome')}
+              onCreateDuo={handleGetStarted}
+              onJoinSuccess={() => navigate('/home')}
+            />
+          }
+        />
+        <Route path="/join-code" element={<Navigate to="/join" replace />} />
+
+        {/* Home & Today */}
+        <Route
+          path="/home"
+          element={
+            <HomeScreen
+              onOpenSettings={() => navigate('/profile')}
+              onOpenFriendProfile={() => navigate('/friend')}
+              onNavigateTab={handleTabNavigate}
+              onOpenGameSettings={() => navigate('/settings-game')}
+            />
+          }
+        />
+        <Route path="/today" element={<Navigate to="/home" replace />} />
+        <Route path="/lobby" element={<Navigate to="/home" replace />} />
+
+        {/* Game Settings */}
+        <Route
+          path="/settings-game"
+          element={<GameSettingsScreen onBack={() => navigate('/home')} />}
+        />
+        <Route
+          path="/game-settings"
+          element={<Navigate to="/settings-game" replace />}
+        />
+
+        {/* Guess */}
+        <Route
+          path="/guess"
+          element={
+            <GuessScreen
+              questionData={activeQuestion}
+              realAnswer={player2Answer}
+              streak={history.stats.streak}
+              onBack={() => navigate('/home')}
+              onLockGuess={(_guess, isCorrect) => {
+                updateHistory((prev) => ({
+                  ...prev,
+                  stats: {
+                    ...prev.stats,
+                    syncScore: isCorrect ? Math.min(100, prev.stats.syncScore + 15) : prev.stats.syncScore,
+                    guessWins: isCorrect ? prev.stats.guessWins + 1 : prev.stats.guessWins,
+                    streak: isCorrect ? prev.stats.streak + 1 : prev.stats.streak,
+                    matches: isMatched ? prev.stats.matches + 1 : prev.stats.matches,
+                  },
+                }));
+                triggerFirstGameFinished();
+                navigate('/reveal');
+              }}
+              onNavigateTab={handleTabNavigate}
+            />
+          }
+        />
+
+        {/* Reveal */}
+        <Route
+          path="/reveal"
+          element={
+            <RevealScreen
+              player1Name={currentProfile.name || 'Player 1'}
+              player1AvatarId={currentProfile.avatarId}
+              player1Color={currentProfile.color}
+              player2Name={partnerProfile.name || 'Alex'}
+              player2AvatarId={partnerProfile.avatarId}
+              player2Color={partnerProfile.color}
+              questionData={activeQuestion}
+              player1Answer={player1Answer}
+              player2Answer={player2Answer}
+              syncScore={history.stats.syncScore}
+              isMatched={isMatched}
+              selectedReaction={selectedReaction}
+              onSelectReaction={(reactionId) => setSelectedReaction(reactionId)}
+              onSaveToMemoryWall={handleSaveToMemoryWall}
+              onNextQuestion={handleNextQuestion}
+              onBack={() => navigate('/locked')}
+              onNavigateTab={handleTabNavigate}
+            />
+          }
+        />
+
+        {/* Locked */}
+        <Route
+          path="/locked"
+          element={
+            <AnswerLockedScreen
+              friendName={partnerProfile.name || 'Alex'}
+              onEditAnswer={() => navigate('/home')}
+              onOpenSettings={() => navigate('/profile')}
+              onNavigateTab={handleTabNavigate}
+              onPlayer2Answered={() => navigate('/guess')}
+            />
+          }
+        />
+
+        {/* Scores */}
+        <Route
+          path="/scores"
+          element={
+            <ScoresScreen
+              player1Profile={currentProfile}
+              player2Profile={partnerProfile}
+              syncScore={history.stats.syncScore}
+              streak={history.stats.streak}
+              matches={history.stats.matches}
+              guessWins={history.stats.guessWins}
+              onOpenSettings={() => navigate('/profile')}
+              onNavigateTab={handleTabNavigate}
+            />
+          }
+        />
+
+        {/* Memory Wall */}
+        <Route
+          path="/memory"
+          element={
+            <MemoryWallScreen
+              cards={memoryCards}
+              userProfile={currentProfile}
+              onNavigateTab={handleTabNavigate}
+            />
+          }
+        />
+
+        {/* Profile */}
+        <Route
+          path="/profile"
+          element={
+            <ProfileScreen
+              userProfile={currentProfile}
+              partnerProfile={partnerProfile}
+              duoCreatedAt={duoCreatedAt}
+              inviteCode={inviteCode}
+              dailyReminderEnabled={dailyReminderEnabled}
+              dailyReminderTime={dailyReminderTime}
+              friendAlertsEnabled={friendAlertsEnabled}
+              sessionType={sessionType}
+              userEmail={user?.email || null}
+              onSignInWithGoogle={signInWithGoogle}
+              onBack={() => navigate('/home')}
+              onEditProfile={() => navigate('/create-profile')}
+              onSignOut={async () => {
+                await signOut();
+                navigate('/welcome', { replace: true });
+              }}
+              onLeaveDuo={async () => {
+                await leaveDuo();
+                navigate('/welcome', { replace: true });
+              }}
+              onToggleDailyReminder={setDailyReminderEnabled}
+              onChangeReminderTime={setDailyReminderTime}
+              onToggleFriendAlerts={setFriendAlertsEnabled}
+              onOpenFriendProfile={() => navigate('/friend')}
+            />
+          }
+        />
+
+        {/* Friend Profile */}
+        <Route
+          path="/friend"
+          element={
+            <FriendProfileScreen
+              friendData={{
+                name: partnerProfile.name || 'Sam',
+                subtitle: 'Teal player, joined Sep 12',
+                streakDays: history.stats.streak,
+                matchesCount: history.stats.matches,
+                guessWinsCount: history.stats.guessWins,
+                lastAnsweredTime: 'today, 8:42 PM',
+              }}
+              onBack={() => navigate('/profile')}
+            />
+          }
+        />
+        <Route path="/friend-profile" element={<Navigate to="/friend" replace />} />
+
+        {/* Catch-all redirect */}
+        <Route path="*" element={<Navigate to="/home" replace />} />
+      </Routes>
+
+      {/* Welcome Back Toast */}
+      {welcomeBackToast && (
+        <div
+          onClick={dismissWelcomeBackToast}
+          className="fixed top-5 left-1/2 -translate-x-1/2 bg-[#FCF7EB] border border-[#161B1E]/20 text-[#161B1E] font-extrabold text-[13.5px] px-5 py-2.5 rounded-full shadow-lg z-[9999] flex items-center gap-2 cursor-pointer animate-fadeIn font-['Nunito',sans-serif]"
+        >
+          <span>{welcomeBackToast}</span>
+          <button
+            type="button"
+            className="text-[#161B1E]/50 hover:text-[#161B1E] ml-1 text-sm font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* One-time cream toast after first finished game in GUEST session */}
+      {guestHistoryToast && (
+        <div
+          onClick={async () => {
+            dismissGuestHistoryToast();
+            await signInWithGoogle();
+          }}
+          className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-[#FCF7EB] border-[1.5px] border-[#161B1E] text-[#161B1E] font-extrabold text-[13.5px] px-5 py-2.5 rounded-full shadow-xl z-[9999] flex items-center gap-2.5 cursor-pointer active:scale-95 transition-all font-['Nunito',sans-serif]"
+        >
+          <svg width="15" height="15" viewBox="0 0 18 18">
+            <path
+              fill="#4285F4"
+              d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z"
+            />
+            <path
+              fill="#34A853"
+              d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.173 0 7.547 0 9s.347 2.827.957 4.039l3.007-2.332z"
+            />
+            <path
+              fill="#EA4335"
+              d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"
+            />
+          </svg>
+          <span>Sign in to keep your history</span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              dismissGuestHistoryToast();
+            }}
+            className="text-[#161B1E]/50 hover:text-[#161B1E] ml-1 text-sm font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
+export function App() {
+  return (
+    <BrowserRouter>
+      <SessionProvider>
+        <EntryGuard>
+          <AppContent />
+        </EntryGuard>
+      </SessionProvider>
+    </BrowserRouter>
   );
 }
 

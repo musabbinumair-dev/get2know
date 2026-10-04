@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { gameStore } from '../store';
 
 interface GameSettingsScreenProps {
   onBack: () => void;
+  onGoToLobby?: () => void;
 }
 
 interface DebugItem {
@@ -12,7 +14,7 @@ interface DebugItem {
   isOff: boolean;
 }
 
-export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack }) => {
+export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack, onGoToLobby }) => {
   // 1) Viewport tracking
   const [viewport, setViewport] = useState({
     w: typeof window !== 'undefined' ? window.innerWidth : 390,
@@ -96,20 +98,24 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack }
   };
 
   const handleCreateGame = () => {
-    console.log('Created Game with Settings:', {
+    gameStore.updateGameSettings({
       mode: selectedMode,
       categories: selectedCategories,
       difficulty,
-      timer,
+      timerSeconds: timer === 'Off' ? null : parseInt(timer, 10),
       rounds,
       speedBonus,
-      soundEffects,
+      sound: soundEffects,
     });
-    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    setToastMessage('Lobby coming soon');
-    toastTimeoutRef.current = setTimeout(() => {
-      setToastMessage(null);
-    }, 2500);
+    if (onGoToLobby) {
+      onGoToLobby();
+    } else {
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+      setToastMessage('Lobby coming soon');
+      toastTimeoutRef.current = setTimeout(() => {
+        setToastMessage(null);
+      }, 2500);
+    }
   };
 
   // Mode Blob Configurations

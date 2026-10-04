@@ -2,14 +2,18 @@ import React, { useState, useEffect, useRef } from 'react';
 
 interface WelcomeScreenProps {
   onGetStarted?: () => void;
+  onContinueWithGoogle?: () => Promise<void>;
   onJoinCode?: () => void;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onGetStarted,
+  onContinueWithGoogle,
   onJoinCode,
 }) => {
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [signInError, setSignInError] = useState<string | null>(null);
 
   // Safe area insets probe
   const [safeArea, setSafeArea] = useState({ top: 0, bottom: 0 });
@@ -129,8 +133,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   const crescentBottomTopY = 720 * f; // Sits to the right of the button
 
   // Button & Join link:
-  const buttonTopY = 730 * f;
-  const joinLineTopY = buttonTopY + 54 + 10 * f;
+  const buttonTopY = 678 * f;
+  const googleBtnTopY = 742 * f;
+  const joinLineTopY = 804 * f;
 
   return (
     <div
@@ -404,17 +409,17 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             }}
           />
 
-          {/* ── 12. "GET STARTED" BUTTON: 294x54 pill at (48, buttonTopY), solid deep black #191B20 ── */}
+          {/* ── 12. "GET STARTED" BUTTON: 304x48 pill at (43, buttonTopY), solid deep black #191B20 ── */}
           <button
             type="button"
             onClick={onGetStarted}
-            className="btn-press cursor-pointer hover:bg-[#282a30] transition-colors focus:outline-none"
+            className="btn-press cursor-pointer hover:bg-[#282a30] transition-colors focus:outline-none select-none"
             style={{
               position: 'absolute',
-              left: '48px',
+              left: '43px',
               top: `${buttonTopY}px`,
-              width: '294px',
-              height: '54px',
+              width: '304px',
+              height: '48px',
               backgroundColor: '#191B20',
               borderRadius: '9999px',
               border: 'none',
@@ -424,7 +429,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               color: '#FFFFFF',
               fontFamily: "'Nunito', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 800,
-              fontSize: '19px',
+              fontSize: '18px',
               letterSpacing: '-0.015em',
               margin: 0,
               padding: 0,
@@ -434,6 +439,118 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           >
             Get started
           </button>
+
+          {/* ── 12B. "SIGN IN WITH GOOGLE" BUTTON: 304x46 pill at (43, googleBtnTopY), darker background #EBE2CD, no border, logo close to text ── */}
+          <button
+            type="button"
+            disabled={isSigningIn}
+            onClick={async () => {
+              if (isSigningIn) return;
+              setIsSigningIn(true);
+              setSignInError(null);
+              try {
+                if (onContinueWithGoogle) {
+                  await onContinueWithGoogle();
+                }
+              } catch (err) {
+                console.warn('Sign-in issue:', err);
+                setSignInError('Sign-in failed. Try again.');
+                setTimeout(() => setSignInError(null), 3000);
+              } finally {
+                setIsSigningIn(false);
+              }
+            }}
+            className="btn-press cursor-pointer hover:bg-[#E3D9C2] active:scale-[0.98] transition-all focus:outline-none select-none"
+            style={{
+              position: 'absolute',
+              left: '43px',
+              top: `${googleBtnTopY}px`,
+              width: '304px',
+              height: '46px',
+              backgroundColor: '#EBE2CD',
+              borderRadius: '9999px',
+              border: 'none',
+              boxShadow: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              zIndex: 20,
+              boxSizing: 'border-box',
+              cursor: isSigningIn ? 'not-allowed' : 'pointer',
+              opacity: isSigningIn ? 0.75 : 1,
+            }}
+          >
+            {/* Google "G" logo: 18px close to text */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              {isSigningIn ? (
+                <div className="w-[18px] h-[18px] border-2 border-[#161B1E]/30 border-t-[#161B1E] rounded-full animate-spin" />
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 18 18">
+                  <path
+                    fill="#4285F4"
+                    d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.173 0 7.547 0 9s.347 2.827.957 4.039l3.007-2.332z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"
+                  />
+                </svg>
+              )}
+            </div>
+
+            <span
+              style={{
+                fontFamily: "'Nunito', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 800,
+                fontSize: '18px',
+                color: '#161B1E',
+                letterSpacing: '-0.015em',
+              }}
+            >
+              Sign in with Google
+            </span>
+          </button>
+
+          {/* Sign-in Error Toast */}
+          {signInError && (
+            <div
+              style={{
+                position: 'absolute',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                top: `${googleBtnTopY + 54}px`,
+                backgroundColor: '#FFF0F0',
+                border: '1px solid #FF8080',
+                color: '#C01010',
+                fontFamily: "'Nunito', sans-serif",
+                fontWeight: 800,
+                fontSize: '12px',
+                padding: '6px 14px',
+                borderRadius: '9999px',
+                zIndex: 30,
+                whiteSpace: 'nowrap',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              }}
+            >
+              {signInError}
+            </div>
+          )}
 
           {/* ── 13. "Already have a code? Join": centered beneath button at joinLineTopY ── */}
           <div

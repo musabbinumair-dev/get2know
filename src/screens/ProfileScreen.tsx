@@ -25,6 +25,9 @@ export interface ProfileScreenProps {
   onToggleFriendAlerts?: (enabled: boolean) => void;
   onOpenFriendProfile?: () => void;
   showDebugOverlay?: boolean;
+  sessionType?: 'NEW' | 'GUEST' | 'GOOGLE';
+  userEmail?: string | null;
+  onSignInWithGoogle?: () => void;
 }
 
 function formatDuoDate(timestamp?: number | string): string {
@@ -46,6 +49,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   autoOpenSignOutModal = false,
   autoOpenTimePicker = false,
   autoOpenLeaveDuoModal = false,
+  sessionType = 'GUEST',
+  userEmail = null,
+  onSignInWithGoogle,
   onBack,
   onEditProfile,
   onSignOut,
@@ -315,6 +321,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           >
             {getBlobColorName(userProfile.color, userProfile.avatarId)} player
           </div>
+
+          {/* User Google Email */}
+          {userEmail && (
+            <div className="mt-1 font-semibold text-[12px] text-[#17181B]/40 leading-none truncate max-w-[220px]">
+              {userEmail}
+            </div>
+          )}
         </div>
 
         {/* ---------------- DUO CARD ---------------- */}
@@ -606,16 +619,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           Edit profile
         </button>
 
-        {/* "Sign out": x 23 */}
+        {/* "Sign out" / "Sign in with Google to save your history": x 23 */}
         <button
           type="button"
-          onClick={() => setShowSignOutModal(true)}
-          className={`absolute left-[23px] w-[343px] rounded-full bg-[#17181B] text-white font-extrabold hover:bg-[#25272c] active:scale-[0.99] transition-all cursor-pointer z-10 focus:outline-none ${
-            isCompact ? 'text-[15.5px]' : 'text-[17px]'
+          onClick={() => {
+            if (sessionType === 'GUEST') {
+              onSignInWithGoogle?.();
+            } else {
+              setShowSignOutModal(true);
+            }
+          }}
+          className={`absolute left-[23px] w-[343px] rounded-full bg-[#17181B] text-white font-extrabold hover:bg-[#25272c] active:scale-[0.99] transition-all cursor-pointer z-10 focus:outline-none flex items-center justify-center px-4 ${
+            isCompact ? (sessionType === 'GUEST' ? 'text-[13px]' : 'text-[15.5px]') : (sessionType === 'GUEST' ? 'text-[14px]' : 'text-[17px]')
           }`}
           style={{ top: `${signOutTop}px`, height: `${btnH}px` }}
         >
-          Sign out
+          {sessionType === 'GUEST' ? 'Sign in with Google to save your history' : 'Sign out'}
         </button>
 
         {/* Link "Leave duo and delete my data": centered */}
