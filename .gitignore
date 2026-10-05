@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+.env.*
+CLEANUP_REPORT.md
+.vercel/
+scripts-tmp/
