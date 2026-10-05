@@ -1,0 +1,49 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile, games history, and stats",
+      "type": "object",
+      "properties": {
+        "profile": {
+          "type": "object",
+          "description": "User profile data",
+          "properties": {
+            "name": { "type": "string" },
+            "avatarId": { "type": "integer" },
+            "color": { "type": "string" },
+            "createdAt": { "type": "string" }
+          },
+          "required": ["name", "avatarId", "color"]
+        },
+        "stats": {
+          "type": "object",
+          "description": "Player game stats"
+        },
+        "history": {
+          "type": "object",
+          "description": "Historical games data"
+        }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User document containing profile and statistics"
+    },
+    "/users/{userId}/games/{gameId}": {
+      "schema": {
+        "title": "GameRecord",
+        "description": "A single played game record",
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "date": { "type": "string" },
+          "score": { "type": "integer" }
+        }
+      },
+      "description": "Subcollection of games played by the user"
+    }
+  }
+}
