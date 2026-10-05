@@ -29,6 +29,7 @@ import { CountdownScreen } from './screens/CountdownScreen';
 import { MemoryCardProps } from './components/MemoryCard';
 import { NavTab } from './components/BottomNav';
 import { QUESTION_BANK } from './data/gameData';
+import { usePreloadAssets } from './hooks/usePreloadAssets';
 
 // ── ENTRY GUARD COMPONENT ──
 function EntryGuard({ children }: { children: React.ReactNode }) {
@@ -595,6 +596,9 @@ function AppContent() {
 }
 
 export function App() {
+  // Eagerly preloads and in-memory caches all Vite PNG and WebP assets
+  usePreloadAssets();
+
   return (
     <BrowserRouter>
       <SessionProvider>

@@ -1,0 +1,271 @@
+{
+  "app": "Get-to-Know-You",
+  "page": "Landing page, desktop + tablet landscape",
+  "purpose": "Decorations extracted from the desktop mockup. These are FULL, correctly sized shapes for the 1440x900 layout. They replace every decoration that was reused from the mobile page, because the mobile files are pre-cropped for the mobile screen edges.",
+  "format": "WebP with alpha, lossy, native mockup resolution (about 1.1x the design size).",
+  "stage": {
+    "design": "1440 wide x H design px, s = min(viewportWidth/1440, 1.5, viewportHeight/780), H = viewportHeight/s (always >= 780)",
+    "reference_frame": "1440x900 (the mockup)",
+    "gtop_formula": "Gtop = 148 + 0.475 * (H - 780), main group height 504 (Gtop is 205 at H = 900)"
+  },
+  "corner_decorations": [
+    {
+      "file": "deco-moon-yellow-topleft.webp",
+      "role": "Yellow crescent, top-left corner",
+      "native_px": {
+        "w": 101,
+        "h": 134
+      },
+      "size_design_px": {
+        "w": 91.7,
+        "h": 121.7
+      },
+      "anchor": "VIEWPORT top-left corner (not the stage)",
+      "offsets_design_px": {
+        "left": 0.0,
+        "top": 2.7
+      },
+      "z_layer": "z0 (behind everything)",
+      "notes": "Visible part only: it is cut by the left edge. Place it flush to the viewport left edge. Do not mirror or rotate."
+    },
+    {
+      "file": "deco-heart-pink-topright.webp",
+      "role": "Pink heart, top-right corner",
+      "native_px": {
+        "w": 101,
+        "h": 113
+      },
+      "size_design_px": {
+        "w": 91.7,
+        "h": 102.6
+      },
+      "anchor": "VIEWPORT top-right corner (not the stage)",
+      "offsets_design_px": {
+        "right": 0.0,
+        "top": 16.3
+      },
+      "z_layer": "z0 (behind everything)",
+      "notes": "Visible part only: it is cut by the right edge. Place it flush to the viewport right edge."
+    },
+    {
+      "file": "deco-star-blue-bottomleft.webp",
+      "role": "Blue star, bottom-left corner",
+      "native_px": {
+        "w": 128,
+        "h": 130
+      },
+      "size_design_px": {
+        "w": 116.2,
+        "h": 118.0
+      },
+      "anchor": "VIEWPORT bottom-left corner (not the stage)",
+      "offsets_design_px": {
+        "left": 14.5,
+        "bottom": 11.1
+      },
+      "z_layer": "z0 (behind everything)",
+      "notes": "Complete shape, not cropped."
+    },
+    {
+      "file": "deco-cross-olive-bottomright.webp",
+      "role": "Olive cross, bottom-right",
+      "native_px": {
+        "w": 103,
+        "h": 106
+      },
+      "size_design_px": {
+        "w": 93.5,
+        "h": 96.2
+      },
+      "anchor": "VIEWPORT bottom-right corner (not the stage)",
+      "offsets_design_px": {
+        "right": 113.5,
+        "bottom": 9.3
+      },
+      "z_layer": "z0 (behind everything)",
+      "notes": "Complete shape, not cropped."
+    },
+    {
+      "file": "deco-moon-yellow-bottomright.webp",
+      "role": "Yellow crescent, bottom-right",
+      "native_px": {
+        "w": 92,
+        "h": 119
+      },
+      "size_design_px": {
+        "w": 83.5,
+        "h": 108.0
+      },
+      "anchor": "VIEWPORT bottom-right corner (not the stage)",
+      "offsets_design_px": {
+        "right": 10.0,
+        "bottom": 17.5
+      },
+      "z_layer": "z0 (behind everything)",
+      "notes": "Complete shape, not cropped. Sits to the right of the olive cross."
+    }
+  ],
+  "hero_decorations": [
+    {
+      "file": "deco-star-blue-hero.webp",
+      "role": "Blue star above the hero blob, top-right of it",
+      "native_px": {
+        "w": 122,
+        "h": 119
+      },
+      "size_design_px": {
+        "w": 110.8,
+        "h": 108.0
+      },
+      "anchor": "STAGE: x absolute on the 1440 stage, y = Gtop + dy",
+      "position_design_px": {
+        "x": 1182.1,
+        "dy": -11.6
+      },
+      "z_layer": "see notes",
+      "notes": "z1 (above the yellow blob, below the avatars). Complete shape."
+    },
+    {
+      "file": "deco-cross-olive-hero.webp",
+      "role": "Olive cross at the right of the hero blob",
+      "native_px": {
+        "w": 94,
+        "h": 99
+      },
+      "size_design_px": {
+        "w": 85.3,
+        "h": 89.9
+      },
+      "anchor": "STAGE: x absolute on the 1440 stage, y = Gtop + dy",
+      "position_design_px": {
+        "x": 1296.5,
+        "dy": 74.6
+      },
+      "z_layer": "see notes",
+      "notes": "z1. Complete shape."
+    },
+    {
+      "file": "deco-heart-pink-hero.webp",
+      "role": "Pink heart at the bottom-right of the hero blob",
+      "native_px": {
+        "w": 105,
+        "h": 103
+      },
+      "size_design_px": {
+        "w": 95.3,
+        "h": 93.5
+      },
+      "anchor": "STAGE: x absolute on the 1440 stage, y = Gtop + dy",
+      "position_design_px": {
+        "x": 1260.2,
+        "dy": 392.4
+      },
+      "z_layer": "see notes",
+      "notes": "z1. Complete shape."
+    },
+    {
+      "file": "sparkle-left.webp",
+      "role": "3 yellow dashes at the left of the hero",
+      "native_px": {
+        "w": 47,
+        "h": 122
+      },
+      "size_design_px": {
+        "w": 42.7,
+        "h": 110.8
+      },
+      "anchor": "STAGE: x absolute on the 1440 stage, y = Gtop + dy",
+      "position_design_px": {
+        "x": 720.0,
+        "dy": 207.2
+      },
+      "z_layer": "see notes",
+      "notes": "z1."
+    },
+    {
+      "file": "sparkle-right.webp",
+      "role": "3 yellow dashes at the right of the hero",
+      "native_px": {
+        "w": 47,
+        "h": 119
+      },
+      "size_design_px": {
+        "w": 42.7,
+        "h": 108.0
+      },
+      "anchor": "STAGE: x absolute on the 1440 stage, y = Gtop + dy",
+      "position_design_px": {
+        "x": 1295.6,
+        "dy": 228.1
+      },
+      "z_layer": "see notes",
+      "notes": "z1."
+    },
+    {
+      "file": "badge-vs-starburst.webp",
+      "role": "Yellow starburst between the two avatars",
+      "native_px": {
+        "w": 116,
+        "h": 107
+      },
+      "size_design_px": {
+        "w": 105.3,
+        "h": 97.2
+      },
+      "anchor": "STAGE: x absolute on the 1440 stage, y = Gtop + dy",
+      "position_design_px": {
+        "x": 966.1,
+        "dy": 229.0
+      },
+      "z_layer": "see notes",
+      "notes": "z2: above the left avatar, below the right avatar. The \"VS\" text is NOT in the image: draw it as code (Nunito 900 36px, ink #17181B) centered on the starburst."
+    }
+  ],
+  "mode_icons": [
+    {
+      "file": "mode-know-me.webp",
+      "role": "Circle icon inside the mode pill",
+      "native_px": {
+        "w": 49,
+        "h": 49
+      },
+      "size_design_px": {
+        "w": 44.5,
+        "h": 44.5
+      },
+      "notes": "Left side of the pill, 13px from the pill edge, vertically centered. Render at the size shown."
+    },
+    {
+      "file": "mode-trivia.webp",
+      "role": "Circle icon inside the mode pill",
+      "native_px": {
+        "w": 50,
+        "h": 49
+      },
+      "size_design_px": {
+        "w": 45.4,
+        "h": 44.5
+      },
+      "notes": "Left side of the pill, 13px from the pill edge, vertically centered. Render at the size shown."
+    },
+    {
+      "file": "mode-random.webp",
+      "role": "Circle icon inside the mode pill",
+      "native_px": {
+        "w": 50,
+        "h": 49
+      },
+      "size_design_px": {
+        "w": 45.4,
+        "h": 44.5
+      },
+      "notes": "Left side of the pill, 13px from the pill edge, vertically centered. Render at the size shown."
+    }
+  ],
+  "rules": [
+    "Use ONLY these files for decorations on the desktop/tablet layout. Do not reuse any decoration file from the mobile page, except the two avatar+blob images of the hero.",
+    "The 5 corner decorations are anchored to the VIEWPORT corners (scaled by s) so they are always flush and never cropped by the wrong edge. The 6 hero decorations move with the main group.",
+    "All decorations are behind the text and buttons, pointer-events none, and must not overlap text, buttons or pills at any size in the test matrix.",
+    "Never draw shapes with CSS/SVG/emoji."
+  ]
+}
