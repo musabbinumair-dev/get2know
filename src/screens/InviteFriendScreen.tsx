@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Screen } from '../components/Screen';
 import { UserProfile } from './CreateProfileScreen';
+import { DesktopInviteFriend } from '../components/DesktopInviteFriend';
 
 interface InviteFriendScreenProps {
   userProfile: UserProfile;
@@ -29,6 +30,56 @@ export const InviteFriendScreen: React.FC<InviteFriendScreenProps> = ({
   onFriendJoined,
   onEnterGame,
 }) => {
+  // Viewport tracking (using window.visualViewport if available)
+  const [viewport, setViewport] = useState({
+    width: typeof window !== 'undefined' ? (window.visualViewport?.width || window.innerWidth) : 390,
+    height: typeof window !== 'undefined' ? (window.visualViewport?.height || window.innerHeight) : 844,
+  });
+
+  useEffect(() => {
+    const updateViewport = () => {
+      const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+      const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      setViewport({ width: vw, height: vh });
+    };
+
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+    window.addEventListener('orientationchange', updateViewport);
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateViewport);
+      window.visualViewport.addEventListener('scroll', updateViewport);
+    }
+
+    return () => {
+      window.removeEventListener('resize', updateViewport);
+      window.removeEventListener('orientationchange', updateViewport);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updateViewport);
+        window.visualViewport.removeEventListener('scroll', updateViewport);
+      }
+    };
+  }, []);
+
+  // Frame parameter support e.g. ?frame=1440x900
+  const frameParam =
+    typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('frame')
+      : null;
+  let effectiveWidth = viewport.width;
+  let effectiveHeight = viewport.height;
+  if (frameParam) {
+    const [fw, fh] = frameParam.split('x').map(Number);
+    if (fw && fh) {
+      effectiveWidth = fw;
+      effectiveHeight = fh;
+    }
+  }
+
+  const isDesktopLandscape =
+    effectiveWidth >= 900 && effectiveWidth / effectiveHeight >= 1.15;
+
   const [code] = useState<string>(() => initialCode || generateInviteCode());
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
   const [sharedLink, setSharedLink] = useState<boolean>(false);
@@ -82,6 +133,20 @@ export const InviteFriendScreen: React.FC<InviteFriendScreenProps> = ({
       setTimeout(() => setSharedLink(false), 1500);
     }
   };
+
+  if (isDesktopLandscape) {
+    return (
+      <DesktopInviteFriend
+        userProfile={userProfile}
+        code={code}
+        onBack={onBack}
+        onFriendJoined={onFriendJoined}
+        onEnterGame={onEnterGame}
+        forcedWidth={effectiveWidth !== viewport.width ? effectiveWidth : undefined}
+        forcedHeight={effectiveHeight !== viewport.height ? effectiveHeight : undefined}
+      />
+    );
+  }
 
   return (
     <Screen bg="#99B0F7">
