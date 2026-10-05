@@ -664,7 +664,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
         {/* ---------------- BOTTOM NAVIGATION DOCK ---------------- */}
         {onNavigateTab && (
-          <div className="absolute bottom-2 left-0 right-0 flex justify-center z-30 pointer-events-auto">
+          <div className="absolute bottom-0 left-0 right-0 pb-2 flex justify-center z-30 pointer-events-auto">
             <BottomNav activeTab="profile" onTabChange={onNavigateTab} className="mb-0" />
           </div>
         )}

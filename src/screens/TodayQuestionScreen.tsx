@@ -112,7 +112,7 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
   };
 
   return (
-    <Screen bg="#FEE273" className="h-[100dvh] sm:h-[844px]">
+    <Screen bg="#FEE273" className="h-full min-h-[100dvh]">
       {/* ---------------- DECORATIVE BACKGROUND BLOBS ---------------- */}
       <div
         className="absolute top-[102px] -left-[24px] pointer-events-none select-none z-0"
@@ -303,8 +303,8 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
 
       {/* Bottom Navigation Dock (Hidden during gameplay) */}
       {!isInGame && (
-        <div className="absolute bottom-0 left-0 right-0 pb-1 z-30 pointer-events-auto">
-          <BottomNav activeTab={activeTab} onTabChange={handleTabChange} className="mb-1" />
+        <div className="absolute bottom-0 left-0 right-0 pb-[max(0.5rem,env(safe-area-inset-bottom))] z-30 pointer-events-auto">
+          <BottomNav activeTab={activeTab} onTabChange={handleTabChange} className="mb-0" />
         </div>
       )}
     </Screen>

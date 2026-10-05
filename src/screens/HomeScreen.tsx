@@ -33,7 +33,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   }, []);
 
   return (
-    <Screen bg="#F8F1E1" className="text-[#191D21] font-['Nunito'] relative overflow-hidden">
+    <Screen bg="#F8F1E1" className="h-full min-h-[100dvh] text-[#191D21] font-['Nunito'] relative overflow-hidden">
       {/* Responsive scaling for compact viewports */}
       <style>{`
         /* Smooth responsive scaling on compact screen heights */
@@ -375,7 +375,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       {/* =========================================================================
           6. GLOBAL BOTTOM NAVIGATION DOCK
          ========================================================================= */}
-      <div className="absolute bottom-2 sm:bottom-3 left-0 right-0 flex justify-center z-30 pointer-events-auto">
+      <div className="absolute bottom-0 left-0 right-0 pb-[max(0.5rem,env(safe-area-inset-bottom))] flex justify-center z-30 pointer-events-auto">
         <BottomNav activeTab="home" onTabChange={onNavigateTab} className="mb-0" />
       </div>
     </Screen>

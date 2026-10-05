@@ -221,7 +221,7 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
   }, [gameSession.currentRound]);
 
   return (
-    <Screen bg="#96B9FC" className="h-[100dvh] sm:h-[844px]">
+    <Screen bg="#96B9FC" className="h-full min-h-[100dvh]">
       {/* ---------------- STAGE CONTAINER ---------------- */}
       <div
         style={{

@@ -79,7 +79,7 @@ export const FinalResultScreen: React.FC = () => {
   };
 
   return (
-    <Screen bg="#FEE273" className="h-[100dvh] sm:h-[844px]">
+    <Screen bg="#FEE273" className="h-full min-h-[100dvh]">
       {/* Toast */}
       {toastMessage && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-pop pointer-events-none">

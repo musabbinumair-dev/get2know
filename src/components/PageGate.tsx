@@ -100,7 +100,7 @@ export const PageGate: React.FC<PageGateProps> = ({ children }) => {
           opacity: isReady ? 1 : 0,
           transition: 'opacity 200ms ease-out',
         }}
-        className="w-full h-full min-h-screen"
+        className="w-full h-full min-h-[100dvh] flex flex-col flex-1"
         aria-hidden={!isReady}
       >
         {children}

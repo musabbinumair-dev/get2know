@@ -174,7 +174,7 @@ export const MemoryWallScreen: React.FC<MemoryWallScreenProps> = ({
   const rightColumnCards = filteredCards.filter((_, idx) => idx % 2 === 1);
 
   return (
-    <Screen bg="#9BAE6F" className="h-[100dvh] sm:h-[844px]">
+    <Screen bg="#9BAE6F" className="h-full min-h-[100dvh]">
       {/* ---------------- PINNED HEADER LAYER (DOES NOT SCROLL) ---------------- */}
       <div className="relative w-full z-20 flex-shrink-0 bg-[#9BAE6F] pt-6 sm:pt-8 px-5 sm:px-6 select-none">
         {/* Top Bar: Title "Memory wall" & Search Button */}
@@ -279,7 +279,7 @@ export const MemoryWallScreen: React.FC<MemoryWallScreenProps> = ({
       {/* ---------------- SCROLL REGION (CARDS SLIDE UNDER TOP HEADER & BOTTOM NAV) ---------------- */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-4 sm:px-5 pt-1 pb-[86px] overscroll-contain select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] relative"
+        className="flex-1 overflow-y-auto px-4 sm:px-5 pt-1 pb-[100px] overscroll-contain select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] relative"
       >
         {/* Top subtle 16px fade */}
         <div
@@ -337,8 +337,8 @@ export const MemoryWallScreen: React.FC<MemoryWallScreenProps> = ({
       </div>
 
       {/* ---------------- BOTTOM NAVIGATION DOCK (EXACT SAME AS OTHER PAGES) ---------------- */}
-      <div className="absolute bottom-0 left-0 right-0 pb-1 z-30 pointer-events-auto">
-        <BottomNav activeTab="memory" onTabChange={onNavigateTab} className="mb-1" />
+      <div className="absolute bottom-0 left-0 right-0 pb-[max(0.5rem,env(safe-area-inset-bottom))] z-30 pointer-events-auto">
+        <BottomNav activeTab="memory" onTabChange={onNavigateTab} className="mb-0" />
       </div>
 
       {/* ---------------- MEMORY DETAIL MODAL / ROUTE STUB ---------------- */}

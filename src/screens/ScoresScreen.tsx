@@ -83,7 +83,7 @@ export const ScoresScreen: React.FC<ScoresScreenProps> = ({
   ];
 
   return (
-    <Screen bg="#F8F4E6" className="h-[100dvh] sm:h-[844px]">
+    <Screen bg="#F8F4E6" className="h-full min-h-[100dvh]">
       {/* ---------------- DECORATIVE BACKGROUND BLOBS (BELOW CONTENT, Z-INDEX 0) ---------------- */}
 
       {/* Top-Left: Pink Heart (peeking from left edge) */}
@@ -361,8 +361,8 @@ export const ScoresScreen: React.FC<ScoresScreenProps> = ({
       </div>
 
       {/* ---------------- BOTTOM NAVIGATION DOCK (AUTHENTIC, UN-DISTORTED) ---------------- */}
-      <div className="absolute bottom-0 left-0 right-0 pb-1 z-30 pointer-events-auto">
-        <BottomNav activeTab="scores" onTabChange={onNavigateTab} className="mb-1" />
+      <div className="absolute bottom-0 left-0 right-0 pb-[max(0.5rem,env(safe-area-inset-bottom))] z-30 pointer-events-auto">
+        <BottomNav activeTab="scores" onTabChange={onNavigateTab} className="mb-0" />
       </div>
     </Screen>
   );
