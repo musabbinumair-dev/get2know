@@ -30,11 +30,25 @@ const DEFAULT_FRIEND: FriendProfileData = {
   lastAnsweredTime: 'today, 8:42 PM',
 };
 
+const STAT_ASSETS = [
+  '/assets/scores/stat-starburst-yellow-streak.webp',
+  '/assets/scores/stat-teardrop-blue-matches.webp',
+  '/assets/scores/stat-cross-olive-guess-wins.webp',
+];
+
 export const FriendProfileScreen: React.FC<FriendProfileScreenProps> = ({
   friendData = DEFAULT_FRIEND,
   onBack,
   onNavigateTab,
 }) => {
+  // Preload score stats assets
+  useEffect(() => {
+    STAT_ASSETS.forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, []);
+
   // Nudge Toast & Disabled Countdown State
   const [nudgeCooldown, setNudgeCountdown] = useState<number>(0);
   const [showToast, setShowToast] = useState<boolean>(false);
@@ -99,12 +113,12 @@ export const FriendProfileScreen: React.FC<FriendProfileScreenProps> = ({
   const titleTop = isCompact ? 72 : 110;
 
   // Derived positions for content layout
-  const avatarTop = isCompact ? 124 : 168;
-  const avatarSize = isCompact ? 130 : 155;
-  const subtitleTop = isCompact ? 258 : 332;
-  const statsTop = isCompact ? 292 : 374;
-  const rowTop = isCompact ? 438 : 526;
-  const nudgeBtnTop = isCompact ? 506 : 596;
+  const avatarTop = isCompact ? 120 : 164;
+  const avatarSize = isCompact ? 128 : 152;
+  const subtitleTop = isCompact ? 254 : 326;
+  const statsTop = isCompact ? 286 : 362;
+  const rowTop = isCompact ? 418 : 504;
+  const nudgeBtnTop = isCompact ? 488 : 578;
 
   return (
     <div className="relative w-full h-[100dvh] bg-[#F5EEDA] flex justify-center items-start overflow-hidden font-['Nunito',sans-serif]">
@@ -204,66 +218,72 @@ export const FriendProfileScreen: React.FC<FriendProfileScreenProps> = ({
           </span>
         </div>
 
-        {/* ---------------- 5. STATS ROW (3 COLUMNS) ---------------- */}
+        {/* ---------------- 5. STATS ROW (3 SHAPES USING SAME ASSETS AS SCORES PAGE) ---------------- */}
         <div
-          className="absolute left-[22px] w-[346px] flex items-center justify-between z-15"
-          style={{ top: `${statsTop}px`, height: '110px' }}
+          className="absolute left-[22px] w-[346px] grid grid-cols-3 gap-2.5 z-15"
+          style={{ top: `${statsTop}px` }}
         >
           {/* Stat 1: Streak */}
-          <div className="relative w-[104px] h-[104px] flex flex-col items-center justify-center select-none">
-            <img
-              src="/stat-starburst-yellow-streak.webp"
-              alt=""
-              className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
-              draggable={false}
-            />
-            <div className="relative z-10 flex flex-col items-center justify-center -mt-1">
-              <span className="font-black text-[29px] text-[#111319] leading-none">
-                {friendData.streakDays}
-              </span>
-              <span className="font-extrabold text-[12px] text-[#111319]/80 leading-tight">
-                days
-              </span>
-              <span className="font-bold text-[13px] text-[#111319]/60 mt-0.5">
-                Streak
-              </span>
+          <div className="flex flex-col items-center select-none">
+            <div className="relative w-full aspect-square max-w-[92px] sm:max-w-[100px] flex items-center justify-center">
+              <img
+                src="/assets/scores/stat-starburst-yellow-streak.webp"
+                alt=""
+                className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
+                draggable={false}
+              />
+              <div className="relative z-10 flex flex-col items-center justify-center leading-none select-none">
+                <span className="text-[28px] sm:text-[31px] font-black text-[#17181B] leading-none tracking-tight">
+                  {friendData.streakDays}
+                </span>
+                <span className="text-[12.5px] sm:text-[13.5px] font-extrabold text-[#17181B] leading-none mt-0.5">
+                  days
+                </span>
+              </div>
             </div>
+            <span className="text-[13px] sm:text-[14px] font-bold text-[#17181B]/55 mt-1 tracking-tight leading-none text-center">
+              Streak
+            </span>
           </div>
 
           {/* Stat 2: Matches */}
-          <div className="relative w-[100px] h-[104px] flex flex-col items-center justify-center select-none">
-            <img
-              src="/stat-teardrop-blue-matches.webp"
-              alt=""
-              className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
-              draggable={false}
-            />
-            <div className="relative z-10 flex flex-col items-center justify-center -mt-1">
-              <span className="font-black text-[29px] text-[#111319] leading-none">
-                {friendData.matchesCount}
-              </span>
-              <span className="font-bold text-[13px] text-[#111319]/60 mt-2">
-                Matches
-              </span>
+          <div className="flex flex-col items-center select-none">
+            <div className="relative w-full aspect-square max-w-[92px] sm:max-w-[100px] flex items-center justify-center">
+              <img
+                src="/assets/scores/stat-teardrop-blue-matches.webp"
+                alt=""
+                className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
+                draggable={false}
+              />
+              <div className="relative z-10 flex flex-col items-center justify-center leading-none select-none pt-2 sm:pt-2.5">
+                <span className="text-[28px] sm:text-[31px] font-black text-[#17181B] leading-none tracking-tight">
+                  {friendData.matchesCount}
+                </span>
+              </div>
             </div>
+            <span className="text-[13px] sm:text-[14px] font-bold text-[#17181B]/55 mt-1 tracking-tight leading-none text-center">
+              Matches
+            </span>
           </div>
 
           {/* Stat 3: Guess Wins */}
-          <div className="relative w-[104px] h-[104px] flex flex-col items-center justify-center select-none">
-            <img
-              src="/stat-cross-olive-guess-wins.webp"
-              alt=""
-              className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
-              draggable={false}
-            />
-            <div className="relative z-10 flex flex-col items-center justify-center -mt-1">
-              <span className="font-black text-[29px] text-[#111319] leading-none">
-                {friendData.guessWinsCount}
-              </span>
-              <span className="font-bold text-[13px] text-[#111319]/60 mt-2">
-                Guess wins
-              </span>
+          <div className="flex flex-col items-center select-none">
+            <div className="relative w-full aspect-square max-w-[92px] sm:max-w-[100px] flex items-center justify-center">
+              <img
+                src="/assets/scores/stat-cross-olive-guess-wins.webp"
+                alt=""
+                className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
+                draggable={false}
+              />
+              <div className="relative z-10 flex flex-col items-center justify-center leading-none select-none">
+                <span className="text-[28px] sm:text-[31px] font-black text-[#17181B] leading-none tracking-tight">
+                  {friendData.guessWinsCount}
+                </span>
+              </div>
             </div>
+            <span className="text-[13px] sm:text-[14px] font-bold text-[#17181B]/55 mt-1 tracking-tight leading-none text-center">
+              Guess wins
+            </span>
           </div>
         </div>
 
