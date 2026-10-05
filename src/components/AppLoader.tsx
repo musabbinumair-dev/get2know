@@ -67,18 +67,25 @@ export const AppLoader: React.FC<AppLoaderProps> = ({
   const displaySubtext = message || defaultSubtext;
 
   const containerClasses = fullScreen
-    ? 'fixed inset-0 z-[99999] w-screen h-screen min-h-[100dvh]'
+    ? 'fixed inset-0 z-[99999] w-full h-full min-h-[100dvh]'
     : 'relative w-full h-full min-h-[360px]';
 
   return (
     <div
-      style={{ backgroundColor: resolvedBg }}
-      className={`${containerClasses} flex flex-col items-center justify-center select-none overflow-hidden font-['Nunito',sans-serif] transition-opacity duration-200 ease-out ${
+      style={{
+        backgroundColor: resolvedBg,
+        position: fullScreen ? 'fixed' : 'relative',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+      }}
+      className={`${containerClasses} flex flex-col items-center justify-center text-center select-none overflow-hidden font-['Nunito',sans-serif] transition-opacity duration-200 ease-out ${
         isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'
       } ${className}`}
     >
       {/* Centered Composition: Calm, lots of empty space, zero corner decorations */}
-      <div className="flex flex-col items-center justify-center px-6">
+      <div className="flex flex-col items-center justify-center text-center w-full max-w-[390px] mx-auto px-6 my-auto">
         
         {/* Dashed Circle (104px mobile, 120px desktop) with 3 bouncing dots inside */}
         <div className="relative w-[104px] h-[104px] md:w-[120px] md:h-[120px] flex items-center justify-center">
