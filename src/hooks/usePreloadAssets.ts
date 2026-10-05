@@ -1,42 +1,13 @@
-import { useState, useEffect } from 'react';
-import {
-  preloadAllAssets,
-  getPreloadState,
-  PreloadProgress,
-} from '../utils/preloadAssets';
+import { useEffect } from 'react';
+import { preloadAllAssets } from '../utils/preloadAssets';
 
 /**
- * Hook to initialize and monitor Vite asset preloading.
- * Call this at application root (e.g. `App.tsx` or `main.tsx`).
+ * Kicks off the two-tier asset preloader once, at application root.
+ * Fire-and-forget — never blocks rendering.
+ * Call this in App() or another component that mounts exactly once.
  */
-export function usePreloadAssets(): PreloadProgress {
-  const [state, setState] = useState<PreloadProgress>(() => getPreloadState());
-
+export function usePreloadAssets(): void {
   useEffect(() => {
-    let isMounted = true;
-
-    preloadAllAssets((progress, loaded, total) => {
-      if (!isMounted) return;
-      setState((prev) => ({
-        ...prev,
-        isLoaded: progress >= 100,
-        progress,
-        loadedCount: loaded,
-        totalCount: total,
-      }));
-    }).then(() => {
-      if (!isMounted) return;
-      setState((prev) => ({
-        ...prev,
-        isLoaded: true,
-        progress: 100,
-      }));
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  return state;
+    preloadAllAssets();
+  }, []); // run once on mount
 }
