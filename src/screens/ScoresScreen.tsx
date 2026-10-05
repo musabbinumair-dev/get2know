@@ -91,6 +91,8 @@ export const ScoresScreen: React.FC<ScoresScreenProps> = ({
         <img
           src="/assets/scores/deco-heart-pink-top-left-cropped.webp"
           alt=""
+          loading="eager"
+          decoding="sync"
           className="w-full h-full object-contain pointer-events-none select-none"
           draggable={false}
         />
@@ -101,6 +103,8 @@ export const ScoresScreen: React.FC<ScoresScreenProps> = ({
         <img
           src="/assets/scores/deco-star-blue-top-right-cropped.webp"
           alt=""
+          loading="eager"
+          decoding="sync"
           className="w-full h-full object-contain pointer-events-none select-none"
           draggable={false}
         />
@@ -111,6 +115,8 @@ export const ScoresScreen: React.FC<ScoresScreenProps> = ({
         <img
           src="/assets/scores/deco-cross-olive-right.webp"
           alt=""
+          loading="eager"
+          decoding="sync"
           className="w-full h-full object-contain pointer-events-none select-none"
           draggable={false}
         />
@@ -121,6 +127,8 @@ export const ScoresScreen: React.FC<ScoresScreenProps> = ({
         <img
           src="/assets/scores/deco-moon-yellow-bottom-left.webp"
           alt=""
+          loading="eager"
+          decoding="sync"
           className="w-full h-full object-contain pointer-events-none select-none"
           draggable={false}
         />
@@ -131,6 +139,8 @@ export const ScoresScreen: React.FC<ScoresScreenProps> = ({
         <img
           src="/assets/scores/deco-heart-pink-bottom-right-cropped.webp"
           alt=""
+          loading="eager"
+          decoding="sync"
           className="w-full h-full object-contain pointer-events-none select-none"
           draggable={false}
         />

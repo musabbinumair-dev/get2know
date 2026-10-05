@@ -1,20 +1,161 @@
 /**
- * Two-tier asset preloader.
+ * Decoration Image Preloading and In-Browser Caching System
  *
- * Uses the exact same static "/assets/..." paths that <img> tags request
- * from public/assets/ — no import.meta.glob, no Vite hashing, no src/assets/.
- *
- * Tier 1 – critical: Welcome, CreateProfile, Home screens (shown on first paint).
- *          Loaded immediately on call, in parallel.
- * Tier 2 – deferred: every other screen's assets.
- *          Loaded via requestIdleCallback (setTimeout fallback) so the first
- *          render is never blocked.
+ * Ensures all decoration WebP images appear INSTANTLY on first paint:
+ * 1. Preloads all decoration images upfront on app mount (no lazy loading).
+ * 2. Uses both `<link rel="preload">` in DOM and `new Image()` with `img.decode()`.
+ * 3. Keeps decoded Image instances in-memory to prevent GC and re-decoding.
+ * 4. Persists images to browser Cache Storage (`caches.open`) when supported.
+ * 5. Provides progress tracking for placeholder/skeleton UI during initial load.
  */
 
-// ─── Tier 1: screens visible on first or second paint ──────────────────────
+// ── 1. Comprehensive list of all decoration WebP images ──
+export const DECORATION_WEBP_URLS: readonly string[] = [
+  // Primary /assets/decoration*.webp files
+  '/assets/decoration-heart.webp',
+  '/assets/decoration-star.webp',
+  '/assets/decoration-cross.webp',
+  '/assets/decoration-moon.webp',
+  '/assets/decoration1.webp',
+  '/assets/decoration2.webp',
+  '/assets/decoration3.webp',
+  '/assets/decoration4.webp',
+  '/assets/deco-heart-pink.webp',
+  '/assets/deco-star-blue.webp',
+  '/assets/deco-cross-olive.webp',
+  '/assets/deco-moon-yellow.webp',
 
-const CRITICAL_URLS: readonly string[] = [
-  // Welcome screen
+  // Root decoration WebP files (used on Home, Countdown, Scores, etc.)
+  '/deco-heart-pink-top-left-cropped.webp',
+  '/deco-starburst-blue-top-right-cropped.webp',
+  '/deco-cross-olive-bottom-left.webp',
+  '/deco-cross-olive-bottom-right.webp',
+  '/deco-cross-olive-right.webp',
+  '/deco-crescent-yellow-bottom-right.webp',
+  '/deco-crescent-yellow-top-left-cropped.webp',
+  '/deco-heart-pink-bottom-right-cropped.webp',
+  '/deco-heart-pink-top-right-cropped.webp',
+  '/deco-sparks-yellow-around-avatars.webp',
+  '/deco-sparks-yellow-around-number.webp',
+  '/deco-sparks-yellow-around-players.webp',
+  '/deco-star-blue-bottom-left-cropped.webp',
+  '/deco-star-blue-left.webp',
+  '/deco-star-blue-top-right.webp',
+  '/deco-starburst-blue-bottom-left-cropped.webp',
+  '/deco-starburst-blue-top-right-cropped.webp',
+
+  // Screen-specific WebP decorations
+  '/assets/profile/deco-heart-pink.webp',
+  '/assets/profile/deco-star-blue.webp',
+  '/assets/profile/deco-cross-olive.webp',
+  '/assets/profile/deco-moon-yellow.webp',
+  '/assets/profile/sparkle-sun-yellow.webp',
+
+  '/assets/lobby/badge-vs-starburst.webp',
+  '/assets/lobby/deco-cross-olive.webp',
+  '/assets/lobby/deco-heart-pink.webp',
+  '/assets/lobby/deco-moon-yellow.webp',
+  '/assets/lobby/deco-star-blue.webp',
+  '/assets/lobby/hero-card-yellow.webp',
+  '/assets/lobby/sparkle-left.webp',
+  '/assets/lobby/sparkle-right.webp',
+
+  '/assets/landing/deco-cross-olive.webp',
+  '/assets/landing/deco-heart-pink.webp',
+  '/assets/landing/deco-moon-yellow.webp',
+  '/assets/landing/deco-star-blue.webp',
+  '/assets/landing/hero-blob-yellow.webp',
+  '/assets/landing/sparkle-sun-yellow.webp',
+
+  '/assets/landing-desktop/deco-cross-olive-bottomright.webp',
+  '/assets/landing-desktop/deco-cross-olive-hero.webp',
+  '/assets/landing-desktop/deco-heart-pink-hero.webp',
+  '/assets/landing-desktop/deco-heart-pink-topright.webp',
+  '/assets/landing-desktop/deco-moon-yellow-bottomright.webp',
+  '/assets/landing-desktop/deco-moon-yellow-topleft.webp',
+  '/assets/landing-desktop/deco-star-blue-bottomleft.webp',
+  '/assets/landing-desktop/deco-star-blue-hero.webp',
+  '/assets/landing-desktop/sparkle-left.webp',
+  '/assets/landing-desktop/sparkle-right.webp',
+
+  '/assets/scores/deco-cross-olive-right.webp',
+  '/assets/scores/deco-heart-pink-bottom-right-cropped.webp',
+  '/assets/scores/deco-heart-pink-top-left-cropped.webp',
+  '/assets/scores/deco-moon-yellow-bottom-left.webp',
+  '/assets/scores/deco-sparks-yellow-around-heart.webp',
+  '/assets/scores/deco-star-blue-top-right-cropped.webp',
+
+  '/assets/guess/deco-cross-olive.webp',
+  '/assets/guess/deco-heart-pink.webp',
+  '/assets/guess/deco-moon-yellow.webp',
+  '/assets/guess/deco-star-blue.webp',
+  '/assets/guess/badge-starburst-yellow.webp',
+
+  '/assets/join/deco-cross-olive.webp',
+  '/assets/join/deco-moon-yellow.webp',
+  '/assets/join/deco-star-blue.webp',
+  '/assets/join/sparkle-yellow.webp',
+
+  '/assets/reveal/deco-bottom-left.webp',
+  '/assets/reveal/deco-bottom-right.webp',
+  '/assets/reveal/crescent-yellow.webp',
+  '/assets/reveal/cross-olive.webp',
+  '/assets/reveal/match-starburst.webp',
+  '/assets/reveal/starburst-blue.webp',
+
+  '/assets/waiting/crescent-yellow.webp',
+  '/assets/waiting/cross-olive.webp',
+  '/assets/waiting/heart-pink-right.webp',
+  '/assets/waiting/heart-pink.webp',
+  '/assets/waiting/lock-hero.webp',
+
+  // Countdown WebP decorations
+  '/countdown/deco-crescent-yellow-top-left-cropped.webp',
+  '/countdown/deco-cross-olive-bottom-right.webp',
+  '/countdown/deco-cross-olive-right.webp',
+  '/countdown/deco-heart-pink-top-right-cropped.webp',
+  '/countdown/deco-sparks-yellow-around-number.webp',
+  '/countdown/deco-sparks-yellow-around-players.webp',
+  '/countdown/deco-star-blue-bottom-left-cropped.webp',
+  '/countdown/deco-star-blue-left.webp',
+  '/countdown/deco-star-blue-top-right.webp',
+
+  // Game Settings WebP decorations
+  '/game-settings-decorations/deco-cross-olive.webp',
+  '/game-settings-decorations/deco-heart-pink.webp',
+  '/game-settings-decorations/deco-moon-yellow.webp',
+  '/game-settings-decorations/deco-star-blue.webp',
+  '/game-settings-decorations/sparkle-left.webp',
+  '/game-settings-decorations/sparkle-right.webp',
+];
+
+// Additional high-priority hero elements and UI blobs
+export const CORE_HERO_ASSETS: readonly string[] = [
+  '/card-hero-yellow.webp',
+  '/badge-vs-starburst-yellow.webp',
+  '/logo-duo-sparks.webp',
+  '/icon-flame.webp',
+  '/icon-trophy-yellow-blob.webp',
+  '/icon-gear-settings.webp',
+  '/icon-wave-hand.webp',
+  '/icon-clock-teal-blob.webp',
+  '/quick-blob-pink-know-me.webp',
+  '/quick-blob-blue-trivia.webp',
+  '/quick-blob-green-random.webp',
+  '/quick-icon-wink-face-sparks.webp',
+  '/quick-icon-lightbulb-sparks.webp',
+  '/quick-icon-dice-sparks.webp',
+  '/stat-cross-olive-guess-wins.webp',
+  '/stat-starburst-yellow-streak.webp',
+  '/stat-teardrop-blue-matches.webp',
+  '/avatar-alex-pink-blob-boy.webp',
+  '/avatar-sam-blue-blob-girl.webp',
+  '/avatar-sam-teal-blob-bun-girl.webp',
+  '/assets/blobs/blue-avatar-blob.webp',
+  '/assets/blobs/pink-avatar-blob.webp',
+  '/assets/blobs/heart-pink.svg',
+  '/assets/blobs/starburst-yellow-small.svg',
+  '/assets/blobs/cross-olive-decorative.svg',
   '/assets/welcome/crescent-yellow-top.png',
   '/assets/welcome/heart-pink-right.png',
   '/assets/welcome/logo-duo.png',
@@ -24,195 +165,224 @@ const CRITICAL_URLS: readonly string[] = [
   '/assets/welcome/cross-olive.png',
   '/assets/welcome/heart-pink-left.png',
   '/assets/welcome/crescent-yellow-bottom.png',
-  // Avatar blobs + faces used on CreateProfile (PNG versions — always exist)
-  '/assets/blobs/avatar-blob-1.png',
-  '/assets/blobs/avatar-blob-2.png',
-  '/assets/blobs/avatar-blob-3.png',
-  '/assets/blobs/avatar-blob-4.png',
-  '/assets/blobs/avatar-blob-5.png',
-  '/assets/blobs/avatar-blob-6.png',
-  '/assets/avatars/avatar-1.png',
-  '/assets/avatars/avatar-2.png',
-  '/assets/avatars/avatar-3.png',
-  '/assets/avatars/avatar-4.png',
-  '/assets/avatars/avatar-5.png',
-  '/assets/avatars/avatar-6.png',
-  // Blob shapes used on Home + lobby entry
-  '/assets/blobs/blue-avatar-blob.webp',
-  '/assets/blobs/pink-avatar-blob.webp',
-  '/assets/blobs/crescent-pink-bottom-right.png',
-  '/assets/welcome/starburst-blue-right.png',
-  // CreateProfile decorations
-  '/assets/welcome/starburst-blue-left.png',
 ];
 
-// ─── Tier 2: remaining screens ──────────────────────────────────────────────
+// Complete list of all upfront assets to preload
+export const ALL_PRELOAD_URLS: readonly string[] = Array.from(
+  new Set([...DECORATION_WEBP_URLS, ...CORE_HERO_ASSETS])
+);
 
-const DEFERRED_URLS: readonly string[] = [
-  // Avatar webp (3-6 exist; 1-2 fall back to PNG, preloading is a no-op on miss)
-  '/assets/avatars/avatar-3.webp',
-  '/assets/avatars/avatar-4.webp',
-  '/assets/avatars/avatar-5.webp',
-  '/assets/avatars/avatar-6.webp',
-  '/assets/blobs/avatar-blob-1.webp',
-  '/assets/blobs/avatar-blob-2.webp',
-  '/assets/blobs/avatar-blob-3.webp',
-  '/assets/blobs/avatar-blob-4.webp',
-  '/assets/blobs/avatar-blob-5.webp',
-  '/assets/blobs/avatar-blob-6.webp',
-  // Blob colours used by MemoryCard / legacy paths
-  '/assets/blobs/color-blob-salmon.png',
-  '/assets/blobs/color-blob-teal.png',
-  '/assets/blobs/color-blob-blue.png',
-  '/assets/blobs/color-blob-pink-root.png',
-  // SVG decorations
-  '/assets/blobs/starburst-yellow-small.svg',
-  '/assets/blobs/starburst-blue-join.svg',
-  '/assets/blobs/heart-pink.svg',
-  '/assets/blobs/heart-pink-small.svg',
-  '/assets/blobs/cross-olive-decorative.svg',
-  // Guess screen
-  '/assets/guess/answer-blob-cream.webp',
-  '/assets/guess/answer-blob-green.webp',
-  '/assets/guess/answer-blob-pink.webp',
-  '/assets/guess/answer-blob-yellow.webp',
-  '/assets/guess/badge-starburst-yellow.webp',
-  '/assets/guess/deco-cross-olive.webp',
-  '/assets/guess/deco-heart-pink.webp',
-  '/assets/guess/deco-moon-yellow.webp',
-  '/assets/guess/deco-star-blue.webp',
-  // Join / invite
-  '/assets/join/avatar-blob-blue.webp',
-  '/assets/join/bubble-cream.webp',
-  '/assets/join/deco-cross-olive.webp',
-  '/assets/join/deco-moon-yellow.webp',
-  '/assets/join/deco-star-blue.webp',
-  '/assets/join/sparkle-yellow.webp',
-  // Landing (hero blob)
-  '/assets/landing/hero-blob-yellow.webp',
-  // Desktop landing
-  '/assets/landing-desktop/badge-vs-starburst.webp',
-  '/assets/landing-desktop/deco-cross-olive-bottomright.webp',
-  '/assets/landing-desktop/deco-cross-olive-hero.webp',
-  '/assets/landing-desktop/deco-heart-pink-hero.webp',
-  '/assets/landing-desktop/deco-heart-pink-topright.webp',
-  '/assets/landing-desktop/deco-moon-yellow-bottomright.webp',
-  '/assets/landing-desktop/deco-moon-yellow-topleft.webp',
-  '/assets/landing-desktop/deco-star-blue-bottomleft.webp',
-  '/assets/landing-desktop/deco-star-blue-hero.webp',
-  '/assets/landing-desktop/mode-know-me.webp',
-  '/assets/landing-desktop/mode-random.webp',
-  '/assets/landing-desktop/mode-trivia.webp',
-  '/assets/landing-desktop/sparkle-left.webp',
-  '/assets/landing-desktop/sparkle-right.webp',
-  // Lobby
-  '/assets/lobby/badge-vs-starburst.webp',
-  '/assets/lobby/deco-cross-olive.webp',
-  '/assets/lobby/deco-heart-pink.webp',
-  '/assets/lobby/deco-moon-yellow.webp',
-  '/assets/lobby/deco-star-blue.webp',
-  '/assets/lobby/emoji-brain.webp',
-  '/assets/lobby/emoji-wave.webp',
-  '/assets/lobby/hero-card-yellow.webp',
-  '/assets/lobby/sparkle-left.webp',
-  '/assets/lobby/sparkle-right.webp',
-  // Memory wall
-  '/assets/memorywall/badge-starburst-yellow.png',
-  // Profile
-  '/assets/profile/deco-cross-olive.webp',
-  '/assets/profile/deco-heart-pink.webp',
-  '/assets/profile/deco-moon-yellow.webp',
-  '/assets/profile/deco-star-blue.webp',
-  '/assets/profile/icon-blob-blue.webp',
-  '/assets/profile/icon-blob-olive.webp',
-  '/assets/profile/icon-blob-pink.webp',
-  '/assets/profile/sparkle-sun-yellow.webp',
-  // Reveal
-  '/assets/reveal/card-blob-blue.webp',
-  '/assets/reveal/card-blob-pink.webp',
-  '/assets/reveal/crescent-yellow.webp',
-  '/assets/reveal/cross-olive.webp',
-  '/assets/reveal/deco-bottom-left.webp',
-  '/assets/reveal/deco-bottom-right.webp',
-  '/assets/reveal/emoji-cry.webp',
-  '/assets/reveal/emoji-heart.webp',
-  '/assets/reveal/emoji-laugh.webp',
-  '/assets/reveal/emoji-smile.webp',
-  '/assets/reveal/emoji-smirk.webp',
-  '/assets/reveal/emoji-surprised.webp',
-  '/assets/reveal/heart-pink-small.webp',
-  '/assets/reveal/match-starburst-black.webp',
-  '/assets/reveal/match-starburst.webp',
-  '/assets/reveal/starburst-blue.webp',
-  // Scores
-  '/assets/scores/deco-cross-olive-right.webp',
-  '/assets/scores/deco-heart-pink-bottom-right-cropped.webp',
-  '/assets/scores/deco-heart-pink-top-left-cropped.webp',
-  '/assets/scores/deco-moon-yellow-bottom-left.webp',
-  '/assets/scores/deco-sparks-yellow-around-heart.webp',
-  '/assets/scores/deco-star-blue-top-right-cropped.webp',
-  '/assets/scores/hero-heart-pink-sync-score.webp',
-  '/assets/scores/icon-category-dreams-blue-moon.webp',
-  '/assets/scores/icon-category-fears-green-scream.webp',
-  '/assets/scores/icon-category-food-pink-pizza.webp',
-  '/assets/scores/stat-cross-olive-guess-wins.webp',
-  '/assets/scores/stat-starburst-yellow-streak.webp',
-  '/assets/scores/stat-teardrop-blue-matches.webp',
-  // Waiting / answer-locked
-  '/assets/waiting/crescent-yellow.webp',
-  '/assets/waiting/cross-olive.webp',
-  '/assets/waiting/heart-pink-right.webp',
-  '/assets/waiting/heart-pink.webp',
-  '/assets/waiting/lock-hero.webp',
-  '/assets/waiting/logo-duo.webp',
-  '/assets/waiting/starburst-blue.png',
-  '/assets/waiting/streak-flame.webp',
-  '/assets/waiting/waiting-avatar-ring.webp',
-];
+// ── 2. In-Memory Image Cache (Store decoded HTMLImageElements) ──
+const inMemoryCache = new Map<string, HTMLImageElement>();
+const loadingPromises = new Map<string, Promise<HTMLImageElement>>();
+const preloadedUrlSet = new Set<string>();
 
-// ─── Preload primitive ───────────────────────────────────────────────────────
+/**
+ * Check if a URL has already been preloaded and decoded in memory.
+ */
+export function isImagePreloaded(url: string): boolean {
+  return preloadedUrlSet.has(url);
+}
 
-function preloadOne(url: string): void {
-  const img = new Image();
-  img.src = url;
-  if ('decode' in img && typeof img.decode === 'function') {
-    img.decode().catch(() => { /* ignore — file may simply not exist */ });
-  } else {
-    img.onerror = null; // silence console errors for missing optional assets
+/**
+ * Injects a `<link rel="preload" as="image" href="..." />` tag in `<head>`
+ * so the browser network pipeline begins fetching before parser execution.
+ */
+export function injectPreloadLink(url: string): void {
+  if (typeof document === 'undefined') return;
+  const existing = document.querySelector(`link[rel="preload"][href="${url}"]`);
+  if (existing) return;
+
+  const link = document.createElement('link');
+  link.rel = 'preload';
+  link.as = 'image';
+  link.href = url;
+  if (url.endsWith('.webp')) {
+    link.type = 'image/webp';
+  } else if (url.endsWith('.svg')) {
+    link.type = 'image/svg+xml';
+  } else if (url.endsWith('.png')) {
+    link.type = 'image/png';
+  }
+  document.head.appendChild(link);
+}
+
+/**
+ * Caches an image in the browser CacheStorage API (`window.caches`)
+ * for instant sub-millisecond retrieval on revisits and reloads.
+ */
+const CACHE_NAME = 'get2know-decorations-v1';
+
+async function cacheInBrowserStorage(url: string): Promise<void> {
+  if (typeof window === 'undefined' || !('caches' in window)) return;
+  try {
+    const cache = await window.caches.open(CACHE_NAME);
+    const match = await cache.match(url);
+    if (!match) {
+      await cache.add(url);
+    }
+  } catch {
+    // Non-fatal if CacheStorage fails or is disabled (e.g. private mode)
   }
 }
 
-// ─── Public API ──────────────────────────────────────────────────────────────
+/**
+ * Preloads a single image using `new Image()`, decodes it with `img.decode()`,
+ * stores it in the in-memory cache, and writes to Cache Storage.
+ */
+export function preloadImage(url: string): Promise<HTMLImageElement> {
+  // If already in memory, return immediately
+  const cached = inMemoryCache.get(url);
+  if (cached) {
+    return Promise.resolve(cached);
+  }
 
-let started = false;
+  // If currently loading, reuse the inflight promise
+  const inflight = loadingPromises.get(url);
+  if (inflight) {
+    return inflight;
+  }
+
+  // Also inject <link rel="preload"> to give browser priority
+  injectPreloadLink(url);
+
+  // Trigger Cache Storage caching in parallel (background)
+  cacheInBrowserStorage(url).catch(() => {});
+
+  const promise = new Promise<HTMLImageElement>((resolve) => {
+    const img = new Image();
+    // Do NOT set crossOrigin for same-origin local assets
+    img.decoding = 'async';
+
+    const onDone = async () => {
+      try {
+        if ('decode' in img && typeof img.decode === 'function') {
+          await img.decode();
+        }
+      } catch {
+        // decode error is non-fatal (image still usable or handled by fallback)
+      }
+      inMemoryCache.set(url, img);
+      preloadedUrlSet.add(url);
+      resolve(img);
+    };
+
+    img.onload = onDone;
+    img.onerror = () => {
+      // Resolve anyway so one missing optional asset never blocks the entire app
+      preloadedUrlSet.add(url);
+      resolve(img);
+    };
+
+    img.src = url;
+
+    // Check if the browser had it instantly cached
+    if (img.complete) {
+      onDone();
+    }
+  }).finally(() => {
+    loadingPromises.delete(url);
+  });
+
+  loadingPromises.set(url, promise);
+  return promise;
+}
+
+// ── 3. Batch Preloader with Progress Tracking ──
+let preloadingStarted = false;
+let preloadingComplete = false;
+const listeners = new Set<(progress: number, loaded: number, total: number) => void>();
+
+export interface PreloadProgress {
+  isComplete: boolean;
+  progress: number;
+  loaded: number;
+  total: number;
+}
+
+let currentProgress: PreloadProgress = {
+  isComplete: false,
+  progress: 0,
+  loaded: 0,
+  total: ALL_PRELOAD_URLS.length,
+};
+
+export function getPreloadProgress(): PreloadProgress {
+  return currentProgress;
+}
 
 /**
- * Fire-and-forget two-tier preloader.
- * Safe to call multiple times — runs only once.
+ * Preload all decoration images upfront on app initialization.
+ * No lazy loading — loads all decorations before user sees the app.
  */
-export function preloadAllAssets(): void {
-  if (started) return;
-  started = true;
+export function preloadAllDecorationImages(
+  onProgress?: (progress: number, loaded: number, total: number) => void
+): Promise<void> {
+  if (onProgress) {
+    listeners.add(onProgress);
+  }
 
-  // Tier 1: start immediately, in parallel
-  for (const url of CRITICAL_URLS) preloadOne(url);
+  if (preloadingComplete) {
+    onProgress?.(100, ALL_PRELOAD_URLS.length, ALL_PRELOAD_URLS.length);
+    return Promise.resolve();
+  }
 
-  // Tier 2: wait for the browser's idle slot (or 2 s fallback)
-  const scheduleDeferred = (): void => {
-    for (const url of DEFERRED_URLS) preloadOne(url);
+  if (preloadingStarted) {
+    return new Promise((resolve) => {
+      const check = setInterval(() => {
+        if (preloadingComplete) {
+          clearInterval(check);
+          resolve();
+        }
+      }, 50);
+    });
+  }
+
+  preloadingStarted = true;
+  const urls = ALL_PRELOAD_URLS;
+  const total = urls.length;
+  let loaded = 0;
+
+  // In bulk, inject preload links in batches of 10 to warm the network pipe
+  for (const url of urls) {
+    injectPreloadLink(url);
+  }
+
+  const updateProgress = () => {
+    loaded++;
+    const progress = Math.min(100, Math.round((loaded / total) * 100));
+    currentProgress = {
+      isComplete: loaded >= total,
+      progress,
+      loaded,
+      total,
+    };
+    listeners.forEach((listener) => listener(progress, loaded, total));
   };
 
-  if (typeof requestIdleCallback === 'function') {
-    requestIdleCallback(scheduleDeferred, { timeout: 2000 });
-  } else {
-    setTimeout(scheduleDeferred, 200);
-  }
+  const tasks = urls.map((url) =>
+    preloadImage(url).then(() => {
+      updateProgress();
+    }).catch(() => {
+      updateProgress();
+    })
+  );
+
+  return Promise.allSettled(tasks).then(() => {
+    preloadingComplete = true;
+    currentProgress = {
+      isComplete: true,
+      progress: 100,
+      loaded: total,
+      total,
+    };
+    listeners.forEach((listener) => listener(100, total, total));
+    listeners.clear();
+  });
 }
 
 /**
- * Returns a de-duped list of every URL this preloader touches.
- * Useful for auditing coverage — not required at runtime.
+ * Legacy compatibility export for existing callers.
  */
-export function getAllPreloadUrls(): string[] {
-  return Array.from(new Set([...CRITICAL_URLS, ...DEFERRED_URLS]));
-}
+export const preloadAllAssets = preloadAllDecorationImages;
+export const getAllPreloadUrls = () => Array.from(ALL_PRELOAD_URLS);

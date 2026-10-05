@@ -349,6 +349,8 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack, 
         <img
           src="/game-settings-decorations/deco-moon-yellow.webp"
           alt=""
+          loading="eager"
+          decoding="sync"
           style={{
             position: 'absolute',
             left: `${312.4 * s}px`,
@@ -365,6 +367,8 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack, 
         <img
           src="/game-settings-decorations/deco-heart-pink.webp"
           alt=""
+          loading="eager"
+          decoding="sync"
           style={{
             position: 'absolute',
             right: 0,
@@ -381,6 +385,8 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack, 
         <img
           src="/game-settings-decorations/deco-star-blue.webp"
           alt=""
+          loading="eager"
+          decoding="sync"
           style={{
             position: 'absolute',
             left: 0,
@@ -397,6 +403,8 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack, 
         <img
           src="/game-settings-decorations/deco-cross-olive.webp"
           alt=""
+          loading="eager"
+          decoding="sync"
           style={{
             position: 'absolute',
             right: 0,

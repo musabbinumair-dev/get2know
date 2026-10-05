@@ -29,7 +29,10 @@ import { CountdownScreen } from './screens/CountdownScreen';
 import { MemoryCardProps } from './components/MemoryCard';
 import { NavTab } from './components/BottomNav';
 import { QUESTION_BANK } from './data/gameData';
-import { usePreloadAssets } from './hooks/usePreloadAssets';
+import { AppLoader } from './components/AppLoader';
+import { PageGate } from './components/PageGate';
+import { DebugPreloadOverlay } from './components/DebugPreloadOverlay';
+import { LoaderProvider, useAppLoader } from './services/loaderContext';
 
 // ── ENTRY GUARD COMPONENT ──
 function EntryGuard({ children }: { children: React.ReactNode }) {
@@ -75,12 +78,16 @@ function EntryGuard({ children }: { children: React.ReactNode }) {
     }
   }, [isLoading, profile, location.pathname, location.search, navigate, setPendingInviteCode]);
 
+  if (isLoading) {
+    return <AppLoader theme="cream" message="Getting things ready…" />;
+  }
+
   return <>{children}</>;
 }
 
 // ── MAIN APP ROUTER COMPONENT ──
 function AppContent() {
-  const navigate = useNavigate();
+  const { navigateWithLoader } = useAppLoader();
   const {
     sessionType,
     user,
@@ -155,36 +162,33 @@ function AppContent() {
 
   const handleTabNavigate = (tab: NavTab) => {
     if (tab === 'home' || tab === 'today') {
-      navigate('/home');
+      navigateWithLoader('/home');
     } else if (tab === 'scores') {
-      navigate('/scores');
+      navigateWithLoader('/scores');
     } else if (tab === 'memory') {
-      navigate('/memory');
+      navigateWithLoader('/memory');
     } else if (tab === 'profile') {
-      navigate('/profile');
+      navigateWithLoader('/profile');
     } else if (tab === 'guess') {
-      navigate('/guess');
+      navigateWithLoader('/guess');
     }
   };
 
   const handleGetStarted = () => {
     startGuestSession();
-    navigate('/create-profile');
+    navigateWithLoader('/create-profile');
   };
 
   const handleContinueWithGoogle = async () => {
-    const success = await signInWithGoogle();
-    if (success) {
-      // EntryGuard will automatically redirect to /home or /create-profile
-    }
+    await signInWithGoogle();
   };
 
   const handleContinueProfile = async (savedProfile: UserProfile) => {
     await saveProfile(savedProfile);
     if (pendingInviteCode) {
-      navigate('/join');
+      navigateWithLoader('/join');
     } else {
-      navigate('/invite');
+      navigateWithLoader('/invite');
     }
   };
 
@@ -193,7 +197,7 @@ function AppContent() {
     setQuestionIndex(nextIdx);
     setPlayer1Answer(QUESTION_BANK[nextIdx].player1DefaultAnswer);
     setSelectedReaction(null);
-    navigate('/home');
+    navigateWithLoader('/home');
   };
 
   const handleSaveToMemoryWall = () => {
@@ -248,15 +252,16 @@ function AppContent() {
 
   return (
     <>
-      <Routes>
-        {/* Welcome */}
+      <PageGate>
+        <Routes>
+          {/* Welcome */}
         <Route
           path="/welcome"
           element={
             <WelcomeScreen
               onGetStarted={handleGetStarted}
               onContinueWithGoogle={handleContinueWithGoogle}
-              onJoinCode={() => navigate('/join')}
+              onJoinCode={() => navigateWithLoader('/join')}
             />
           }
         />
@@ -277,7 +282,7 @@ function AppContent() {
               }
               onBack={async () => {
                 await signOut();
-                navigate('/welcome', { replace: true });
+                navigateWithLoader('/welcome');
               }}
               onContinue={handleContinueProfile}
             />
@@ -291,8 +296,8 @@ function AppContent() {
             <InviteFriendScreen
               userProfile={currentProfile}
               inviteCode={inviteCode}
-              onBack={() => navigate('/create-profile')}
-              onEnterGame={() => navigate('/home')}
+              onBack={() => navigateWithLoader('/create-profile')}
+              onEnterGame={() => navigateWithLoader('/home')}
             />
           }
         />
@@ -303,9 +308,9 @@ function AppContent() {
           element={
             <JoinCodeScreen
               validCode={pendingInviteCode || inviteCode}
-              onBack={() => navigate('/welcome')}
+              onBack={() => navigateWithLoader('/welcome')}
               onCreateDuo={handleGetStarted}
-              onJoinSuccess={() => navigate('/home')}
+              onJoinSuccess={() => navigateWithLoader('/home')}
             />
           }
         />
@@ -316,10 +321,12 @@ function AppContent() {
           path="/home"
           element={
             <HomeScreen
-              onOpenSettings={() => navigate('/profile')}
-              onOpenFriendProfile={() => navigate('/friend')}
+              onOpenSettings={() => navigateWithLoader('/profile')}
+              onOpenFriendProfile={() => navigateWithLoader('/friend')}
               onNavigateTab={handleTabNavigate}
-              onOpenGameSettings={() => navigate('/settings-game')}
+              onOpenGameSettings={() => navigateWithLoader('/settings-game')}
+              onStartKnowMe={() => navigateWithLoader('/today-question')}
+              onStartTrivia={() => navigateWithLoader('/lobby')}
             />
           }
         />
@@ -330,9 +337,9 @@ function AppContent() {
           path="/lobby"
           element={
             <LobbyScreen
-              onBack={() => navigate('/settings-game')}
-              onLeave={() => navigate('/home')}
-              onStartGame={() => navigate('/countdown')}
+              onBack={() => navigateWithLoader('/settings-game')}
+              onLeave={() => navigateWithLoader('/home')}
+              onStartGame={() => navigateWithLoader('/countdown')}
             />
           }
         />
@@ -350,8 +357,8 @@ function AppContent() {
           path="/settings-game"
           element={
             <GameSettingsScreen
-              onBack={() => navigate('/home')}
-              onCreateGame={() => navigate('/lobby')}
+              onBack={() => navigateWithLoader('/home')}
+              onCreateGame={() => navigateWithLoader('/lobby')}
             />
           }
         />
@@ -366,9 +373,9 @@ function AppContent() {
           element={
             <TodayQuestionScreen
               userProfile={currentProfile}
-              onOpenSettings={() => navigate('/profile')}
+              onOpenSettings={() => navigateWithLoader('/profile')}
               onNavigateTab={handleTabNavigate}
-              onLockInSuccess={() => navigate('/locked')}
+              onLockInSuccess={() => navigateWithLoader('/locked')}
             />
           }
         />
@@ -387,7 +394,7 @@ function AppContent() {
               questionData={activeQuestion}
               realAnswer={player2Answer}
               streak={history.stats.streak}
-              onBack={() => navigate('/home')}
+              onBack={() => navigateWithLoader('/home')}
               onLockGuess={(_guess, isCorrect) => {
                 updateHistory((prev) => ({
                   ...prev,
@@ -400,7 +407,7 @@ function AppContent() {
                   },
                 }));
                 triggerFirstGameFinished();
-                navigate('/reveal');
+                navigateWithLoader('/reveal');
               }}
               onNavigateTab={handleTabNavigate}
             />
@@ -427,8 +434,8 @@ function AppContent() {
               onSelectReaction={(reactionId) => setSelectedReaction(reactionId)}
               onSaveToMemoryWall={handleSaveToMemoryWall}
               onNextQuestion={handleNextQuestion}
-              onBack={() => navigate('/locked')}
-              onOpenSettings={() => navigate('/profile')}
+              onBack={() => navigateWithLoader('/locked')}
+              onOpenSettings={() => navigateWithLoader('/profile')}
               onNavigateTab={handleTabNavigate}
             />
           }
@@ -440,10 +447,10 @@ function AppContent() {
           element={
             <AnswerLockedScreen
               friendName={partnerProfile.name || 'Alex'}
-              onEditAnswer={() => navigate('/home')}
-              onOpenSettings={() => navigate('/profile')}
+              onEditAnswer={() => navigateWithLoader('/home')}
+              onOpenSettings={() => navigateWithLoader('/profile')}
               onNavigateTab={handleTabNavigate}
-              onPlayer2Answered={() => navigate('/guess')}
+              onPlayer2Answered={() => navigateWithLoader('/guess')}
             />
           }
         />
@@ -459,7 +466,7 @@ function AppContent() {
               streak={history.stats.streak}
               matches={history.stats.matches}
               guessWins={history.stats.guessWins}
-              onOpenSettings={() => navigate('/profile')}
+              onOpenSettings={() => navigateWithLoader('/profile')}
               onNavigateTab={handleTabNavigate}
             />
           }
@@ -492,20 +499,20 @@ function AppContent() {
               sessionType={sessionType}
               userEmail={user?.email || null}
               onSignInWithGoogle={signInWithGoogle}
-              onBack={() => navigate('/home')}
-              onEditProfile={() => navigate('/create-profile')}
+              onBack={() => navigateWithLoader('/home')}
+              onEditProfile={() => navigateWithLoader('/create-profile')}
               onSignOut={async () => {
                 await signOut();
-                navigate('/welcome', { replace: true });
+                navigateWithLoader('/welcome');
               }}
               onLeaveDuo={async () => {
                 await leaveDuo();
-                navigate('/welcome', { replace: true });
+                navigateWithLoader('/welcome');
               }}
               onToggleDailyReminder={setDailyReminderEnabled}
               onChangeReminderTime={setDailyReminderTime}
               onToggleFriendAlerts={setFriendAlertsEnabled}
-              onOpenFriendProfile={() => navigate('/friend')}
+              onOpenFriendProfile={() => navigateWithLoader('/friend')}
               onNavigateTab={handleTabNavigate}
             />
           }
@@ -524,7 +531,7 @@ function AppContent() {
                 guessWinsCount: history.stats.guessWins,
                 lastAnsweredTime: 'today, 8:42 PM',
               }}
-              onBack={() => navigate('/profile')}
+              onBack={() => navigateWithLoader('/profile')}
               onNavigateTab={handleTabNavigate}
             />
           }
@@ -534,6 +541,10 @@ function AppContent() {
         {/* Catch-all redirect */}
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
+      </PageGate>
+
+      {/* Interactive ?debug=1 Overlay */}
+      <DebugPreloadOverlay />
 
       {/* Welcome Back Toast */}
       {welcomeBackToast && (
@@ -596,18 +607,17 @@ function AppContent() {
 }
 
 export function App() {
-  // Eagerly preloads and in-memory caches all Vite PNG and WebP assets
-  usePreloadAssets();
-
   return (
     <BrowserRouter>
-      <SessionProvider>
-        <GameSessionProvider>
-          <EntryGuard>
-            <AppContent />
-          </EntryGuard>
-        </GameSessionProvider>
-      </SessionProvider>
+      <LoaderProvider>
+        <SessionProvider>
+          <GameSessionProvider>
+            <EntryGuard>
+              <AppContent />
+            </EntryGuard>
+          </GameSessionProvider>
+        </SessionProvider>
+      </LoaderProvider>
     </BrowserRouter>
   );
 }

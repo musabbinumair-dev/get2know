@@ -192,6 +192,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <img
           src="/assets/profile/deco-moon-yellow.webp"
           alt=""
+          loading="eager"
+          decoding="sync"
           className={`absolute top-0 left-0 pointer-events-none select-none z-0 ${
             isCompact ? 'w-[32px]' : 'w-[39px]'
           }`}
@@ -202,6 +204,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <img
           src="/assets/profile/deco-heart-pink.webp"
           alt=""
+          loading="eager"
+          decoding="sync"
           className={`absolute right-0 pointer-events-none select-none z-0 ${
             isCompact ? 'top-[16px] w-[46px]' : 'top-[25px] w-[55px]'
           }`}
@@ -212,6 +216,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <img
           src="/assets/profile/deco-star-blue.webp"
           alt=""
+          loading="eager"
+          decoding="sync"
           className={`absolute bottom-0 left-0 pointer-events-none select-none z-0 ${
             isCompact ? 'w-[70px]' : 'w-[82px]'
           }`}
@@ -222,6 +228,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <img
           src="/assets/profile/deco-cross-olive.webp"
           alt=""
+          loading="eager"
+          decoding="sync"
           className={`absolute right-0 pointer-events-none select-none z-0 ${
             isCompact ? 'bottom-[8px] w-[48px]' : 'bottom-[11px] w-[56px]'
           }`}

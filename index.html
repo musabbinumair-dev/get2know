@@ -12,7 +12,19 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,700;1,900&display=swap" rel="stylesheet">
-    <!-- Preload Home Screen Assets -->
+    <!-- Preload Home Screen & Decoration WebP Assets -->
+    <link rel="preload" as="image" href="/assets/decoration-heart.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/assets/decoration-star.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/assets/decoration-cross.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/assets/decoration-moon.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/assets/decoration1.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/assets/decoration2.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/assets/decoration3.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/assets/decoration4.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/assets/deco-heart-pink.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/assets/deco-star-blue.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/assets/deco-cross-olive.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/assets/deco-moon-yellow.webp" type="image/webp" />
     <link rel="preload" as="image" href="/deco-heart-pink-top-left-cropped.webp" type="image/webp" />
     <link rel="preload" as="image" href="/deco-starburst-blue-top-right-cropped.webp" type="image/webp" />
     <link rel="preload" as="image" href="/deco-cross-olive-bottom-left.webp" type="image/webp" />
@@ -36,6 +48,57 @@
   </head>
   <body class="bg-[#FAF6EA] text-ink antialiased select-none overflow-x-hidden">
     <div id="root"></div>
+    <div id="initial-page-loader" style="position:fixed;inset:0;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;background-color:#F8F1E1;font-family:'Nunito',sans-serif;user-select:none;transition:opacity 200ms ease-out;pointer-events:all;">
+      <style>
+        @keyframes initSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes initBounce { 0%, 100% { transform: translateY(0); } 25% { transform: translateY(-10px); } 75% { transform: translateY(10px); } }
+        @media (prefers-reduced-motion: reduce) {
+          .init-spin, .init-dot { animation: none !important; }
+        }
+      </style>
+      <div style="position:relative;width:104px;height:104px;display:flex;align-items:center;justify-content:center;">
+        <svg class="init-spin" style="position:absolute;inset:0;width:100%;height:100%;animation:initSpin 8s linear infinite;" viewBox="0 0 104 104">
+          <circle cx="52" cy="52" r="50" fill="none" stroke="#17181B" stroke-width="1.5" stroke-dasharray="5.5 4.5" />
+        </svg>
+        <div style="display:flex;align-items:center;justify-content:center;gap:10px;z-index:1;">
+          <div id="init-dot-1" class="init-dot" style="width:16px;height:16px;border-radius:50%;background-color:#F9A6D2;animation:initBounce 900ms ease-in-out infinite 0ms;"></div>
+          <div id="init-dot-2" class="init-dot" style="width:16px;height:16px;border-radius:50%;background-color:#9DBDFD;animation:initBounce 900ms ease-in-out infinite 150ms;"></div>
+          <div id="init-dot-3" class="init-dot" style="width:16px;height:16px;border-radius:50%;background-color:#FEDF6B;animation:initBounce 900ms ease-in-out infinite 300ms;"></div>
+        </div>
+      </div>
+      <div style="margin-top:28px;font-size:28px;font-weight:900;color:#17181B;letter-spacing:-0.02em;text-align:center;">
+        Get-to-Know-You
+      </div>
+      <div style="margin-top:8px;font-size:15px;font-weight:700;color:rgba(23,24,27,0.55);letter-spacing:-0.01em;text-align:center;">
+        Getting things ready…
+      </div>
+      <script>
+        (function() {
+          var p = (window.location.pathname || '/').toLowerCase().replace(/\/+$/, '') || '/';
+          var b = '#F8F1E1';
+          var d1 = '#F9A6D2', d2 = '#9DBDFD', d3 = '#FEDF6B';
+          if (p === '/create-profile' || p === '/invite' || p === '/join' || p === '/join-code' || p === '/guess' || p === '/countdown') {
+            b = '#FEE36F'; d3 = '#F6EFDD';
+          } else if (p === '/lobby' || p === '/locked' || p === '/answer-locked') {
+            b = '#96B9FC'; d2 = '#F6EFDD';
+          } else if (p === '/today-question') {
+            b = '#F7C8E2'; d1 = '#F6EFDD';
+          } else if (p === '/reveal' || p === '/game-final') {
+            b = '#9BAE6F';
+          }
+          var el = document.getElementById('initial-page-loader');
+          if (el) {
+            el.style.backgroundColor = b;
+            var dot1 = document.getElementById('init-dot-1');
+            var dot2 = document.getElementById('init-dot-2');
+            var dot3 = document.getElementById('init-dot-3');
+            if (dot1) dot1.style.backgroundColor = d1;
+            if (dot2) dot2.style.backgroundColor = d2;
+            if (dot3) dot3.style.backgroundColor = d3;
+          }
+        })();
+      </script>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

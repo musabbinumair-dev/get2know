@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useLocation } from 'react-router-dom';
 import { useSession } from '../services/sessionContext';
 import { useGameSession } from '../services/gameSessionContext';
+import { usePageVisible } from '../context/PageVisibilityContext';
 import { AVATAR_OPTIONS } from '../screens/CreateProfileScreen';
 
 interface SpecItem {
@@ -501,9 +502,20 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
     }
   }, [onCountdownComplete, startNewGame, mode, rounds]);
 
-  // Step advancement timer (0.8s per step)
+  const isPageVisible = usePageVisible();
+  const [countdownStarted, setCountdownStarted] = useState<boolean>(false);
+
+  // When loader has completely faded out and page is fully visible, start countdown
   useEffect(() => {
-    if (isPaused) return;
+    if (isPageVisible && !countdownStarted) {
+      setStep(0);
+      setCountdownStarted(true);
+    }
+  }, [isPageVisible, countdownStarted]);
+
+  // Step advancement timer (0.8s per step) - strictly starts ONLY when page is visible and loader is completely hidden
+  useEffect(() => {
+    if (isPaused || !isPageVisible || !countdownStarted) return;
 
     if (step < 3) {
       const timer = setTimeout(() => {
@@ -517,7 +529,7 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
       }, 800);
       return () => clearTimeout(finishTimer);
     }
-  }, [step, isPaused, handleCountdownDone]);
+  }, [step, isPaused, isPageVisible, countdownStarted, handleCountdownDone]);
 
   // Restart countdown
   const handleRestart = useCallback(() => {
@@ -1211,13 +1223,13 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
           }}
         >
           <div
-            key={`num-${step}`}
-            className={isPaused ? '' : 'countdown-anim-number'}
+            key={`num-${step}-${countdownStarted ? 'active' : 'idle'}`}
+            className={(!countdownStarted || isPaused) ? '' : 'countdown-anim-number'}
             style={{
               lineHeight: 1,
               letterSpacing: 0,
               whiteSpace: 'nowrap',
-              animation: isPaused ? 'none' : 'countdown-number-tick 0.8s forwards',
+              animation: (!countdownStarted || isPaused) ? 'none' : 'countdown-number-tick 0.8s forwards',
             }}
           >
             {stepNumberText}

@@ -487,6 +487,8 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
           <img
             src="/assets/lobby/deco-moon-yellow.webp"
             alt=""
+            loading="eager"
+            decoding="sync"
             style={{
               position: 'absolute',
               left: '319.5px',
@@ -503,6 +505,8 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
           <img
             src="/assets/lobby/deco-heart-pink.webp"
             alt=""
+            loading="eager"
+            decoding="sync"
             style={{
               position: 'absolute',
               left: '350.2px',
@@ -519,6 +523,8 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
           <img
             src="/assets/lobby/deco-star-blue.webp"
             alt=""
+            loading="eager"
+            decoding="sync"
             style={{
               position: 'absolute',
               left: '0px',
@@ -535,6 +541,8 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
           <img
             src="/assets/lobby/deco-cross-olive.webp"
             alt=""
+            loading="eager"
+            decoding="sync"
             style={{
               position: 'absolute',
               left: '310.3px',

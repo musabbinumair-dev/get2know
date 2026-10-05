@@ -8,6 +8,8 @@ interface HomeScreenProps {
   onOpenFriendProfile?: () => void;
   onNavigateTab?: (tab: NavTab) => void;
   onOpenGameSettings?: () => void;
+  onStartKnowMe?: () => void;
+  onStartTrivia?: () => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -15,6 +17,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenFriendProfile,
   onNavigateTab,
   onOpenGameSettings,
+  onStartKnowMe,
+  onStartTrivia,
 }) => {
   // Sync background color
   useEffect(() => {
@@ -60,6 +64,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       <img
         src="/deco-heart-pink-top-left-cropped.webp"
         alt=""
+        loading="eager"
+        decoding="sync"
         className="absolute top-[69px] left-0 w-[53.5px] h-[61.3px] object-contain pointer-events-none select-none z-0"
         draggable={false}
       />
@@ -68,6 +74,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       <img
         src="/deco-starburst-blue-top-right-cropped.webp"
         alt=""
+        loading="eager"
+        decoding="sync"
         className="absolute top-[75px] right-0 w-[42.1px] h-[71.3px] object-contain pointer-events-none select-none z-0"
         draggable={false}
       />
@@ -76,6 +84,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       <img
         src="/deco-cross-olive-bottom-left.webp"
         alt=""
+        loading="eager"
+        decoding="sync"
         className="absolute bottom-[74px] sm:bottom-[82px] left-[6px] w-[52.1px] h-[51.2px] object-contain pointer-events-none select-none z-10"
         draggable={false}
       />
@@ -84,6 +94,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       <img
         src="/deco-crescent-yellow-bottom-right.webp"
         alt=""
+        loading="eager"
+        decoding="sync"
         className="absolute bottom-[76px] sm:bottom-[86px] right-[18px] w-[43.9px] h-[52.1px] object-contain pointer-events-none select-none z-10"
         draggable={false}
       />
@@ -93,6 +105,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <img
           src="/assets/blobs/heart-pink.svg"
           alt=""
+          loading="eager"
+          decoding="sync"
           className="w-full h-full object-contain pointer-events-none select-none"
           draggable={false}
         />
@@ -252,7 +266,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <button
           type="button"
           id="quick-blob-pink"
-          onClick={onOpenGameSettings}
+          onClick={onStartKnowMe || onOpenGameSettings}
           className="btn-press absolute top-[486px] left-[15.1px] w-[118.4px] h-[105.2px] cursor-pointer z-20 p-0 outline-none transition-transform active:scale-95 group"
         >
           <img
@@ -276,7 +290,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <button
           type="button"
           id="quick-blob-blue"
-          onClick={onOpenGameSettings}
+          onClick={onStartTrivia || onOpenGameSettings}
           className="btn-press absolute top-[485px] left-[140.8px] w-[111.6px] h-[106.5px] cursor-pointer z-20 p-0 outline-none transition-transform active:scale-95 group"
         >
           <img
