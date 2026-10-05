@@ -1,161 +1,218 @@
 /**
- * Automated Vite-Native Asset Preloader
+ * Two-tier asset preloader.
  *
- * Eagerly imports all PNG, WebP, SVG, and JPEG assets from `src/assets/` using Vite's `import.meta.glob`.
- * Provides instant in-memory browser caching via `new Image().src = url` and `.decode()`.
+ * Uses the exact same static "/assets/..." paths that <img> tags request
+ * from public/assets/ — no import.meta.glob, no Vite hashing, no src/assets/.
+ *
+ * Tier 1 – critical: Welcome, CreateProfile, Home screens (shown on first paint).
+ *          Loaded immediately on call, in parallel.
+ * Tier 2 – deferred: every other screen's assets.
+ *          Loaded via requestIdleCallback (setTimeout fallback) so the first
+ *          render is never blocked.
  */
 
-// 1. Eagerly import all asset files from src/assets/ and subdirectories
-const assetModules = import.meta.glob<string>(
-  '../assets/**/*.{png,webp,svg,jpg,jpeg,PNG,WEBP,SVG,JPG,JPEG}',
-  { eager: true, import: 'default' }
-);
+// ─── Tier 1: screens visible on first or second paint ──────────────────────
 
-export interface PreloadProgress {
-  isLoaded: boolean;
-  progress: number; // 0 - 100
-  loadedCount: number;
-  totalCount: number;
-  urls: string[];
-}
+const CRITICAL_URLS: readonly string[] = [
+  // Welcome screen
+  '/assets/welcome/crescent-yellow-top.png',
+  '/assets/welcome/heart-pink-right.png',
+  '/assets/welcome/logo-duo.png',
+  '/assets/welcome/starburst-blue-right.png',
+  '/assets/welcome/hero-pair.png',
+  '/assets/welcome/starburst-blue-left.png',
+  '/assets/welcome/cross-olive.png',
+  '/assets/welcome/heart-pink-left.png',
+  '/assets/welcome/crescent-yellow-bottom.png',
+  // Avatar blobs + faces used on CreateProfile (PNG versions — always exist)
+  '/assets/blobs/avatar-blob-1.png',
+  '/assets/blobs/avatar-blob-2.png',
+  '/assets/blobs/avatar-blob-3.png',
+  '/assets/blobs/avatar-blob-4.png',
+  '/assets/blobs/avatar-blob-5.png',
+  '/assets/blobs/avatar-blob-6.png',
+  '/assets/avatars/avatar-1.png',
+  '/assets/avatars/avatar-2.png',
+  '/assets/avatars/avatar-3.png',
+  '/assets/avatars/avatar-4.png',
+  '/assets/avatars/avatar-5.png',
+  '/assets/avatars/avatar-6.png',
+  // Blob shapes used on Home + lobby entry
+  '/assets/blobs/blue-avatar-blob.webp',
+  '/assets/blobs/pink-avatar-blob.webp',
+  '/assets/blobs/crescent-pink-bottom-right.png',
+  '/assets/welcome/starburst-blue-right.png',
+  // CreateProfile decorations
+  '/assets/welcome/starburst-blue-left.png',
+];
 
-// 2. Normalized mapping of asset paths & filenames to resolved Vite asset URLs
-export const ASSET_MAP: Record<string, string> = {};
-export const WEBP_MAP: Record<string, string> = {};
-export const PNG_MAP: Record<string, string> = {};
+// ─── Tier 2: remaining screens ──────────────────────────────────────────────
 
-// Populate the asset lookup maps
-for (const [rawPath, resolvedUrl] of Object.entries(assetModules)) {
-  if (typeof resolvedUrl !== 'string') continue;
+const DEFERRED_URLS: readonly string[] = [
+  // Avatar webp (3-6 exist; 1-2 fall back to PNG, preloading is a no-op on miss)
+  '/assets/avatars/avatar-3.webp',
+  '/assets/avatars/avatar-4.webp',
+  '/assets/avatars/avatar-5.webp',
+  '/assets/avatars/avatar-6.webp',
+  '/assets/blobs/avatar-blob-1.webp',
+  '/assets/blobs/avatar-blob-2.webp',
+  '/assets/blobs/avatar-blob-3.webp',
+  '/assets/blobs/avatar-blob-4.webp',
+  '/assets/blobs/avatar-blob-5.webp',
+  '/assets/blobs/avatar-blob-6.webp',
+  // Blob colours used by MemoryCard / legacy paths
+  '/assets/blobs/color-blob-salmon.png',
+  '/assets/blobs/color-blob-teal.png',
+  '/assets/blobs/color-blob-blue.png',
+  '/assets/blobs/color-blob-pink-root.png',
+  // SVG decorations
+  '/assets/blobs/starburst-yellow-small.svg',
+  '/assets/blobs/starburst-blue-join.svg',
+  '/assets/blobs/heart-pink.svg',
+  '/assets/blobs/heart-pink-small.svg',
+  '/assets/blobs/cross-olive-decorative.svg',
+  // Guess screen
+  '/assets/guess/answer-blob-cream.webp',
+  '/assets/guess/answer-blob-green.webp',
+  '/assets/guess/answer-blob-pink.webp',
+  '/assets/guess/answer-blob-yellow.webp',
+  '/assets/guess/badge-starburst-yellow.webp',
+  '/assets/guess/deco-cross-olive.webp',
+  '/assets/guess/deco-heart-pink.webp',
+  '/assets/guess/deco-moon-yellow.webp',
+  '/assets/guess/deco-star-blue.webp',
+  // Join / invite
+  '/assets/join/avatar-blob-blue.webp',
+  '/assets/join/bubble-cream.webp',
+  '/assets/join/deco-cross-olive.webp',
+  '/assets/join/deco-moon-yellow.webp',
+  '/assets/join/deco-star-blue.webp',
+  '/assets/join/sparkle-yellow.webp',
+  // Landing (hero blob)
+  '/assets/landing/hero-blob-yellow.webp',
+  // Desktop landing
+  '/assets/landing-desktop/badge-vs-starburst.webp',
+  '/assets/landing-desktop/deco-cross-olive-bottomright.webp',
+  '/assets/landing-desktop/deco-cross-olive-hero.webp',
+  '/assets/landing-desktop/deco-heart-pink-hero.webp',
+  '/assets/landing-desktop/deco-heart-pink-topright.webp',
+  '/assets/landing-desktop/deco-moon-yellow-bottomright.webp',
+  '/assets/landing-desktop/deco-moon-yellow-topleft.webp',
+  '/assets/landing-desktop/deco-star-blue-bottomleft.webp',
+  '/assets/landing-desktop/deco-star-blue-hero.webp',
+  '/assets/landing-desktop/mode-know-me.webp',
+  '/assets/landing-desktop/mode-random.webp',
+  '/assets/landing-desktop/mode-trivia.webp',
+  '/assets/landing-desktop/sparkle-left.webp',
+  '/assets/landing-desktop/sparkle-right.webp',
+  // Lobby
+  '/assets/lobby/badge-vs-starburst.webp',
+  '/assets/lobby/deco-cross-olive.webp',
+  '/assets/lobby/deco-heart-pink.webp',
+  '/assets/lobby/deco-moon-yellow.webp',
+  '/assets/lobby/deco-star-blue.webp',
+  '/assets/lobby/emoji-brain.webp',
+  '/assets/lobby/emoji-wave.webp',
+  '/assets/lobby/hero-card-yellow.webp',
+  '/assets/lobby/sparkle-left.webp',
+  '/assets/lobby/sparkle-right.webp',
+  // Memory wall
+  '/assets/memorywall/badge-starburst-yellow.png',
+  // Profile
+  '/assets/profile/deco-cross-olive.webp',
+  '/assets/profile/deco-heart-pink.webp',
+  '/assets/profile/deco-moon-yellow.webp',
+  '/assets/profile/deco-star-blue.webp',
+  '/assets/profile/icon-blob-blue.webp',
+  '/assets/profile/icon-blob-olive.webp',
+  '/assets/profile/icon-blob-pink.webp',
+  '/assets/profile/sparkle-sun-yellow.webp',
+  // Reveal
+  '/assets/reveal/card-blob-blue.webp',
+  '/assets/reveal/card-blob-pink.webp',
+  '/assets/reveal/crescent-yellow.webp',
+  '/assets/reveal/cross-olive.webp',
+  '/assets/reveal/deco-bottom-left.webp',
+  '/assets/reveal/deco-bottom-right.webp',
+  '/assets/reveal/emoji-cry.webp',
+  '/assets/reveal/emoji-heart.webp',
+  '/assets/reveal/emoji-laugh.webp',
+  '/assets/reveal/emoji-smile.webp',
+  '/assets/reveal/emoji-smirk.webp',
+  '/assets/reveal/emoji-surprised.webp',
+  '/assets/reveal/heart-pink-small.webp',
+  '/assets/reveal/match-starburst-black.webp',
+  '/assets/reveal/match-starburst.webp',
+  '/assets/reveal/starburst-blue.webp',
+  // Scores
+  '/assets/scores/deco-cross-olive-right.webp',
+  '/assets/scores/deco-heart-pink-bottom-right-cropped.webp',
+  '/assets/scores/deco-heart-pink-top-left-cropped.webp',
+  '/assets/scores/deco-moon-yellow-bottom-left.webp',
+  '/assets/scores/deco-sparks-yellow-around-heart.webp',
+  '/assets/scores/deco-star-blue-top-right-cropped.webp',
+  '/assets/scores/hero-heart-pink-sync-score.webp',
+  '/assets/scores/icon-category-dreams-blue-moon.webp',
+  '/assets/scores/icon-category-fears-green-scream.webp',
+  '/assets/scores/icon-category-food-pink-pizza.webp',
+  '/assets/scores/stat-cross-olive-guess-wins.webp',
+  '/assets/scores/stat-starburst-yellow-streak.webp',
+  '/assets/scores/stat-teardrop-blue-matches.webp',
+  // Waiting / answer-locked
+  '/assets/waiting/crescent-yellow.webp',
+  '/assets/waiting/cross-olive.webp',
+  '/assets/waiting/heart-pink-right.webp',
+  '/assets/waiting/heart-pink.webp',
+  '/assets/waiting/lock-hero.webp',
+  '/assets/waiting/logo-duo.webp',
+  '/assets/waiting/starburst-blue.png',
+  '/assets/waiting/streak-flame.webp',
+  '/assets/waiting/waiting-avatar-ring.webp',
+];
 
-  // Standardize paths:
-  // rawPath e.g.: "../assets/blobs/pink-avatar-blob.webp"
-  const normalized = rawPath.replace(/^\.\.\/assets\//, ''); // "blobs/pink-avatar-blob.webp"
-  const filename = normalized.split('/').pop() || normalized; // "pink-avatar-blob.webp"
-  const basename = filename.replace(/\.[^/.]+$/, ''); // "pink-avatar-blob"
-  const ext = filename.split('.').pop()?.toLowerCase() || '';
+// ─── Preload primitive ───────────────────────────────────────────────────────
 
-  // Store various lookup keys for ergonomic resolution:
-  ASSET_MAP[rawPath] = resolvedUrl;
-  ASSET_MAP[`/assets/${normalized}`] = resolvedUrl;
-  ASSET_MAP[`assets/${normalized}`] = resolvedUrl;
-  ASSET_MAP[normalized] = resolvedUrl;
-  ASSET_MAP[filename] = resolvedUrl;
-  ASSET_MAP[`/${filename}`] = resolvedUrl;
-
-  if (ext === 'webp') {
-    WEBP_MAP[basename] = resolvedUrl;
-    WEBP_MAP[normalized] = resolvedUrl;
-    WEBP_MAP[`/assets/${normalized}`] = resolvedUrl;
-  } else if (ext === 'png') {
-    PNG_MAP[basename] = resolvedUrl;
-    PNG_MAP[normalized] = resolvedUrl;
-    PNG_MAP[`/assets/${normalized}`] = resolvedUrl;
+function preloadOne(url: string): void {
+  const img = new Image();
+  img.src = url;
+  if ('decode' in img && typeof img.decode === 'function') {
+    img.decode().catch(() => { /* ignore — file may simply not exist */ });
+  } else {
+    img.onerror = null; // silence console errors for missing optional assets
   }
 }
 
-/**
- * Resolves an asset URL by flexible path, filename, or relative name.
- */
-export function getAssetUrl(pathOrName: string): string | undefined {
-  if (!pathOrName) return undefined;
-  if (ASSET_MAP[pathOrName]) return ASSET_MAP[pathOrName];
+// ─── Public API ──────────────────────────────────────────────────────────────
 
-  // Try removing leading slashes or prefix
-  const clean = pathOrName.replace(/^\/+/, '').replace(/^assets\//, '');
-  if (ASSET_MAP[clean]) return ASSET_MAP[clean];
-
-  // Try matching just the filename
-  const filename = pathOrName.split('/').pop() || pathOrName;
-  if (ASSET_MAP[filename]) return ASSET_MAP[filename];
-
-  return undefined;
-}
+let started = false;
 
 /**
- * Returns all unique resolved asset URLs.
+ * Fire-and-forget two-tier preloader.
+ * Safe to call multiple times — runs only once.
  */
-export function getAllAssetUrls(): string[] {
-  const uniqueUrls = new Set<string>(Object.values(assetModules));
-  return Array.from(uniqueUrls);
-}
+export function preloadAllAssets(): void {
+  if (started) return;
+  started = true;
 
-// Global caching promise to prevent redundant preloading runs
-let preloadPromise: Promise<void> | null = null;
-let globalLoadedState = false;
-let globalProgress = 0;
-let globalLoadedCount = 0;
+  // Tier 1: start immediately, in parallel
+  for (const url of CRITICAL_URLS) preloadOne(url);
 
-/**
- * Preloads and decodes all eager Vite assets into browser memory immediately.
- */
-export function preloadAllAssets(
-  onProgress?: (progress: number, loaded: number, total: number) => void
-): Promise<void> {
-  if (globalLoadedState) {
-    onProgress?.(100, globalLoadedCount, globalLoadedCount);
-    return Promise.resolve();
-  }
-
-  if (preloadPromise) {
-    return preloadPromise;
-  }
-
-  const urls = getAllAssetUrls();
-  const total = urls.length;
-
-  if (total === 0) {
-    globalLoadedState = true;
-    globalProgress = 100;
-    onProgress?.(100, 0, 0);
-    return Promise.resolve();
-  }
-
-  preloadPromise = new Promise<void>((resolve) => {
-    let completed = 0;
-
-    const handleItemFinished = () => {
-      completed++;
-      globalLoadedCount = completed;
-      globalProgress = Math.round((completed / total) * 100);
-      onProgress?.(globalProgress, completed, total);
-
-      if (completed >= total) {
-        globalLoadedState = true;
-        resolve();
-      }
-    };
-
-    urls.forEach((url) => {
-      const img = new Image();
-      img.src = url;
-
-      // Force decoding if supported for zero frame drop rendering
-      if ('decode' in img && typeof img.decode === 'function') {
-        img
-          .decode()
-          .then(() => handleItemFinished())
-          .catch(() => handleItemFinished());
-      } else {
-        img.onload = () => handleItemFinished();
-        img.onerror = () => handleItemFinished();
-      }
-    });
-  });
-
-  return preloadPromise;
-}
-
-/**
- * Returns current global preload state.
- */
-export function getPreloadState(): PreloadProgress {
-  const urls = getAllAssetUrls();
-  return {
-    isLoaded: globalLoadedState,
-    progress: globalProgress,
-    loadedCount: globalLoadedCount,
-    totalCount: urls.length,
-    urls,
+  // Tier 2: wait for the browser's idle slot (or 2 s fallback)
+  const scheduleDeferred = (): void => {
+    for (const url of DEFERRED_URLS) preloadOne(url);
   };
+
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(scheduleDeferred, { timeout: 2000 });
+  } else {
+    setTimeout(scheduleDeferred, 200);
+  }
+}
+
+/**
+ * Returns a de-duped list of every URL this preloader touches.
+ * Useful for auditing coverage — not required at runtime.
+ */
+export function getAllPreloadUrls(): string[] {
+  return Array.from(new Set([...CRITICAL_URLS, ...DEFERRED_URLS]));
 }
