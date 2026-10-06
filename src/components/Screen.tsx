@@ -4,12 +4,14 @@ interface ScreenProps {
   children: React.ReactNode;
   bg?: string;
   className?: string;
+  fullWidth?: boolean;
 }
 
 export const Screen: React.FC<ScreenProps> = ({
   children,
   bg = '#FAF6EA',
   className = '',
+  fullWidth = false,
 }) => {
   return (
     <div
@@ -17,7 +19,7 @@ export const Screen: React.FC<ScreenProps> = ({
       style={{ backgroundColor: bg }}
     >
       <main
-        className={`w-full h-full min-h-[100dvh] flex-1 md:max-w-[430px] relative overflow-hidden flex flex-col justify-between select-none ${className}`}
+        className={`w-full h-full min-h-[100dvh] flex-1 ${fullWidth ? 'w-full' : 'md:max-w-[430px]'} relative overflow-hidden flex flex-col justify-between select-none ${className}`}
         style={{ backgroundColor: bg }}
       >
         {children}

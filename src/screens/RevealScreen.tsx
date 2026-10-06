@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NavTab } from '../components/BottomNav';
 import { QuestionData } from '../data/gameData';
 import { useGameSession } from '../services/gameSessionContext';
@@ -26,17 +26,8 @@ export interface RevealScreenProps {
   onBack?: () => void;
   onNavigateTab?: (tab: NavTab) => void;
   onOpenSettings?: () => void;
+  mode?: 'trivia' | 'know-me';
 }
-
-const DATE_DAYS = [
-  { key: 'mon', day: 'MON', num: '12' },
-  { key: 'tue', day: 'TUE', num: '13' },
-  { key: 'wed', day: 'WED', num: '14' },
-  { key: 'thu', day: 'THU', num: '15' },
-  { key: 'fri', day: 'FRI', num: '16' },
-  { key: 'sat', day: 'SAT', num: '17' },
-  { key: 'sun', day: 'SUN', num: '18', isActive: true },
-];
 
 const REACTION_EMOJIS = [
   { id: 'smile', file: '/assets/reveal/emoji-smile.webp', alt: 'Smile' },
@@ -61,10 +52,12 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
   onSelectReaction,
   onSaveToMemoryWall,
   onNextQuestion,
-  onBack: _onBack,
+  onBack,
   onOpenSettings,
+  mode: propMode,
 }) => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const session = useSession();
   const gameSession = useGameSession();
   const isInGame = gameSession.isActive;
@@ -109,23 +102,24 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
   const activeReaction =
     controlledReaction !== undefined ? controlledReaction : internalReaction;
 
-  const rawQuestion = isInGame
-    ? gameSession.currentQuestion.question
-    : questionData?.question || "What’s the worst food you’ve ever tried?";
+  // Determine game mode: Trivia vs Know Me
+  // Default to trivia if requested via prop, query param, or active game mode
+  const paramMode = searchParams.get('mode');
+  const isTriviaRound =
+    propMode === 'trivia' ||
+    paramMode === 'trivia' ||
+    (paramMode !== 'know-me' &&
+      propMode !== 'know-me' &&
+      (isInGame
+        ? gameSession.currentRoundType === 'trivia' || gameSession.mode === 'Trivia'
+        : (questionData as any)?.type === 'trivia' ||
+          localStorage.getItem('gty_active_mode') === 'trivia' ||
+          localStorage.getItem('gty_reveal_mode') === 'trivia' ||
+          true)); // Default to trivia reveal to match the primary target screen
 
-  const questionLines = isInGame
-    ? (gameSession.currentQuestion.questionLines || [gameSession.currentQuestion.question])
-    : (questionData?.questionLines || [
-        "What’s the worst",
-        "food you’ve ever",
-        "tried?",
-      ]);
+  const isKnowMeRound = !isTriviaRound;
 
-  // Dynamic values based on game session
-  const isTriviaRound = isInGame && gameSession.currentRoundType === 'trivia';
-  const isKnowMeRound = isInGame && gameSession.currentRoundType === 'know-me';
-
-  // Username: strictly show user's username below avatar instead of "Your Pick"
+  // User Profile
   const currentUsername =
     session.profile?.name ||
     session.user?.displayName ||
@@ -139,9 +133,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
           }
         })()
       : null) ||
-    'Player 1';
-
-  const p1LabelText = currentUsername;
+    'Musab';
 
   const partnerUsername =
     player2Name && player2Name !== 'Player 2'
@@ -156,7 +148,8 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
             })()
           : null) || 'Alex';
 
-  const p2LabelText = isTriviaRound ? 'Correct Answer' : partnerUsername;
+  const p1LabelText = currentUsername;
+  const p2LabelText = isTriviaRound ? partnerUsername : partnerUsername;
 
   const p1AvatarSrc = session.profile?.avatarId
     ? `/assets/avatars/avatar-${session.profile.avatarId}.png`
@@ -168,27 +161,83 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
     ? `/assets/avatars/avatar-${_p2AvatarId}.png`
     : '/assets/avatars/avatar-2.png';
 
-  const resolvedP1Answer = isTriviaRound
-    ? gameSession.myGuess || 'Anchovies on pizza.'
-    : isInGame
-    ? gameSession.myAnswer || player1Answer
-    : player1Answer;
+  // Trivia-specific or Know-Me specific content
+  const triviaCategory =
+    (gameSession.currentQuestion as TriviaQuestion)?.category ||
+    questionData?.category ||
+    'Food';
 
-  const resolvedP2Answer = isTriviaRound
-    ? (gameSession.currentQuestion as TriviaQuestion)?.options?.find(
-        (o) => o.id === (gameSession.currentQuestion as TriviaQuestion).correctOptionId
-      )?.text || 'Anchovies on pizza.'
+  const rawQuestion = isTriviaRound
+    ? isInGame
+      ? gameSession.currentQuestion?.question || 'Which country invented sushi?'
+      : questionData?.question || 'Which country invented sushi?'
     : isInGame
-    ? gameSession.friendAnswer || player2Answer
-    : player2Answer;
+    ? gameSession.currentQuestion?.question || 'What’s the worst food you’ve ever tried?'
+    : questionData?.question || 'What’s the worst food you’ve ever tried?';
 
+  // Trivia correct answer
+  const correctTriviaAnswer =
+    (gameSession.currentQuestion as TriviaQuestion)?.options?.find(
+      (o) => o.id === (gameSession.currentQuestion as TriviaQuestion).correctOptionId
+    )?.text || 'Japan';
+
+  // Player answers for Trivia
+  const p1TriviaAnswer = isInGame
+    ? gameSession.myGuess || 'Japan'
+    : player1Answer !== 'Anchovies on pizza.'
+    ? player1Answer
+    : 'Japan';
+
+  const p2TriviaAnswer = isInGame
+    ? gameSession.friendAnswer || 'China'
+    : player2Answer !== 'Anchovies on pizza.'
+    ? player2Answer
+    : 'China';
+
+  // Player answers for Know Me
+  const resolvedP1Answer = isTriviaRound ? p1TriviaAnswer : (isInGame ? gameSession.myAnswer || player1Answer : player1Answer);
+  const resolvedP2Answer = isTriviaRound ? p2TriviaAnswer : (isInGame ? gameSession.friendAnswer || player2Answer : player2Answer);
+
+  // Correctness logic for Trivia
+  const p1IsCorrect = isTriviaRound
+    ? isInGame
+      ? gameSession.isCorrect
+      : p1TriviaAnswer.trim().toLowerCase() === correctTriviaAnswer.trim().toLowerCase()
+    : false;
+
+  const p2IsCorrect = isTriviaRound
+    ? isInGame
+      ? gameSession.isMatched // Friend got it right in trivia logic
+      : p2TriviaAnswer.trim().toLowerCase() === correctTriviaAnswer.trim().toLowerCase()
+    : false;
+
+  // Know-Me match logic
   const isSuccess = isTriviaRound
-    ? gameSession.isCorrect
+    ? p1IsCorrect
     : isKnowMeRound
     ? gameSession.isMatched
     : isMatched !== undefined
     ? isMatched
     : resolvedP1Answer.trim().toLowerCase() === resolvedP2Answer.trim().toLowerCase();
+
+  // Center starburst text logic per prompt:
+  // "You got it!", "They got it!", "Both right!" or "Nobody 😭"
+  let triviaBurstText = 'You got it!';
+  if (p1IsCorrect && p2IsCorrect) {
+    triviaBurstText = 'Both right!';
+  } else if (p1IsCorrect && !p2IsCorrect) {
+    triviaBurstText = 'You got it!';
+  } else if (!p1IsCorrect && p2IsCorrect) {
+    triviaBurstText = 'They got it!';
+  } else {
+    triviaBurstText = 'Nobody 😭';
+  }
+
+  // Scores
+  const p1Score = isInGame && gameSession.myScore > 0 ? gameSession.myScore : 80;
+  const p2Score = isInGame && gameSession.friendScore > 0 ? gameSession.friendScore : 65;
+  const winnerText =
+    p1Score > p2Score ? 'You won 🎉' : p2Score > p1Score ? 'They won 👏' : 'Tied game! 🤝';
 
   const handleEmojiClick = (emojiId: string) => {
     setInternalReaction(emojiId);
@@ -218,6 +267,16 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
       gameSession.nextRound();
     } else if (onNextQuestion) {
       onNextQuestion();
+    } else {
+      navigate('/home');
+    }
+  };
+
+  const handleBackClick = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      navigate(-1);
     }
   };
 
@@ -240,360 +299,1358 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
         </div>
       )}
 
-      {/* Main Full-Width Content Container starting cleanly from the top */}
-      <div className="w-full max-w-[390px] flex flex-col px-5 pt-4 pb-14 relative min-h-max">
-        {/* =========================================================================
-            1. TOP BAR: Exact Same Unified GameHeader (Rounds pill in center, Settings icon on right, no back button)
-           ========================================================================= */}
-        <GameHeader
-          showLogo={true}
-          roundPillPosition="center"
-          currentRound={isInGame ? gameSession.currentRound : 1}
-          totalRounds={isInGame ? gameSession.totalRounds : 10}
-          showTimer={false}
-          showBack={false}
-          showSettings={true}
-          onOpenSettings={onOpenSettings || (() => navigate('/profile'))}
-          className="-mx-5 mb-4"
-        />
-
-        {/* =========================================================================
-            2. 7-DAY CALENDAR ROW (MON 12 - SUN 18)
-           ========================================================================= */}
-        <div className="w-full flex items-center justify-between mb-6 px-1">
-          {DATE_DAYS.map((day) => {
-            if (day.isActive) {
-              return (
-                <div
-                  key={day.key}
-                  className="w-[43px] h-[43px] rounded-full bg-[#1B1D20] text-white flex flex-col items-center justify-center shadow-md select-none -my-1"
-                >
-                  <span className="text-[10px] font-bold text-white/85 tracking-wider leading-none">
-                    {day.day}
-                  </span>
-                  <span className="text-[17px] font-black text-white leading-none mt-[2px]">
-                    {day.num}
-                  </span>
-                </div>
-              );
-            }
-            return (
-              <div
-                key={day.key}
-                className="flex flex-col items-center justify-center w-[36px] select-none text-center"
-              >
-                <span className="text-[10.5px] font-bold text-[#1B1D20]/45 tracking-wider leading-none">
-                  {day.day}
-                </span>
-                <span className="text-[16.5px] font-extrabold text-[#1B1D20]/75 leading-none mt-[3px]">
-                  {day.num}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* =========================================================================
-            3. QUESTION HEADLINE (Responsive typography preventing overflow onto cards/decorations)
-           ========================================================================= */}
-        <div className="mb-6 px-1 select-none">
-          {(() => {
-            const qLen = rawQuestion.length;
-            const revealHeadingClass =
-              qLen > 75
-                ? 'text-[20px] sm:text-[23px] leading-[1.2]'
-                : qLen > 48
-                ? 'text-[24px] sm:text-[28px] leading-[1.15]'
-                : 'text-[30px] sm:text-[34px] leading-[1.1]';
-
-            if (qLen <= 48 && questionLines && questionLines.length > 1) {
-              return (
-                <h2 className={`font-black ${revealHeadingClass} text-[#1B1D20] tracking-[-0.03em] m-0 break-words`}>
-                  {questionLines.map((line, idx) => (
-                    <React.Fragment key={idx}>
-                      {line}
-                      {idx < questionLines.length - 1 && <br />}
-                    </React.Fragment>
-                  ))}
-                </h2>
-              );
-            }
-
-            return (
-              <h2 className={`font-black ${revealHeadingClass} text-[#1B1D20] tracking-[-0.03em] m-0 break-words`}>
-                {rawQuestion}
-              </h2>
-            );
-          })()}
-        </div>
-
-        {/* =========================================================================
-            4. PLAYER ANSWER BLOBS & MATCH STARBURST
-           ========================================================================= */}
-        <div className="relative w-full flex items-center justify-between mb-8 select-none">
-          {/* Left Card: Pink Organic Blob */}
-          <div
-            onClick={() =>
-              setInspectingPlayer({
-                name: p1LabelText,
-                avatarSrc: p1AvatarSrc,
-                answer: resolvedP1Answer,
-                blobBg: '#FCA0D1',
-              })
-            }
-            className="relative w-[48%] max-w-[172px] aspect-[456/468] flex flex-col items-center justify-center p-3 cursor-pointer active:scale-[0.98] transition-transform z-10"
-            title="Click to view full answer"
-          >
-            {/* Pink Blob Image as Background */}
-            <img
-              src="/assets/reveal/card-blob-pink.webp"
-              alt=""
-              className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
-              draggable={false}
-            />
-
-            {/* Inner Content Centered Inside Blob */}
-            <div className="relative z-10 flex flex-col items-center justify-center text-center w-full h-full pointer-events-none px-1 pt-1 pb-1">
-              {/* Avatar (Personalized Avatar for Player) */}
-              <img
-                src={p1AvatarSrc}
-                alt={p1LabelText}
-                className="w-[42px] h-[42px] sm:w-[46px] sm:h-[46px] object-contain mb-1 flex-shrink-0"
-                draggable={false}
-              />
-              {/* Username strictly below avatar instead of "Your Pick" */}
-              <span className="text-[11.5px] font-bold text-[#1B1D20]/60 tracking-tight leading-none mb-1 flex-shrink-0 max-w-[124px] truncate">
-                {p1LabelText}
-              </span>
-              {/* Answer */}
-              <p className="font-black text-[15px] sm:text-[16.5px] leading-[1.12] text-[#1B1D20] tracking-tight m-0 line-clamp-2 break-words max-w-[128px]">
-                {resolvedP1Answer}
-              </p>
-            </div>
-          </div>
-
-          {/* Center Intersecting Badge: Points Blob (Solid Yellow if correct, Solid Black if incorrect) */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92px] h-[94px] z-20 pointer-events-none select-none flex items-center justify-center filter drop-shadow-md">
-            {/* Starburst Image: Yellow when correct, Solid Black when incorrect */}
-            <img
-              src={
-                isSuccess
-                  ? '/assets/reveal/match-starburst.webp'
-                  : '/assets/reveal/match-starburst-black.webp'
-              }
-              alt={isSuccess ? 'Matched Starburst' : 'Not Matched Starburst'}
-              className="w-full h-full object-contain pointer-events-none select-none"
-              draggable={false}
-            />
-            {/* Starburst Text: Dark text on Yellow, White text on Black */}
-            <div
-              className={`absolute inset-0 flex flex-col items-center justify-center text-center pt-1 ${
-                isSuccess ? 'text-[#1B1D20]' : 'text-white'
-              }`}
-            >
-              <span className="text-[11.5px] font-black leading-[1.05] tracking-tight">
-                {isSuccess ? (isTriviaRound ? 'Correct!' : 'You') : isTriviaRound ? 'Not' : 'No'}
-              </span>
-              <span className="text-[11.5px] font-black leading-[1.05] tracking-tight">
-                {isSuccess ? (isTriviaRound ? 'answer' : 'matched!') : isTriviaRound ? 'quite!' : 'match!'}
-              </span>
-              <span
-                className={`text-[15px] font-black leading-none mt-0.5 ${
-                  isSuccess ? 'text-[#1B1D20]' : 'text-white'
-                }`}
-              >
-                {isSuccess ? `+${isKnowMeRound ? 15 : 10}` : '+0'}
-              </span>
-            </div>
-          </div>
-
-          {/* Right Card: Blue Organic Blob */}
-          <div
-            onClick={() =>
-              setInspectingPlayer({
-                name: p2LabelText,
-                avatarSrc: p2AvatarSrc,
-                answer: resolvedP2Answer,
-                blobBg: '#8EAFFD',
-              })
-            }
-            className="relative w-[48%] max-w-[172px] aspect-[456/468] flex flex-col items-center justify-center p-3 cursor-pointer active:scale-[0.98] transition-transform z-10"
-            title="Click to view full answer"
-          >
-            {/* Blue Blob Image as Background */}
-            <img
-              src="/assets/reveal/card-blob-blue.webp"
-              alt=""
-              className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
-              draggable={false}
-            />
-
-            {/* Inner Content Centered Inside Blob */}
-            <div className="relative z-10 flex flex-col items-center justify-center text-center w-full h-full pointer-events-none px-1 pt-1 pb-1">
-              {/* Avatar (Partner/Opponent) */}
-              <img
-                src={p2AvatarSrc}
-                alt={p2LabelText}
-                className="w-[42px] h-[42px] sm:w-[46px] sm:h-[46px] object-contain mb-1 flex-shrink-0"
-                draggable={false}
-              />
-              {/* Label */}
-              <span className="text-[11.5px] font-bold text-[#1B1D20]/60 tracking-tight leading-none mb-1 flex-shrink-0 max-w-[124px] truncate">
-                {p2LabelText}
-              </span>
-              {/* Answer */}
-              <p className="font-black text-[15px] sm:text-[16.5px] leading-[1.12] text-[#1B1D20] tracking-tight m-0 line-clamp-2 break-words max-w-[128px]">
-                {resolvedP2Answer}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* =========================================================================
-            5. MIDDLE SYNC SCORE SECTION & 4 ORBITING DECORATIONS
-           ========================================================================= */}
-        <div className="relative w-full flex flex-col items-center mb-7 py-2">
-          {/* Label "Sync score" */}
-          <span className="text-[14px] font-bold text-[#1B1D20]/60 tracking-tight mb-0.5">
-            Sync score
-          </span>
-
-          {/* Giant Number "74%" */}
-          <span className="font-black text-[74px] sm:text-[78px] leading-none text-[#1B1D20] tracking-[-0.04em] my-1">
-            {syncScore}%
-          </span>
-
-          {/* 1. Yellow Crescent Moon (Top-Left of 74%) */}
-          <img
-            src="/assets/reveal/crescent-yellow.webp"
-            alt=""
-            className="absolute left-[12%] sm:left-[14%] top-[12px] w-[42px] h-[46px] object-contain pointer-events-none select-none z-10"
-            draggable={false}
-          />
-
-          {/* 2. Soft Pink Heart (Bottom-Left of 74%) */}
+      {/* =========================================================================
+          TRIVIA REVEAL SCREEN (MOBILE FIRST: < 768px)
+         ========================================================================= */}
+      {isTriviaRound && (
+        <div className="w-full max-w-[390px] flex flex-col px-5 pt-3 pb-12 relative min-h-max md:hidden z-10">
+          {/* Top-Right Cropped Pink Heart Decoration */}
           <img
             src="/assets/reveal/heart-pink-small.webp"
             alt=""
-            className="absolute left-[8%] sm:left-[10%] bottom-[20px] w-[38px] h-[35px] object-contain pointer-events-none select-none z-10"
+            className="absolute -top-3 -right-3 w-[74px] h-[70px] object-contain pointer-events-none select-none z-0"
             draggable={false}
           />
 
-          {/* 3. Soft Blue Starburst (Top-Right of 74%) */}
+          {/* 1. TOP BAR: Back button (circular dashed) + Centered "Reveal" title */}
+          <div className="relative w-full h-[52px] flex items-center justify-between z-20 mb-3">
+            <button
+              type="button"
+              onClick={handleBackClick}
+              aria-label="Back"
+              className="btn-press w-[42px] h-[42px] rounded-full border-[1.6px] border-dashed border-[#1B1D20] flex items-center justify-center bg-transparent hover:bg-[#1B1D20]/5 active:scale-95 transition-transform cursor-pointer focus:outline-none p-0"
+            >
+              <svg
+                width="19"
+                height="19"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#1B1D20"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="19" y1="12" x2="5" y2="12" />
+                <polyline points="12 19 5 12 12 5" />
+              </svg>
+            </button>
+
+            <h1 className="absolute left-1/2 -translate-x-1/2 text-[32px] sm:text-[34px] font-black text-[#1B1D20] tracking-[-0.03em] leading-none m-0 pointer-events-none">
+              Reveal
+            </h1>
+
+            {/* Spacer for symmetrical center balance */}
+            <div className="w-[42px] h-[42px]" />
+          </div>
+
+          {/* 2. CATEGORY PILL: "Trivia · Food" */}
+          <div className="w-full flex justify-center mb-3 z-10">
+            <div className="rounded-full bg-[#FED982] px-4 py-1.5 flex items-center justify-center shadow-2xs">
+              <span className="font-extrabold text-[15px] sm:text-[16px] text-[#1B1D20] tracking-tight leading-none">
+                Trivia · {triviaCategory}
+              </span>
+            </div>
+          </div>
+
+          {/* 3. QUESTION: Huge bold headline */}
+          <div className="w-full text-center mb-4 px-2 z-10">
+            <h2 className="font-black text-[34px] sm:text-[38px] leading-[1.08] text-[#1B1D20] tracking-[-0.03em] m-0 break-words">
+              {rawQuestion}
+            </h2>
+          </div>
+
+          {/* 4. CORRECT ANSWER BLOCK: Green Blob + Sparkles, Check Badge, "Correct answer", "Japan" */}
+          <div className="relative w-[286px] sm:w-[310px] aspect-[548/326] mx-auto mb-5 flex items-center justify-center z-10">
+            {/* Green blob with sparkles image */}
+            <img
+              src="/assets/correct-answer-blob-sparkles.webp"
+              alt=""
+              className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
+              draggable={false}
+            />
+
+            {/* Content overlay */}
+            <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 pointer-events-none pt-0.5">
+              {/* White Circular Badge with Green Checkmark */}
+              <div className="w-[34px] h-[34px] rounded-full bg-white flex items-center justify-center shadow-xs mb-1.5 flex-shrink-0">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#48B358"
+                  strokeWidth="3.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+
+              {/* Small "Correct answer" text */}
+              <span className="text-[14.5px] font-extrabold text-[#1B1D20]/80 tracking-tight leading-none mb-1">
+                Correct answer
+              </span>
+
+              {/* Huge Bold Answer Text */}
+              <span className="text-[34px] sm:text-[38px] font-black text-[#1B1D20] tracking-[-0.03em] leading-none">
+                {correctTriviaAnswer}
+              </span>
+            </div>
+          </div>
+
+          {/* 5. PLAYER BLOBS & CENTER STARBURST ("You got it!") */}
+          <div className="relative w-full flex items-center justify-between mb-5 px-1 z-10">
+            {/* Left Player: Pink Blob (Musab) */}
+            <div
+              onClick={() =>
+                setInspectingPlayer({
+                  name: p1LabelText,
+                  avatarSrc: p1AvatarSrc,
+                  answer: p1TriviaAnswer,
+                  blobBg: '#FCA0D1',
+                })
+              }
+              className="relative w-[48%] max-w-[172px] aspect-[456/468] flex flex-col items-center justify-center p-2.5 cursor-pointer active:scale-[0.98] transition-transform z-10"
+              title="Click to view full answer"
+            >
+              <img
+                src="/assets/reveal/card-blob-pink.webp"
+                alt=""
+                className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
+                draggable={false}
+              />
+
+              <div className="relative z-10 flex flex-col items-center justify-center text-center w-full h-full pointer-events-none px-1 pt-1 pb-1">
+                <img
+                  src={p1AvatarSrc}
+                  alt={p1LabelText}
+                  className="w-[46px] h-[46px] sm:w-[50px] sm:h-[50px] object-contain mb-1 flex-shrink-0"
+                  draggable={false}
+                />
+                <span className="text-[15px] font-black text-[#1B1D20] tracking-tight leading-tight mb-0.5 truncate max-w-[124px]">
+                  {p1LabelText}
+                </span>
+                <span className="text-[13px] font-bold text-[#1B1D20]/60 tracking-tight leading-tight mb-1 truncate max-w-[128px]">
+                  {p1TriviaAnswer}
+                </span>
+
+                {/* Score Pill: Green check +15 or Gray cross +0 */}
+                {p1IsCorrect ? (
+                  <div className="rounded-full bg-[#FED982] px-2.5 py-1 flex items-center gap-1.5 shadow-2xs">
+                    <div className="w-[18px] h-[18px] rounded-full bg-[#48B358] flex items-center justify-center text-white flex-shrink-0">
+                      <svg
+                        width="11"
+                        height="11"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="white"
+                        strokeWidth="3.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </div>
+                    <span className="font-black text-[14px] text-[#1B1D20] leading-none">
+                      +15
+                    </span>
+                  </div>
+                ) : (
+                  <div className="rounded-full bg-[#DDE3EC] px-2.5 py-1 flex items-center gap-1.5 shadow-2xs">
+                    <div className="w-[18px] h-[18px] rounded-full bg-[#757D8A] flex items-center justify-center text-white flex-shrink-0">
+                      <svg
+                        width="11"
+                        height="11"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="white"
+                        strokeWidth="3.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </div>
+                    <span className="font-black text-[14px] text-[#1B1D20] leading-none">
+                      +0
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Center Starburst: "You got it!" / "Both right!" / "They got it!" / "Nobody 😭" */}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[88px] h-[90px] z-20 pointer-events-none select-none flex items-center justify-center filter drop-shadow-xs">
+              <img
+                src="/assets/reveal/match-starburst.webp"
+                alt=""
+                className="w-full h-full object-contain pointer-events-none select-none"
+                draggable={false}
+              />
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-1 pt-1 text-[#1B1D20]">
+                {triviaBurstText === 'You got it!' ? (
+                  <>
+                    <span className="text-[12.5px] font-black leading-[1.05] tracking-tight">
+                      You
+                    </span>
+                    <span className="text-[12.5px] font-black leading-[1.05] tracking-tight">
+                      got it!
+                    </span>
+                  </>
+                ) : triviaBurstText === 'Both right!' ? (
+                  <>
+                    <span className="text-[12.5px] font-black leading-[1.05] tracking-tight">
+                      Both
+                    </span>
+                    <span className="text-[12.5px] font-black leading-[1.05] tracking-tight">
+                      right!
+                    </span>
+                  </>
+                ) : triviaBurstText === 'They got it!' ? (
+                  <>
+                    <span className="text-[12.5px] font-black leading-[1.05] tracking-tight">
+                      They
+                    </span>
+                    <span className="text-[12.5px] font-black leading-[1.05] tracking-tight">
+                      got it!
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-[11.5px] font-black leading-[1.05] tracking-tight">
+                      Nobody
+                    </span>
+                    <span className="text-[13px] font-black leading-[1.05] tracking-tight">
+                      😭
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Right Player: Blue Blob (Alex) */}
+            <div
+              onClick={() =>
+                setInspectingPlayer({
+                  name: p2LabelText,
+                  avatarSrc: p2AvatarSrc,
+                  answer: p2TriviaAnswer,
+                  blobBg: '#8EAFFD',
+                })
+              }
+              className="relative w-[48%] max-w-[172px] aspect-[456/468] flex flex-col items-center justify-center p-2.5 cursor-pointer active:scale-[0.98] transition-transform z-10"
+              title="Click to view full answer"
+            >
+              <img
+                src="/assets/reveal/card-blob-blue.webp"
+                alt=""
+                className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
+                draggable={false}
+              />
+
+              <div className="relative z-10 flex flex-col items-center justify-center text-center w-full h-full pointer-events-none px-1 pt-1 pb-1">
+                <img
+                  src={p2AvatarSrc}
+                  alt={p2LabelText}
+                  className="w-[46px] h-[46px] sm:w-[50px] sm:h-[50px] object-contain mb-1 flex-shrink-0"
+                  draggable={false}
+                />
+                <span className="text-[15px] font-black text-[#1B1D20] tracking-tight leading-tight mb-0.5 truncate max-w-[124px]">
+                  {p2LabelText}
+                </span>
+                <span className="text-[13px] font-bold text-[#1B1D20]/60 tracking-tight leading-tight mb-1 truncate max-w-[128px]">
+                  {p2TriviaAnswer}
+                </span>
+
+                {/* Score Pill: Green check +15 or Soft gray cross +0 */}
+                {p2IsCorrect ? (
+                  <div className="rounded-full bg-[#FED982] px-2.5 py-1 flex items-center gap-1.5 shadow-2xs">
+                    <div className="w-[18px] h-[18px] rounded-full bg-[#48B358] flex items-center justify-center text-white flex-shrink-0">
+                      <svg
+                        width="11"
+                        height="11"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="white"
+                        strokeWidth="3.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </div>
+                    <span className="font-black text-[14px] text-[#1B1D20] leading-none">
+                      +15
+                    </span>
+                  </div>
+                ) : (
+                  <div className="rounded-full bg-[#DDE3EC] px-2.5 py-1 flex items-center gap-1.5 shadow-2xs">
+                    <div className="w-[18px] h-[18px] rounded-full bg-[#757D8A] flex items-center justify-center text-white flex-shrink-0">
+                      <svg
+                        width="11"
+                        height="11"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="white"
+                        strokeWidth="3.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </div>
+                    <span className="font-black text-[14px] text-[#1B1D20] leading-none">
+                      +0
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* 6. SCORE SECTION: "Score", "80 - 65", "You won 🎉" */}
+          <div className="relative w-full flex flex-col items-center mb-5 select-none z-10">
+            <span className="text-[14px] font-bold text-[#1B1D20]/60 tracking-tight leading-none mb-1">
+              Score
+            </span>
+            <span className="font-black text-[62px] sm:text-[68px] leading-none text-[#1B1D20] tracking-[-0.03em] my-1">
+              {p1Score} - {p2Score}
+            </span>
+            <span className="text-[16px] font-extrabold text-[#1B1D20] tracking-tight leading-none mt-1">
+              {winnerText}
+            </span>
+
+            {/* Orbiting decorations */}
+            {/* Yellow Crescent Moon on middle-left */}
+            <img
+              src="/assets/reveal/crescent-yellow.webp"
+              alt=""
+              className="absolute -left-2 top-[14px] w-[46px] h-[52px] object-contain pointer-events-none select-none z-0"
+              draggable={false}
+            />
+            {/* Blue Starburst on middle-right */}
+            <img
+              src="/assets/reveal/starburst-blue.webp"
+              alt=""
+              className="absolute -right-2 top-[8px] w-[50px] h-[54px] object-contain pointer-events-none select-none z-0"
+              draggable={false}
+            />
+            {/* Olive Green Cross on lower-right */}
+            <img
+              src="/assets/reveal/cross-olive.webp"
+              alt=""
+              className="absolute right-0 bottom-[-16px] w-[42px] h-[44px] object-contain pointer-events-none select-none z-0"
+              draggable={false}
+            />
+          </div>
+
+          {/* 7. EMOJI REACTION ROW: 6 Dashed Circles */}
+          <div className="w-full flex items-center justify-between mb-5 px-1 z-10">
+            {REACTION_EMOJIS.map((emoji) => {
+              const isSelected = activeReaction === emoji.id;
+              const isBouncing = bouncingEmojiId === emoji.id;
+
+              return (
+                <button
+                  key={emoji.id}
+                  type="button"
+                  onClick={() => handleEmojiClick(emoji.id)}
+                  aria-label={emoji.alt}
+                  aria-pressed={isSelected}
+                  className={`w-[44px] h-[44px] rounded-full border-[1.5px] border-dashed flex items-center justify-center cursor-pointer transition-all focus:outline-none p-0 bg-transparent ${
+                    isSelected
+                      ? 'border-[#1B1D20] bg-white/40 scale-105'
+                      : 'border-[#1B1D20]/45 hover:border-[#1B1D20]/75 active:scale-95'
+                  } ${isBouncing ? 'animate-avatar-bounce' : ''}`}
+                >
+                  <img
+                    src={emoji.file}
+                    alt={emoji.alt}
+                    className="w-[25px] h-[25px] object-contain pointer-events-none select-none"
+                    draggable={false}
+                  />
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 8. ACTION BUTTONS: "Save to memory wall" & "Next question ✨" */}
+          <div className="w-full flex flex-col gap-3 mb-4 relative z-10">
+            {/* Button 1: Save to Memory Wall */}
+            <button
+              type="button"
+              onClick={handleSave}
+              className="btn-press w-full h-[50px] sm:h-[52px] rounded-full bg-[#1B1D20] hover:bg-[#282B30] text-white font-black text-[16px] tracking-tight flex items-center justify-center gap-2 cursor-pointer shadow-md focus:outline-none active:scale-[0.98] transition-transform"
+            >
+              <svg
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+              </svg>
+              <span>Save to memory wall</span>
+            </button>
+
+            {/* Button 2: Next question ✨ */}
+            <button
+              type="button"
+              onClick={handleNextClick}
+              className="btn-press w-full h-[50px] sm:h-[52px] rounded-full bg-[#1B1D20] hover:bg-[#282B30] text-white font-black text-[16px] tracking-tight flex items-center justify-center gap-2 cursor-pointer shadow-md focus:outline-none active:scale-[0.98] transition-transform"
+            >
+              <span>Next question ✨</span>
+            </button>
+          </div>
+
+          {/* Bottom Peripheral Decorations */}
+          <img
+            src="/assets/reveal/heart-pink-small.webp"
+            alt=""
+            className="absolute -left-2 bottom-6 w-[48px] h-[46px] object-contain pointer-events-none select-none z-0"
+            draggable={false}
+          />
+          <img
+            src="/assets/reveal/crescent-yellow.webp"
+            alt=""
+            className="absolute -right-2 bottom-2 w-[44px] h-[48px] object-contain pointer-events-none select-none z-0"
+            draggable={false}
+          />
+          <img
+            src="/assets/reveal/deco-bottom-left.webp"
+            alt=""
+            className="absolute left-4 -bottom-4 w-[46px] h-[44px] object-contain pointer-events-none select-none z-0"
+            draggable={false}
+          />
+        </div>
+      )}
+
+      {/* =========================================================================
+          TRIVIA REVEAL SCREEN (DESKTOP & TABLET: 768px and up, 2-COLUMN LAYOUT)
+         ========================================================================= */}
+      {isTriviaRound && (
+        <div
+          className="hidden md:flex flex-col items-center justify-center relative w-full min-h-[100dvh] overflow-hidden select-none font-['Nunito',sans-serif] bg-[#F5CCE2] py-8"
+          style={{
+            ['--u' as any]: 'min(calc(100vw / 1586), calc(100dvh / 992))',
+          }}
+        >
+          {/* VIEWPORT FIXED DECORATIONS */}
+          {/* Top-Right Cropped Pink Heart */}
+          <img
+            src="/assets/reveal/heart-pink-small.webp"
+            alt=""
+            className="fixed top-0 right-0 pointer-events-none select-none z-0"
+            style={{
+              width: 'calc(140 * var(--u))',
+              height: 'calc(135 * var(--u))',
+            }}
+            draggable={false}
+          />
+
+          {/* Left Yellow Moon */}
+          <img
+            src="/assets/reveal/crescent-yellow.webp"
+            alt=""
+            className="fixed pointer-events-none select-none z-0"
+            style={{
+              left: 'calc(30 * var(--u))',
+              top: 'calc(450 * var(--u))',
+              width: 'calc(90 * var(--u))',
+              height: 'calc(105 * var(--u))',
+            }}
+            draggable={false}
+          />
+
+          {/* Right Blue Starburst */}
           <img
             src="/assets/reveal/starburst-blue.webp"
             alt=""
-            className="absolute right-[12%] sm:right-[14%] top-[8px] w-[46px] h-[50px] object-contain pointer-events-none select-none z-10"
+            className="fixed pointer-events-none select-none z-0"
+            style={{
+              right: 'calc(35 * var(--u))',
+              top: 'calc(440 * var(--u))',
+              width: 'calc(100 * var(--u))',
+              height: 'calc(110 * var(--u))',
+            }}
             draggable={false}
           />
 
-          {/* 4. Olive Green Cross (Bottom-Right of 74%) */}
+          {/* Bottom-Left Pink Heart */}
+          <img
+            src="/assets/reveal/heart-pink-small.webp"
+            alt=""
+            className="fixed pointer-events-none select-none z-0"
+            style={{
+              left: 'calc(20 * var(--u))',
+              bottom: 'calc(30 * var(--u))',
+              width: 'calc(110 * var(--u))',
+              height: 'calc(105 * var(--u))',
+            }}
+            draggable={false}
+          />
+
+          {/* Bottom-Right Olive Cross */}
           <img
             src="/assets/reveal/cross-olive.webp"
             alt=""
-            className="absolute right-[10%] sm:right-[12%] bottom-[16px] w-[40px] h-[42px] object-contain pointer-events-none select-none z-10"
+            className="fixed pointer-events-none select-none z-0"
+            style={{
+              right: 'calc(60 * var(--u))',
+              bottom: 'calc(100 * var(--u))',
+              width: 'calc(80 * var(--u))',
+              height: 'calc(85 * var(--u))',
+            }}
             draggable={false}
           />
 
-          {/* Caption "you know each other better today" */}
-          <p className="text-[14px] sm:text-[14.5px] font-bold text-[#1B1D20]/70 tracking-tight m-0 mt-1">
-            you know each other better today
-          </p>
-        </div>
+          {/* Bottom-Right Yellow Moon */}
+          <img
+            src="/assets/reveal/crescent-yellow.webp"
+            alt=""
+            className="fixed pointer-events-none select-none z-0"
+            style={{
+              right: 'calc(25 * var(--u))',
+              bottom: 'calc(30 * var(--u))',
+              width: 'calc(85 * var(--u))',
+              height: 'calc(95 * var(--u))',
+            }}
+            draggable={false}
+          />
 
-        {/* =========================================================================
-            6. REACTION EMOJIS ROW (6 Dashed Circles)
-           ========================================================================= */}
-        <div className="w-full flex items-center justify-between mb-7 px-1">
-          {REACTION_EMOJIS.map((emoji) => {
-            const isSelected = activeReaction === emoji.id;
-            const isBouncing = bouncingEmojiId === emoji.id;
-
-            return (
+          {/* 1586 x 992 DESIGN CANVAS */}
+          <div
+            className="relative flex flex-col justify-between flex-shrink-0 z-10"
+            style={{
+              width: 'calc(1460 * var(--u))',
+              height: 'calc(920 * var(--u))',
+            }}
+          >
+            {/* DESKTOP TOP BAR: Back button on left + Centered "Reveal" Title */}
+            <div
+              className="relative w-full flex items-center justify-between"
+              style={{ height: 'calc(70 * var(--u))' }}
+            >
               <button
-                key={emoji.id}
                 type="button"
-                onClick={() => handleEmojiClick(emoji.id)}
-                aria-label={emoji.alt}
-                aria-pressed={isSelected}
-                className={`w-[44px] h-[44px] rounded-full border-[1.5px] border-dashed flex items-center justify-center cursor-pointer transition-all focus:outline-none p-0 bg-transparent ${
-                  isSelected
-                    ? 'border-[#1B1D20] bg-white/40 scale-105'
-                    : 'border-[#1B1D20]/45 hover:border-[#1B1D20]/75 active:scale-95'
-                } ${isBouncing ? 'animate-avatar-bounce' : ''}`}
+                onClick={handleBackClick}
+                aria-label="Back"
+                className="btn-press rounded-full border-dashed border-[#1B1D20] flex items-center justify-center bg-transparent hover:bg-[#1B1D20]/5 active:scale-95 transition-transform cursor-pointer focus:outline-none p-0"
+                style={{
+                  width: 'calc(60 * var(--u))',
+                  height: 'calc(60 * var(--u))',
+                  borderWidth: 'calc(2.5 * var(--u))',
+                }}
               >
+                <svg
+                  style={{
+                    width: 'calc(28 * var(--u))',
+                    height: 'calc(28 * var(--u))',
+                  }}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#1B1D20"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="19" y1="12" x2="5" y2="12" />
+                  <polyline points="12 19 5 12 12 5" />
+                </svg>
+              </button>
+
+              <h1
+                className="absolute left-1/2 -translate-x-1/2 font-black text-[#1B1D20] tracking-[-0.03em] leading-none m-0 pointer-events-none"
+                style={{ fontSize: 'calc(48 * var(--u))' }}
+              >
+                Reveal
+              </h1>
+
+              <div style={{ width: 'calc(60 * var(--u))', height: 'calc(60 * var(--u))' }} />
+            </div>
+
+            {/* 2-COLUMN MAIN CONTENT (Left: tag, question, answer block, score. Right: player blobs, emojis, buttons) */}
+            <div
+              className="w-full flex items-center justify-between"
+              style={{
+                gap: 'calc(70 * var(--u))',
+                marginTop: 'calc(20 * var(--u))',
+              }}
+            >
+              {/* LEFT COLUMN: tag, question, correct answer block, score */}
+              <div
+                className="flex flex-col items-start justify-center"
+                style={{ width: 'calc(680 * var(--u))' }}
+              >
+                {/* Yellow Pill Tag */}
+                <div
+                  className="rounded-full bg-[#FED982] flex items-center justify-center shadow-2xs"
+                  style={{
+                    paddingLeft: 'calc(22 * var(--u))',
+                    paddingRight: 'calc(22 * var(--u))',
+                    paddingTop: 'calc(8 * var(--u))',
+                    paddingBottom: 'calc(8 * var(--u))',
+                    marginBottom: 'calc(16 * var(--u))',
+                  }}
+                >
+                  <span
+                    className="font-extrabold text-[#1B1D20] tracking-tight leading-none"
+                    style={{ fontSize: 'calc(22 * var(--u))' }}
+                  >
+                    Trivia · {triviaCategory}
+                  </span>
+                </div>
+
+                {/* Huge Bold Question */}
+                <h2
+                  className="font-black text-[#1B1D20] tracking-[-0.03em] leading-[1.08] m-0 text-left"
+                  style={{
+                    fontSize: 'calc(48 * var(--u))',
+                    marginBottom: 'calc(20 * var(--u))',
+                  }}
+                >
+                  {rawQuestion}
+                </h2>
+
+                {/* Correct Answer Block */}
+                <div
+                  className="relative aspect-[548/326] flex items-center justify-center"
+                  style={{
+                    width: 'calc(440 * var(--u))',
+                    marginBottom: 'calc(24 * var(--u))',
+                  }}
+                >
+                  <img
+                    src="/assets/correct-answer-blob-sparkles.webp"
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
+                    draggable={false}
+                  />
+
+                  <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 pointer-events-none">
+                    <div
+                      className="rounded-full bg-white flex items-center justify-center shadow-xs flex-shrink-0"
+                      style={{
+                        width: 'calc(50 * var(--u))',
+                        height: 'calc(50 * var(--u))',
+                        marginBottom: 'calc(8 * var(--u))',
+                      }}
+                    >
+                      <svg
+                        style={{
+                          width: 'calc(26 * var(--u))',
+                          height: 'calc(26 * var(--u))',
+                        }}
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#48B358"
+                        strokeWidth="3.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </div>
+
+                    <span
+                      className="font-extrabold text-[#1B1D20]/80 tracking-tight leading-none"
+                      style={{
+                        fontSize: 'calc(20 * var(--u))',
+                        marginBottom: 'calc(4 * var(--u))',
+                      }}
+                    >
+                      Correct answer
+                    </span>
+
+                    <span
+                      className="font-black text-[#1B1D20] tracking-[-0.03em] leading-none"
+                      style={{ fontSize: 'calc(52 * var(--u))' }}
+                    >
+                      {correctTriviaAnswer}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Score Summary */}
+                <div className="flex flex-col items-start select-none">
+                  <span
+                    className="font-bold text-[#1B1D20]/60 tracking-tight leading-none"
+                    style={{ fontSize: 'calc(20 * var(--u))' }}
+                  >
+                    Score
+                  </span>
+                  <span
+                    className="font-black text-[#1B1D20] tracking-[-0.03em] leading-none"
+                    style={{
+                      fontSize: 'calc(78 * var(--u))',
+                      marginTop: 'calc(4 * var(--u))',
+                      marginBottom: 'calc(4 * var(--u))',
+                    }}
+                  >
+                    {p1Score} - {p2Score}
+                  </span>
+                  <span
+                    className="font-extrabold text-[#1B1D20] tracking-tight leading-none"
+                    style={{ fontSize: 'calc(24 * var(--u))' }}
+                  >
+                    {winnerText}
+                  </span>
+                </div>
+              </div>
+
+              {/* RIGHT COLUMN: player blobs, emoji row, buttons */}
+              <div
+                className="flex flex-col items-center justify-center"
+                style={{ width: 'calc(680 * var(--u))' }}
+              >
+                {/* Two Player Blobs with Starburst in Center */}
+                <div
+                  className="relative w-full flex items-center justify-between"
+                  style={{ marginBottom: 'calc(32 * var(--u))' }}
+                >
+                  {/* Left Player (Musab) */}
+                  <div
+                    className="relative aspect-[456/468] flex flex-col items-center justify-center z-10"
+                    style={{
+                      width: 'calc(300 * var(--u))',
+                      padding: 'calc(16 * var(--u))',
+                    }}
+                  >
+                    <img
+                      src="/assets/reveal/card-blob-pink.webp"
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
+                      draggable={false}
+                    />
+
+                    <div className="relative z-10 flex flex-col items-center justify-center text-center w-full h-full pointer-events-none">
+                      <img
+                        src={p1AvatarSrc}
+                        alt={p1LabelText}
+                        className="object-contain flex-shrink-0"
+                        style={{
+                          width: 'calc(78 * var(--u))',
+                          height: 'calc(78 * var(--u))',
+                          marginBottom: 'calc(8 * var(--u))',
+                        }}
+                        draggable={false}
+                      />
+                      <span
+                        className="font-black text-[#1B1D20] tracking-tight leading-tight truncate max-w-full"
+                        style={{
+                          fontSize: 'calc(24 * var(--u))',
+                          marginBottom: 'calc(4 * var(--u))',
+                        }}
+                      >
+                        {p1LabelText}
+                      </span>
+                      <span
+                        className="font-bold text-[#1B1D20]/60 tracking-tight leading-tight truncate max-w-full"
+                        style={{
+                          fontSize: 'calc(20 * var(--u))',
+                          marginBottom: 'calc(12 * var(--u))',
+                        }}
+                      >
+                        {p1TriviaAnswer}
+                      </span>
+
+                      {p1IsCorrect ? (
+                        <div
+                          className="rounded-full bg-[#FED982] flex items-center shadow-2xs"
+                          style={{
+                            paddingLeft: 'calc(16 * var(--u))',
+                            paddingRight: 'calc(16 * var(--u))',
+                            paddingTop: 'calc(6 * var(--u))',
+                            paddingBottom: 'calc(6 * var(--u))',
+                            gap: 'calc(8 * var(--u))',
+                          }}
+                        >
+                          <div
+                            className="rounded-full bg-[#48B358] flex items-center justify-center text-white flex-shrink-0"
+                            style={{
+                              width: 'calc(26 * var(--u))',
+                              height: 'calc(26 * var(--u))',
+                            }}
+                          >
+                            <svg
+                              style={{
+                                width: 'calc(15 * var(--u))',
+                                height: 'calc(15 * var(--u))',
+                              }}
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="white"
+                              strokeWidth="3.8"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          </div>
+                          <span
+                            className="font-black text-[#1B1D20] leading-none"
+                            style={{ fontSize: 'calc(20 * var(--u))' }}
+                          >
+                            +15
+                          </span>
+                        </div>
+                      ) : (
+                        <div
+                          className="rounded-full bg-[#DDE3EC] flex items-center shadow-2xs"
+                          style={{
+                            paddingLeft: 'calc(16 * var(--u))',
+                            paddingRight: 'calc(16 * var(--u))',
+                            paddingTop: 'calc(6 * var(--u))',
+                            paddingBottom: 'calc(6 * var(--u))',
+                            gap: 'calc(8 * var(--u))',
+                          }}
+                        >
+                          <div
+                            className="rounded-full bg-[#757D8A] flex items-center justify-center text-white flex-shrink-0"
+                            style={{
+                              width: 'calc(26 * var(--u))',
+                              height: 'calc(26 * var(--u))',
+                            }}
+                          >
+                            <svg
+                              style={{
+                                width: 'calc(15 * var(--u))',
+                                height: 'calc(15 * var(--u))',
+                              }}
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="white"
+                              strokeWidth="3.4"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <line x1="18" y1="6" x2="6" y2="18" />
+                              <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                          </div>
+                          <span
+                            className="font-black text-[#1B1D20] leading-none"
+                            style={{ fontSize: 'calc(20 * var(--u))' }}
+                          >
+                            +0
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Center Starburst */}
+                  <div
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none select-none flex items-center justify-center filter drop-shadow-xs"
+                    style={{
+                      width: 'calc(140 * var(--u))',
+                      height: 'calc(144 * var(--u))',
+                    }}
+                  >
+                    <img
+                      src="/assets/reveal/match-starburst.webp"
+                      alt=""
+                      className="w-full h-full object-contain pointer-events-none select-none"
+                      draggable={false}
+                    />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-1 text-[#1B1D20]">
+                      <span
+                        className="font-black leading-[1.08] tracking-tight"
+                        style={{ fontSize: 'calc(19 * var(--u))' }}
+                      >
+                        {triviaBurstText}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Right Player (Alex) */}
+                  <div
+                    className="relative aspect-[456/468] flex flex-col items-center justify-center z-10"
+                    style={{
+                      width: 'calc(300 * var(--u))',
+                      padding: 'calc(16 * var(--u))',
+                    }}
+                  >
+                    <img
+                      src="/assets/reveal/card-blob-blue.webp"
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
+                      draggable={false}
+                    />
+
+                    <div className="relative z-10 flex flex-col items-center justify-center text-center w-full h-full pointer-events-none">
+                      <img
+                        src={p2AvatarSrc}
+                        alt={p2LabelText}
+                        className="object-contain flex-shrink-0"
+                        style={{
+                          width: 'calc(78 * var(--u))',
+                          height: 'calc(78 * var(--u))',
+                          marginBottom: 'calc(8 * var(--u))',
+                        }}
+                        draggable={false}
+                      />
+                      <span
+                        className="font-black text-[#1B1D20] tracking-tight leading-tight truncate max-w-full"
+                        style={{
+                          fontSize: 'calc(24 * var(--u))',
+                          marginBottom: 'calc(4 * var(--u))',
+                        }}
+                      >
+                        {p2LabelText}
+                      </span>
+                      <span
+                        className="font-bold text-[#1B1D20]/60 tracking-tight leading-tight truncate max-w-full"
+                        style={{
+                          fontSize: 'calc(20 * var(--u))',
+                          marginBottom: 'calc(12 * var(--u))',
+                        }}
+                      >
+                        {p2TriviaAnswer}
+                      </span>
+
+                      {p2IsCorrect ? (
+                        <div
+                          className="rounded-full bg-[#FED982] flex items-center shadow-2xs"
+                          style={{
+                            paddingLeft: 'calc(16 * var(--u))',
+                            paddingRight: 'calc(16 * var(--u))',
+                            paddingTop: 'calc(6 * var(--u))',
+                            paddingBottom: 'calc(6 * var(--u))',
+                            gap: 'calc(8 * var(--u))',
+                          }}
+                        >
+                          <div
+                            className="rounded-full bg-[#48B358] flex items-center justify-center text-white flex-shrink-0"
+                            style={{
+                              width: 'calc(26 * var(--u))',
+                              height: 'calc(26 * var(--u))',
+                            }}
+                          >
+                            <svg
+                              style={{
+                                width: 'calc(15 * var(--u))',
+                                height: 'calc(15 * var(--u))',
+                              }}
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="white"
+                              strokeWidth="3.8"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          </div>
+                          <span
+                            className="font-black text-[#1B1D20] leading-none"
+                            style={{ fontSize: 'calc(20 * var(--u))' }}
+                          >
+                            +15
+                          </span>
+                        </div>
+                      ) : (
+                        <div
+                          className="rounded-full bg-[#DDE3EC] flex items-center shadow-2xs"
+                          style={{
+                            paddingLeft: 'calc(16 * var(--u))',
+                            paddingRight: 'calc(16 * var(--u))',
+                            paddingTop: 'calc(6 * var(--u))',
+                            paddingBottom: 'calc(6 * var(--u))',
+                            gap: 'calc(8 * var(--u))',
+                          }}
+                        >
+                          <div
+                            className="rounded-full bg-[#757D8A] flex items-center justify-center text-white flex-shrink-0"
+                            style={{
+                              width: 'calc(26 * var(--u))',
+                              height: 'calc(26 * var(--u))',
+                            }}
+                          >
+                            <svg
+                              style={{
+                                width: 'calc(15 * var(--u))',
+                                height: 'calc(15 * var(--u))',
+                              }}
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="white"
+                              strokeWidth="3.4"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <line x1="18" y1="6" x2="6" y2="18" />
+                              <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                          </div>
+                          <span
+                            className="font-black text-[#1B1D20] leading-none"
+                            style={{ fontSize: 'calc(20 * var(--u))' }}
+                          >
+                            +0
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Reaction Emoji Row */}
+                <div
+                  className="w-full flex items-center justify-between"
+                  style={{ marginBottom: 'calc(32 * var(--u))' }}
+                >
+                  {REACTION_EMOJIS.map((emoji) => {
+                    const isSelected = activeReaction === emoji.id;
+                    const isBouncing = bouncingEmojiId === emoji.id;
+
+                    return (
+                      <button
+                        key={emoji.id}
+                        type="button"
+                        onClick={() => handleEmojiClick(emoji.id)}
+                        aria-label={emoji.alt}
+                        aria-pressed={isSelected}
+                        className={`rounded-full border-dashed flex items-center justify-center cursor-pointer transition-all focus:outline-none p-0 bg-transparent ${
+                          isSelected
+                            ? 'border-[#1B1D20] bg-white/40 scale-105'
+                            : 'border-[#1B1D20]/45 hover:border-[#1B1D20]/75 active:scale-95'
+                        } ${isBouncing ? 'animate-avatar-bounce' : ''}`}
+                        style={{
+                          width: 'calc(68 * var(--u))',
+                          height: 'calc(68 * var(--u))',
+                          borderWidth: 'calc(2 * var(--u))',
+                        }}
+                      >
+                        <img
+                          src={emoji.file}
+                          alt={emoji.alt}
+                          className="object-contain pointer-events-none select-none"
+                          style={{
+                            width: 'calc(38 * var(--u))',
+                            height: 'calc(38 * var(--u))',
+                          }}
+                          draggable={false}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Action Buttons */}
+                <div
+                  className="w-full flex flex-col"
+                  style={{ gap: 'calc(16 * var(--u))' }}
+                >
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    className="btn-press w-full rounded-full bg-[#1B1D20] hover:bg-[#282B30] text-white font-black tracking-tight flex items-center justify-center cursor-pointer shadow-md focus:outline-none active:scale-[0.98] transition-transform"
+                    style={{
+                      height: 'calc(72 * var(--u))',
+                      fontSize: 'calc(24 * var(--u))',
+                      gap: 'calc(12 * var(--u))',
+                    }}
+                  >
+                    <svg
+                      style={{
+                        width: 'calc(24 * var(--u))',
+                        height: 'calc(24 * var(--u))',
+                      }}
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                    </svg>
+                    <span>Save to memory wall</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleNextClick}
+                    className="btn-press w-full rounded-full bg-[#1B1D20] hover:bg-[#282B30] text-white font-black tracking-tight flex items-center justify-center cursor-pointer shadow-md focus:outline-none active:scale-[0.98] transition-transform"
+                    style={{
+                      height: 'calc(72 * var(--u))',
+                      fontSize: 'calc(24 * var(--u))',
+                      gap: 'calc(12 * var(--u))',
+                    }}
+                  >
+                    <span>Next question ✨</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          KNOW ME REVEAL SCREEN (Existing screen preserved, DAYS STRIP REMOVED)
+         ========================================================================= */}
+      {isKnowMeRound && (
+        <div className="w-full max-w-[390px] flex flex-col px-5 pt-4 pb-14 relative min-h-max z-10">
+          {/* 1. TOP BAR: GameHeader (Rounds pill in center, Settings icon on right) */}
+          <GameHeader
+            showLogo={true}
+            roundPillPosition="center"
+            currentRound={isInGame ? gameSession.currentRound : 1}
+            totalRounds={isInGame ? gameSession.totalRounds : 10}
+            showTimer={false}
+            showBack={false}
+            showSettings={true}
+            onOpenSettings={onOpenSettings || (() => navigate('/profile'))}
+            className="-mx-5 mb-4"
+          />
+
+          {/* Note: DAYS/TIMELINE STRIP (MON 12 - SUN 18) DELETED PER EXPLICIT INSTRUCTION */}
+
+          {/* 2. QUESTION HEADLINE */}
+          <div className="mb-6 px-1 select-none">
+            <h2 className="font-black text-[30px] sm:text-[34px] leading-[1.1] text-[#1B1D20] tracking-[-0.03em] m-0 break-words">
+              {rawQuestion}
+            </h2>
+          </div>
+
+          {/* 3. PLAYER ANSWER BLOBS & MATCH STARBURST */}
+          <div className="relative w-full flex items-center justify-between mb-8 select-none">
+            {/* Left Card: Pink Organic Blob */}
+            <div
+              onClick={() =>
+                setInspectingPlayer({
+                  name: p1LabelText,
+                  avatarSrc: p1AvatarSrc,
+                  answer: resolvedP1Answer,
+                  blobBg: '#FCA0D1',
+                })
+              }
+              className="relative w-[48%] max-w-[172px] aspect-[456/468] flex flex-col items-center justify-center p-3 cursor-pointer active:scale-[0.98] transition-transform z-10"
+              title="Click to view full answer"
+            >
+              <img
+                src="/assets/reveal/card-blob-pink.webp"
+                alt=""
+                className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
+                draggable={false}
+              />
+
+              <div className="relative z-10 flex flex-col items-center justify-center text-center w-full h-full pointer-events-none px-1 pt-1 pb-1">
                 <img
-                  src={emoji.file}
-                  alt={emoji.alt}
-                  className="w-[25px] h-[25px] object-contain pointer-events-none select-none"
+                  src={p1AvatarSrc}
+                  alt={p1LabelText}
+                  className="w-[42px] h-[42px] sm:w-[46px] sm:h-[46px] object-contain mb-1 flex-shrink-0"
                   draggable={false}
                 />
-              </button>
-            );
-          })}
-        </div>
+                <span className="text-[11.5px] font-bold text-[#1B1D20]/60 tracking-tight leading-none mb-1 flex-shrink-0 max-w-[124px] truncate">
+                  {p1LabelText}
+                </span>
+                <p className="font-black text-[15px] sm:text-[16.5px] leading-[1.12] text-[#1B1D20] tracking-tight m-0 line-clamp-2 break-words max-w-[128px]">
+                  {resolvedP1Answer}
+                </p>
+              </div>
+            </div>
 
-        {/* =========================================================================
-            7. ACTION BUTTONS: "Save to memory wall" & "Next question tomorrow"
-           ========================================================================= */}
-        <div className="w-full flex flex-col gap-3 mb-6 relative z-10">
-          {/* Button 1: Save to Memory Wall */}
-          <button
-            type="button"
-            onClick={handleSave}
-            className="btn-press w-full h-[48px] sm:h-[50px] rounded-full bg-[#1B1D20] hover:bg-[#282B30] text-white font-extrabold text-[16.5px] tracking-tight flex items-center justify-center gap-2 cursor-pointer shadow-md focus:outline-none active:scale-[0.98] transition-transform"
-          >
-            {/* Bookmark Ribbon Icon */}
-            <svg
-              width="17"
-              height="17"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+            {/* Center Starburst: Matched / Not Matched */}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92px] h-[94px] z-20 pointer-events-none select-none flex items-center justify-center filter drop-shadow-md">
+              <img
+                src={
+                  isSuccess
+                    ? '/assets/reveal/match-starburst.webp'
+                    : '/assets/reveal/match-starburst-black.webp'
+                }
+                alt={isSuccess ? 'Matched Starburst' : 'Not Matched Starburst'}
+                className="w-full h-full object-contain pointer-events-none select-none"
+                draggable={false}
+              />
+              <div
+                className={`absolute inset-0 flex flex-col items-center justify-center text-center pt-1 ${
+                  isSuccess ? 'text-[#1B1D20]' : 'text-white'
+                }`}
+              >
+                <span className="text-[11.5px] font-black leading-[1.05] tracking-tight">
+                  {isSuccess ? 'You' : 'No'}
+                </span>
+                <span className="text-[11.5px] font-black leading-[1.05] tracking-tight">
+                  {isSuccess ? 'matched!' : 'match!'}
+                </span>
+                <span
+                  className={`text-[15px] font-black leading-none mt-0.5 ${
+                    isSuccess ? 'text-[#1B1D20]' : 'text-white'
+                  }`}
+                >
+                  {isSuccess ? '+15' : '+0'}
+                </span>
+              </div>
+            </div>
+
+            {/* Right Card: Blue Organic Blob */}
+            <div
+              onClick={() =>
+                setInspectingPlayer({
+                  name: p2LabelText,
+                  avatarSrc: p2AvatarSrc,
+                  answer: resolvedP2Answer,
+                  blobBg: '#8EAFFD',
+                })
+              }
+              className="relative w-[48%] max-w-[172px] aspect-[456/468] flex flex-col items-center justify-center p-3 cursor-pointer active:scale-[0.98] transition-transform z-10"
+              title="Click to view full answer"
             >
-              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-            </svg>
-            <span>Save to memory wall</span>
-          </button>
+              <img
+                src="/assets/reveal/card-blob-blue.webp"
+                alt=""
+                className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
+                draggable={false}
+              />
 
-          {/* Button 2: Next Question Tomorrow / Next Round */}
-          <button
-            type="button"
-            onClick={handleNextClick}
-            className="btn-press w-full h-[48px] sm:h-[50px] rounded-full bg-[#D5C7D7] hover:bg-[#C9B9CB] text-[#7A7380] font-extrabold text-[16px] tracking-tight flex items-center justify-center cursor-pointer focus:outline-none active:scale-[0.98] transition-transform"
-          >
-            <span>
-              {isInGame
-                ? gameSession.currentRound < gameSession.totalRounds
-                  ? `Next question (${gameSession.currentRound + 1}/${gameSession.totalRounds}) ➔`
-                  : 'See final results 🏆 ➔'
-                : 'Next question tomorrow'}
+              <div className="relative z-10 flex flex-col items-center justify-center text-center w-full h-full pointer-events-none px-1 pt-1 pb-1">
+                <img
+                  src={p2AvatarSrc}
+                  alt={p2LabelText}
+                  className="w-[42px] h-[42px] sm:w-[46px] sm:h-[46px] object-contain mb-1 flex-shrink-0"
+                  draggable={false}
+                />
+                <span className="text-[11.5px] font-bold text-[#1B1D20]/60 tracking-tight leading-none mb-1 flex-shrink-0 max-w-[124px] truncate">
+                  {p2LabelText}
+                </span>
+                <p className="font-black text-[15px] sm:text-[16.5px] leading-[1.12] text-[#1B1D20] tracking-tight m-0 line-clamp-2 break-words max-w-[128px]">
+                  {resolvedP2Answer}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 4. MIDDLE SYNC SCORE SECTION & 4 ORBITING DECORATIONS */}
+          <div className="relative w-full flex flex-col items-center mb-7 py-2">
+            <span className="text-[14px] font-bold text-[#1B1D20]/60 tracking-tight mb-0.5">
+              Sync score
             </span>
-          </button>
+            <span className="font-black text-[74px] sm:text-[78px] leading-none text-[#1B1D20] tracking-[-0.04em] my-1">
+              {syncScore}%
+            </span>
+
+            <img
+              src="/assets/reveal/crescent-yellow.webp"
+              alt=""
+              className="absolute left-[12%] sm:left-[14%] top-[12px] w-[42px] h-[46px] object-contain pointer-events-none select-none z-10"
+              draggable={false}
+            />
+            <img
+              src="/assets/reveal/heart-pink-small.webp"
+              alt=""
+              className="absolute left-[8%] sm:left-[10%] bottom-[20px] w-[38px] h-[35px] object-contain pointer-events-none select-none z-10"
+              draggable={false}
+            />
+            <img
+              src="/assets/reveal/starburst-blue.webp"
+              alt=""
+              className="absolute right-[12%] sm:right-[14%] top-[8px] w-[46px] h-[50px] object-contain pointer-events-none select-none z-10"
+              draggable={false}
+            />
+            <img
+              src="/assets/reveal/cross-olive.webp"
+              alt=""
+              className="absolute right-[10%] sm:right-[12%] bottom-[16px] w-[40px] h-[42px] object-contain pointer-events-none select-none z-10"
+              draggable={false}
+            />
+
+            <p className="text-[14px] sm:text-[14.5px] font-bold text-[#1B1D20]/70 tracking-tight m-0 mt-1">
+              you know each other better today
+            </p>
+          </div>
+
+          {/* 5. REACTION EMOJIS ROW */}
+          <div className="w-full flex items-center justify-between mb-7 px-1">
+            {REACTION_EMOJIS.map((emoji) => {
+              const isSelected = activeReaction === emoji.id;
+              const isBouncing = bouncingEmojiId === emoji.id;
+
+              return (
+                <button
+                  key={emoji.id}
+                  type="button"
+                  onClick={() => handleEmojiClick(emoji.id)}
+                  aria-label={emoji.alt}
+                  aria-pressed={isSelected}
+                  className={`w-[44px] h-[44px] rounded-full border-[1.5px] border-dashed flex items-center justify-center cursor-pointer transition-all focus:outline-none p-0 bg-transparent ${
+                    isSelected
+                      ? 'border-[#1B1D20] bg-white/40 scale-105'
+                      : 'border-[#1B1D20]/45 hover:border-[#1B1D20]/75 active:scale-95'
+                  } ${isBouncing ? 'animate-avatar-bounce' : ''}`}
+                >
+                  <img
+                    src={emoji.file}
+                    alt={emoji.alt}
+                    className="w-[25px] h-[25px] object-contain pointer-events-none select-none"
+                    draggable={false}
+                  />
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 6. ACTION BUTTONS */}
+          <div className="w-full flex flex-col gap-3 mb-6 relative z-10">
+            <button
+              type="button"
+              onClick={handleSave}
+              className="btn-press w-full h-[48px] sm:h-[50px] rounded-full bg-[#1B1D20] hover:bg-[#282B30] text-white font-extrabold text-[16.5px] tracking-tight flex items-center justify-center gap-2 cursor-pointer shadow-md focus:outline-none active:scale-[0.98] transition-transform"
+            >
+              <svg
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+              </svg>
+              <span>Save to memory wall</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleNextClick}
+              className="btn-press w-full h-[48px] sm:h-[50px] rounded-full bg-[#D5C7D7] hover:bg-[#C9B9CB] text-[#7A7380] font-extrabold text-[16px] tracking-tight flex items-center justify-center cursor-pointer focus:outline-none active:scale-[0.98] transition-transform"
+            >
+              <span>
+                {isInGame
+                  ? gameSession.currentRound < gameSession.totalRounds
+                    ? `Next question (${gameSession.currentRound + 1}/${gameSession.totalRounds}) ➔`
+                    : 'See final results 🏆 ➔'
+                  : 'Next question tomorrow'}
+              </span>
+            </button>
+          </div>
+
+          {/* Bottom Corner Decorations */}
+          <img
+            src="/assets/reveal/deco-bottom-left.webp"
+            alt=""
+            className="absolute -left-[10px] bottom-[10px] w-[54px] h-[50px] object-contain pointer-events-none select-none z-0"
+            draggable={false}
+          />
+          <img
+            src="/assets/reveal/deco-bottom-right.webp"
+            alt=""
+            className="absolute -right-[8px] bottom-[8px] w-[50px] h-[48px] object-contain pointer-events-none select-none z-0"
+            draggable={false}
+          />
         </div>
-
-        {/* =========================================================================
-            8. BOTTOM CORNER DECORATIONS (Peeking at the bottom corners)
-           ========================================================================= */}
-        {/* Bottom-Left Yellow Star */}
-        <img
-          src="/assets/reveal/deco-bottom-left.webp"
-          alt=""
-          className="absolute -left-[10px] bottom-[10px] w-[54px] h-[50px] object-contain pointer-events-none select-none z-0"
-          draggable={false}
-        />
-
-        {/* Bottom-Right Pink Heart / Blob */}
-        <img
-          src="/assets/reveal/deco-bottom-right.webp"
-          alt=""
-          className="absolute -right-[8px] bottom-[8px] w-[50px] h-[48px] object-contain pointer-events-none select-none z-0"
-          draggable={false}
-        />
-      </div>
+      )}
 
       {/* =========================================================================
           FULL ANSWER INSPECTION MODAL (When clicking on blob answer)
@@ -607,7 +1664,6 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
             className="relative w-full max-w-[320px] bg-[#FAF6EB] rounded-[32px] p-6 shadow-2xl flex flex-col items-center text-center animate-pop border-2 border-[#1B1D20]/10"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Avatar on Color Blob */}
             <div
               className="relative w-[72px] h-[72px] rounded-full flex items-center justify-center mb-3 shadow-inner"
               style={{ backgroundColor: inspectingPlayer.blobBg }}
@@ -631,7 +1687,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
             <button
               type="button"
               onClick={() => setInspectingPlayer(null)}
-              className="mt-5 w-full h-[46px] rounded-full bg-[#1B1D20] hover:bg-[#2A2D32] text-white font-bold text-[16px] tracking-tight cursor-pointer btn-press"
+              className="mt-5 w-full h-[46px] rounded-full bg-[#1B1D20] hover:bg-[#282B30] text-white font-bold text-[16px] tracking-tight cursor-pointer btn-press"
             >
               Close
             </button>

@@ -85,10 +85,10 @@ export const AppLoader: React.FC<AppLoaderProps> = ({
       } ${className}`}
     >
       {/* Centered Composition: Calm, lots of empty space, zero corner decorations */}
-      <div className="flex flex-col items-center justify-center text-center w-full max-w-[390px] mx-auto px-6 my-auto">
+      <div className="flex flex-col items-center justify-center text-center w-full max-w-[390px] md:max-w-[480px] mx-auto px-6 my-auto">
         
-        {/* Dashed Circle (104px mobile, 120px desktop) with 3 bouncing dots inside */}
-        <div className="relative w-[104px] h-[104px] md:w-[120px] md:h-[120px] flex items-center justify-center">
+        {/* Dashed Circle (104px mobile, 130px desktop) with 3 bouncing dots inside */}
+        <div className="relative w-[104px] h-[104px] md:w-[130px] md:h-[130px] flex items-center justify-center">
           
           {/* Dashed Circle Outline: 1.5px ink, rotates 360deg every 8s (motion disabled if prefers-reduced-motion) */}
           <svg
@@ -107,11 +107,11 @@ export const AppLoader: React.FC<AppLoaderProps> = ({
             />
           </svg>
 
-          {/* Three bouncing dots: 16px each, 10px gap, staggered wave */}
-          <div className="flex items-center justify-center gap-[10px] z-10">
+          {/* Three bouncing dots: 16px mobile, 20px desktop */}
+          <div className="flex items-center justify-center gap-[10px] md:gap-[13px] z-10">
             {/* Dot 1 (Starts slightly up) */}
             <div
-              className="w-[16px] h-[16px] rounded-full animate-[dotWaveBounce_900ms_ease-in-out_infinite] motion-reduce:animate-none"
+              className="w-[16px] h-[16px] md:w-[20px] md:h-[20px] rounded-full animate-[dotWaveBounce_900ms_ease-in-out_infinite] motion-reduce:animate-none"
               style={{
                 backgroundColor: dotColors[0],
                 animationDelay: '0ms',
@@ -119,7 +119,7 @@ export const AppLoader: React.FC<AppLoaderProps> = ({
             />
             {/* Dot 2 (Center) */}
             <div
-              className="w-[16px] h-[16px] rounded-full animate-[dotWaveBounce_900ms_ease-in-out_infinite] motion-reduce:animate-none"
+              className="w-[16px] h-[16px] md:w-[20px] md:h-[20px] rounded-full animate-[dotWaveBounce_900ms_ease-in-out_infinite] motion-reduce:animate-none"
               style={{
                 backgroundColor: dotColors[1],
                 animationDelay: '150ms',
@@ -127,7 +127,7 @@ export const AppLoader: React.FC<AppLoaderProps> = ({
             />
             {/* Dot 3 (Starts slightly down) */}
             <div
-              className="w-[16px] h-[16px] rounded-full animate-[dotWaveBounce_900ms_ease-in-out_infinite] motion-reduce:animate-none"
+              className="w-[16px] h-[16px] md:w-[20px] md:h-[20px] rounded-full animate-[dotWaveBounce_900ms_ease-in-out_infinite] motion-reduce:animate-none"
               style={{
                 backgroundColor: dotColors[2],
                 animationDelay: '300ms',
@@ -136,13 +136,13 @@ export const AppLoader: React.FC<AppLoaderProps> = ({
           </div>
         </div>
 
-        {/* Wordmark (28px gap under ring, Nunito 900, 28px mobile, 34px desktop, ink #17181B) */}
-        <h1 className="mt-[28px] text-[28px] md:text-[34px] font-[900] text-[#17181B] tracking-[-0.02em] leading-tight text-center">
+        {/* Wordmark (28px gap under ring, Nunito 900, 28px mobile, 38px desktop, ink #17181B) */}
+        <h1 className="mt-[28px] md:mt-[34px] text-[28px] md:text-[38px] font-[900] text-[#17181B] tracking-[-0.02em] leading-tight text-center">
           Get-to-Know-You
         </h1>
 
-        {/* Gray Line (8px gap under wordmark, Nunito 700, 15px mobile, 17px desktop, ink at 55%) */}
-        <p className="mt-[8px] text-[15px] md:text-[17px] font-[700] text-[#17181B]/55 tracking-[-0.01em] text-center">
+        {/* Gray Line (8px gap under wordmark, Nunito 700, 15px mobile, 18px desktop, ink at 55%) */}
+        <p className="mt-[8px] md:mt-[10px] text-[15px] md:text-[18px] font-[700] text-[#17181B]/55 tracking-[-0.01em] text-center">
           {displaySubtext}
         </p>
 
@@ -151,7 +151,7 @@ export const AppLoader: React.FC<AppLoaderProps> = ({
           <button
             type="button"
             onClick={onRetry || (() => window.location.reload())}
-            className="mt-[32px] w-[140px] h-[44px] rounded-full bg-[#17181B] text-white font-[800] text-[18px] tracking-[-0.01em] flex items-center justify-center cursor-pointer transition-transform active:scale-95 focus:outline-none"
+            className="mt-[32px] md:mt-[38px] w-[140px] md:w-[160px] h-[44px] md:h-[50px] rounded-full bg-[#17181B] text-white font-[800] text-[18px] md:text-[20px] tracking-[-0.01em] flex items-center justify-center cursor-pointer transition-transform active:scale-95 focus:outline-none"
           >
             Try again
           </button>

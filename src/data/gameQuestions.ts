@@ -31,6 +31,21 @@ export type GameQuestion = TriviaQuestion | KnowMeQuestion;
 
 export const TRIVIA_QUESTIONS: TriviaQuestion[] = [
   {
+    id: 't_sushi',
+    type: 'trivia',
+    category: 'Food',
+    question: "Which country invented sushi?",
+    questionLines: ["Which country", "invented sushi?"],
+    options: [
+      { id: 'pink', text: "Japan" },
+      { id: 'yellow', text: "China" },
+      { id: 'cream', text: "Korea" },
+      { id: 'green', text: "Thailand" },
+    ],
+    correctOptionId: 'pink',
+    explanation: "While origins of fermented fish in rice trace back to Southeast Asia, modern sushi as we know it was developed in Japan (Edo period)!",
+  },
+  {
     id: 't1',
     type: 'trivia',
     category: 'Space',
