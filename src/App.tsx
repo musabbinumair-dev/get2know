@@ -436,6 +436,7 @@ function AppContent() {
               onNextQuestion={handleNextQuestion}
               onBack={() => navigateWithLoader('/locked')}
               onOpenSettings={() => navigateWithLoader('/profile')}
+              onOpenFriendProfile={() => navigateWithLoader('/friend')}
               onNavigateTab={handleTabNavigate}
             />
           }
@@ -446,9 +447,13 @@ function AppContent() {
           path="/locked"
           element={
             <AnswerLockedScreen
-              friendName={partnerProfile.name || 'Alex'}
+              friendName={partnerProfile.name || 'Sam'}
+              friendAvatarId={partnerProfile.avatarId || 2}
+              friendBlobId={partnerProfile.color || 'teal'}
+              streak={history.stats.streak || 12}
               onEditAnswer={() => navigateWithLoader('/home')}
               onOpenSettings={() => navigateWithLoader('/profile')}
+              onOpenFriendProfile={() => navigateWithLoader('/friend')}
               onNavigateTab={handleTabNavigate}
               onPlayer2Answered={() => navigateWithLoader('/guess')}
             />

@@ -5,7 +5,7 @@ import { QuestionData } from '../data/gameData';
 import { useGameSession } from '../services/gameSessionContext';
 import { useSession } from '../services/sessionContext';
 import { TriviaQuestion } from '../data/gameQuestions';
-import { GameHeader } from '../components/GameHeader';
+import { TopBar } from '../components/TopBar';
 
 export interface RevealScreenProps {
   player1Name?: string;
@@ -26,6 +26,7 @@ export interface RevealScreenProps {
   onBack?: () => void;
   onNavigateTab?: (tab: NavTab) => void;
   onOpenSettings?: () => void;
+  onOpenFriendProfile?: () => void;
   mode?: 'trivia' | 'know-me';
 }
 
@@ -52,8 +53,9 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
   onSelectReaction,
   onSaveToMemoryWall,
   onNextQuestion,
-  onBack,
+  onBack: _onBack,
   onOpenSettings,
+  onOpenFriendProfile,
   mode: propMode,
 }) => {
   const navigate = useNavigate();
@@ -61,6 +63,25 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
   const session = useSession();
   const gameSession = useGameSession();
   const isInGame = gameSession.isActive;
+
+  const currentRound = isInGame ? gameSession.currentRound : 1;
+  const totalRounds = isInGame ? gameSession.totalRounds : 10;
+
+  const handleOpenSettings = () => {
+    if (onOpenSettings) {
+      onOpenSettings();
+    } else {
+      navigate('/profile');
+    }
+  };
+
+  const handleOpenFriendProfile = () => {
+    if (onOpenFriendProfile) {
+      onOpenFriendProfile();
+    } else {
+      navigate('/friend');
+    }
+  };
 
   // Sync background color to pastel pink and ensure scrolling
   useEffect(() => {
@@ -272,22 +293,13 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
     }
   };
 
-  const handleBackClick = () => {
-    if (onBack) {
-      onBack();
-    } else {
-      navigate(-1);
-    }
-  };
-
   return (
     <div
       id="reveal-scroll-viewport"
-      className="fixed inset-0 w-full h-full bg-[#F5CCE2] overflow-y-auto overflow-x-hidden flex justify-center items-start select-none font-['Nunito',sans-serif] z-40"
+      className="relative w-full min-h-[100dvh] bg-[#F5CCE2] select-none font-['Nunito',sans-serif] overflow-x-hidden"
       style={{
         backgroundColor: '#F5CCE2',
         WebkitOverflowScrolling: 'touch',
-        touchAction: 'pan-y',
       }}
     >
       {/* Toast Notification */}
@@ -303,45 +315,18 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
           TRIVIA REVEAL SCREEN (MOBILE FIRST: < 768px)
          ========================================================================= */}
       {isTriviaRound && (
-        <div className="w-full max-w-[390px] flex flex-col px-5 pt-3 pb-12 relative min-h-max md:hidden z-10">
-          {/* Top-Right Cropped Pink Heart Decoration */}
-          <img
-            src="/assets/reveal/heart-pink-small.webp"
-            alt=""
-            className="absolute -top-3 -right-3 w-[74px] h-[70px] object-contain pointer-events-none select-none z-0"
-            draggable={false}
+        <div className="md:hidden relative w-full min-h-[100dvh] max-w-[390px] mx-auto flex flex-col justify-start items-center select-none">
+          {/* 1. TOP BAR: Exact same top bar component from Homepage & Waiting page (with Rounds pill instead of streak) */}
+          <TopBar
+            mode="rounds"
+            currentRound={currentRound}
+            totalRounds={totalRounds}
+            onOpenSettings={handleOpenSettings}
+            onOpenFriendProfile={handleOpenFriendProfile}
+            className="w-full absolute top-0 left-0"
           />
 
-          {/* 1. TOP BAR: Back button (circular dashed) + Centered "Reveal" title */}
-          <div className="relative w-full h-[52px] flex items-center justify-between z-20 mb-3">
-            <button
-              type="button"
-              onClick={handleBackClick}
-              aria-label="Back"
-              className="btn-press w-[42px] h-[42px] rounded-full border-[1.6px] border-dashed border-[#1B1D20] flex items-center justify-center bg-transparent hover:bg-[#1B1D20]/5 active:scale-95 transition-transform cursor-pointer focus:outline-none p-0"
-            >
-              <svg
-                width="19"
-                height="19"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#1B1D20"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="19" y1="12" x2="5" y2="12" />
-                <polyline points="12 19 5 12 12 5" />
-              </svg>
-            </button>
-
-            <h1 className="absolute left-1/2 -translate-x-1/2 text-[32px] sm:text-[34px] font-black text-[#1B1D20] tracking-[-0.03em] leading-none m-0 pointer-events-none">
-              Reveal
-            </h1>
-
-            {/* Spacer for symmetrical center balance */}
-            <div className="w-[42px] h-[42px]" />
-          </div>
+          <div className="w-full px-5 flex-1 flex flex-col items-center justify-start pt-[78px] pb-12 relative z-10">
 
           {/* 2. CATEGORY PILL: "Trivia · Food" */}
           <div className="w-full flex justify-center mb-3 z-10">
@@ -677,13 +662,13 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
             })}
           </div>
 
-          {/* 8. ACTION BUTTONS: "Save to memory wall" & "Next question ✨" */}
-          <div className="w-full flex flex-col gap-3 mb-4 relative z-10">
-            {/* Button 1: Save to Memory Wall */}
+          {/* 8. ACTION BUTTONS: Match mockup buttons (Black Save button + Soft lilac Next question tomorrow) */}
+          <div className="w-full flex flex-col gap-3 mb-6 relative z-10">
+            {/* Button 1: Save to Memory Wall (Black pill with white bookmark icon) */}
             <button
               type="button"
               onClick={handleSave}
-              className="btn-press w-full h-[50px] sm:h-[52px] rounded-full bg-[#1B1D20] hover:bg-[#282B30] text-white font-black text-[16px] tracking-tight flex items-center justify-center gap-2 cursor-pointer shadow-md focus:outline-none active:scale-[0.98] transition-transform"
+              className="btn-press w-full h-[52px] sm:h-[54px] rounded-full bg-[#1B1D20] hover:bg-[#282B30] text-white font-extrabold text-[16.5px] tracking-tight flex items-center justify-center gap-2 cursor-pointer shadow-md focus:outline-none active:scale-[0.98] transition-transform"
             >
               <svg
                 width="17"
@@ -700,13 +685,19 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
               <span>Save to memory wall</span>
             </button>
 
-            {/* Button 2: Next question ✨ */}
+            {/* Button 2: Next question ✨ (Soft lilac-gray pill with muted text) */}
             <button
               type="button"
               onClick={handleNextClick}
-              className="btn-press w-full h-[50px] sm:h-[52px] rounded-full bg-[#1B1D20] hover:bg-[#282B30] text-white font-black text-[16px] tracking-tight flex items-center justify-center gap-2 cursor-pointer shadow-md focus:outline-none active:scale-[0.98] transition-transform"
+              className="btn-press w-full h-[52px] sm:h-[54px] rounded-full bg-[#D5C7D7] hover:bg-[#C9B9CB] text-[#7A7380] font-extrabold text-[16.5px] tracking-tight flex items-center justify-center cursor-pointer focus:outline-none active:scale-[0.98] transition-transform"
             >
-              <span>Next question ✨</span>
+              <span>
+                {isInGame
+                  ? gameSession.currentRound < gameSession.totalRounds
+                    ? `Next question (${gameSession.currentRound + 1}/${gameSession.totalRounds}) ✨`
+                    : 'See final results 🏆 ✨'
+                  : 'Next question ✨'}
+              </span>
             </button>
           </div>
 
@@ -729,6 +720,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
             className="absolute left-4 -bottom-4 w-[46px] h-[44px] object-contain pointer-events-none select-none z-0"
             draggable={false}
           />
+          </div>
         </div>
       )}
 
@@ -737,7 +729,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
          ========================================================================= */}
       {isTriviaRound && (
         <div
-          className="hidden md:flex flex-col items-center justify-center relative w-full min-h-[100dvh] overflow-hidden select-none font-['Nunito',sans-serif] bg-[#F5CCE2] py-8"
+          className="hidden md:flex flex-col items-center justify-center relative w-full h-[100dvh] overflow-hidden select-none font-['Nunito',sans-serif] bg-[#F5CCE2]"
           style={{
             ['--u' as any]: 'min(calc(100vw / 1586), calc(100dvh / 992))',
           }}
@@ -825,65 +817,104 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
             draggable={false}
           />
 
-          {/* 1586 x 992 DESIGN CANVAS */}
+          {/* 1586 x 992 DESIGN CANVAS (Matching Homepage Structure & Locked Page) */}
           <div
-            className="relative flex flex-col justify-between flex-shrink-0 z-10"
+            className="relative flex flex-col justify-between items-center z-10 flex-shrink-0"
             style={{
-              width: 'calc(1460 * var(--u))',
-              height: 'calc(920 * var(--u))',
+              width: 'calc(1586 * var(--u))',
+              height: 'calc(992 * var(--u))',
             }}
           >
-            {/* DESKTOP TOP BAR: Back button on left + Centered "Reveal" Title */}
-            <div
-              className="relative w-full flex items-center justify-between"
-              style={{ height: 'calc(70 * var(--u))' }}
-            >
-              <button
-                type="button"
-                onClick={handleBackClick}
-                aria-label="Back"
-                className="btn-press rounded-full border-dashed border-[#1B1D20] flex items-center justify-center bg-transparent hover:bg-[#1B1D20]/5 active:scale-95 transition-transform cursor-pointer focus:outline-none p-0"
-                style={{
-                  width: 'calc(60 * var(--u))',
-                  height: 'calc(60 * var(--u))',
-                  borderWidth: 'calc(2.5 * var(--u))',
-                }}
-              >
-                <svg
-                  style={{
-                    width: 'calc(28 * var(--u))',
-                    height: 'calc(28 * var(--u))',
-                  }}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#1B1D20"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <line x1="19" y1="12" x2="5" y2="12" />
-                  <polyline points="12 19 5 12 12 5" />
-                </svg>
-              </button>
-
-              <h1
-                className="absolute left-1/2 -translate-x-1/2 font-black text-[#1B1D20] tracking-[-0.03em] leading-none m-0 pointer-events-none"
-                style={{ fontSize: 'calc(48 * var(--u))' }}
-              >
-                Reveal
-              </h1>
-
-              <div style={{ width: 'calc(60 * var(--u))', height: 'calc(60 * var(--u))' }} />
-            </div>
-
-            {/* 2-COLUMN MAIN CONTENT (Left: tag, question, answer block, score. Right: player blobs, emojis, buttons) */}
-            <div
-              className="w-full flex items-center justify-between"
+            {/* DESKTOP TOP BAR: Matches locked page topbar exactly (same position, same sizes, round pill in center) */}
+            {/* Left: Duo Logo (center x=265, center y=75) */}
+            <button
+              type="button"
+              onClick={handleOpenFriendProfile}
+              aria-label="Friend Profile"
+              className="btn-press absolute cursor-pointer flex items-center justify-center p-0 outline-none transition-transform active:scale-95 z-20"
               style={{
-                gap: 'calc(70 * var(--u))',
-                marginTop: 'calc(20 * var(--u))',
+                left: 'calc(265 * var(--u))',
+                top: 'calc(75 * var(--u))',
+                transform: 'translate(-50%, -50%)',
+                width: 'calc(116 * var(--u))',
+                height: 'calc(46 * var(--u))',
               }}
             >
+              <img
+                src="/logo-duo-sparks.webp"
+                alt="Duo"
+                className="w-full h-full object-contain pointer-events-none select-none"
+                draggable={false}
+              />
+            </button>
+
+            {/* Center: Round Pill - Same position, size, shape as locked page streak pill (center x=793, 146w x 66h, rounded-full) */}
+            <div
+              className="absolute rounded-full bg-[#191D21] flex flex-col items-center justify-center shadow-sm pointer-events-none z-20"
+              style={{
+                left: 'calc(793 * var(--u))',
+                top: 'calc(75 * var(--u))',
+                transform: 'translate(-50%, -50%)',
+                width: 'calc(146 * var(--u))',
+                height: 'calc(66 * var(--u))',
+                borderRadius: 'calc(33 * var(--u))',
+              }}
+            >
+              <span
+                className="font-bold text-white/60 uppercase tracking-widest text-center"
+                style={{ fontSize: 'calc(11 * var(--u))', lineHeight: 1 }}
+              >
+                ROUND
+              </span>
+              <span
+                className="font-black text-white leading-none tracking-tight text-center"
+                style={{ fontSize: 'calc(23 * var(--u))', marginTop: 'calc(2 * var(--u))' }}
+              >
+                {currentRound} <span className="text-white/40 font-normal">/</span> {totalRounds}
+              </span>
+            </div>
+
+            {/* Right: Settings icon (center x=1363, 78 diameter) */}
+            <button
+              type="button"
+              onClick={handleOpenSettings}
+              aria-label="Settings"
+              className="btn-press absolute rounded-full flex items-center justify-center bg-transparent hover:bg-[#17181B]/5 transition-colors cursor-pointer focus:outline-none z-20"
+              style={{
+                left: 'calc(1363 * var(--u))',
+                top: 'calc(75 * var(--u))',
+                transform: 'translate(-50%, -50%)',
+                width: 'calc(78 * var(--u))',
+                height: 'calc(78 * var(--u))',
+                border: 'calc(3.5 * var(--u)) dashed #17181B',
+              }}
+            >
+              <svg
+                style={{ width: 'calc(38 * var(--u))', height: 'calc(38 * var(--u))' }}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#17181B"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </button>
+
+            {/* MAIN STAGE CONTENT (Centered vertically between top bar and bottom) */}
+            <div
+              className="flex-1 flex flex-col items-center justify-center w-full"
+              style={{ marginTop: 'calc(130 * var(--u))' }}
+            >
+              <div
+                className="flex items-center justify-between"
+                style={{
+                  width: 'calc(1430 * var(--u))',
+                  gap: 'calc(70 * var(--u))',
+                }}
+              >
               {/* LEFT COLUMN: tag, question, correct answer block, score */}
               <div
                 className="flex flex-col items-start justify-center"
@@ -1352,9 +1383,9 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
                   <button
                     type="button"
                     onClick={handleSave}
-                    className="btn-press w-full rounded-full bg-[#1B1D20] hover:bg-[#282B30] text-white font-black tracking-tight flex items-center justify-center cursor-pointer shadow-md focus:outline-none active:scale-[0.98] transition-transform"
+                    className="btn-press w-full rounded-full bg-[#1B1D20] hover:bg-[#282B30] text-white font-extrabold tracking-tight flex items-center justify-center cursor-pointer shadow-md focus:outline-none active:scale-[0.98] transition-transform"
                     style={{
-                      height: 'calc(72 * var(--u))',
+                      height: 'calc(74 * var(--u))',
                       fontSize: 'calc(24 * var(--u))',
                       gap: 'calc(12 * var(--u))',
                     }}
@@ -1379,17 +1410,23 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
                   <button
                     type="button"
                     onClick={handleNextClick}
-                    className="btn-press w-full rounded-full bg-[#1B1D20] hover:bg-[#282B30] text-white font-black tracking-tight flex items-center justify-center cursor-pointer shadow-md focus:outline-none active:scale-[0.98] transition-transform"
+                    className="btn-press w-full rounded-full bg-[#D5C7D7] hover:bg-[#C9B9CB] text-[#7A7380] font-extrabold tracking-tight flex items-center justify-center cursor-pointer focus:outline-none active:scale-[0.98] transition-transform"
                     style={{
-                      height: 'calc(72 * var(--u))',
+                      height: 'calc(74 * var(--u))',
                       fontSize: 'calc(24 * var(--u))',
-                      gap: 'calc(12 * var(--u))',
                     }}
                   >
-                    <span>Next question ✨</span>
+                    <span>
+                      {isInGame
+                        ? gameSession.currentRound < gameSession.totalRounds
+                          ? `Next question (${gameSession.currentRound + 1}/${gameSession.totalRounds}) ✨`
+                          : 'See final results 🏆 ✨'
+                        : 'Next question ✨'}
+                    </span>
                   </button>
                 </div>
               </div>
+            </div>
             </div>
           </div>
         </div>
@@ -1399,19 +1436,18 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
           KNOW ME REVEAL SCREEN (Existing screen preserved, DAYS STRIP REMOVED)
          ========================================================================= */}
       {isKnowMeRound && (
-        <div className="w-full max-w-[390px] flex flex-col px-5 pt-4 pb-14 relative min-h-max z-10">
-          {/* 1. TOP BAR: GameHeader (Rounds pill in center, Settings icon on right) */}
-          <GameHeader
-            showLogo={true}
-            roundPillPosition="center"
-            currentRound={isInGame ? gameSession.currentRound : 1}
-            totalRounds={isInGame ? gameSession.totalRounds : 10}
-            showTimer={false}
-            showBack={false}
-            showSettings={true}
-            onOpenSettings={onOpenSettings || (() => navigate('/profile'))}
-            className="-mx-5 mb-4"
+        <div className="relative w-full min-h-[100dvh] max-w-[390px] mx-auto flex flex-col justify-start items-center select-none">
+          {/* 1. TOP BAR: Exact same top bar component from Homepage & Waiting page (with Rounds pill instead of streak) */}
+          <TopBar
+            mode="rounds"
+            currentRound={currentRound}
+            totalRounds={totalRounds}
+            onOpenSettings={handleOpenSettings}
+            onOpenFriendProfile={handleOpenFriendProfile}
+            className="w-full absolute top-0 left-0"
           />
+
+          <div className="w-full px-5 flex-1 flex flex-col items-center justify-start pt-[78px] pb-14 relative z-10">
 
           {/* Note: DAYS/TIMELINE STRIP (MON 12 - SUN 18) DELETED PER EXPLICIT INSTRUCTION */}
 
@@ -1599,12 +1635,12 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
             })}
           </div>
 
-          {/* 6. ACTION BUTTONS */}
+          {/* 6. ACTION BUTTONS: Match mockup buttons */}
           <div className="w-full flex flex-col gap-3 mb-6 relative z-10">
             <button
               type="button"
               onClick={handleSave}
-              className="btn-press w-full h-[48px] sm:h-[50px] rounded-full bg-[#1B1D20] hover:bg-[#282B30] text-white font-extrabold text-[16.5px] tracking-tight flex items-center justify-center gap-2 cursor-pointer shadow-md focus:outline-none active:scale-[0.98] transition-transform"
+              className="btn-press w-full h-[52px] sm:h-[54px] rounded-full bg-[#1B1D20] hover:bg-[#282B30] text-white font-extrabold text-[16.5px] tracking-tight flex items-center justify-center gap-2 cursor-pointer shadow-md focus:outline-none active:scale-[0.98] transition-transform"
             >
               <svg
                 width="17"
@@ -1624,14 +1660,14 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
             <button
               type="button"
               onClick={handleNextClick}
-              className="btn-press w-full h-[48px] sm:h-[50px] rounded-full bg-[#D5C7D7] hover:bg-[#C9B9CB] text-[#7A7380] font-extrabold text-[16px] tracking-tight flex items-center justify-center cursor-pointer focus:outline-none active:scale-[0.98] transition-transform"
+              className="btn-press w-full h-[52px] sm:h-[54px] rounded-full bg-[#D5C7D7] hover:bg-[#C9B9CB] text-[#7A7380] font-extrabold text-[16.5px] tracking-tight flex items-center justify-center cursor-pointer focus:outline-none active:scale-[0.98] transition-transform"
             >
               <span>
                 {isInGame
                   ? gameSession.currentRound < gameSession.totalRounds
-                    ? `Next question (${gameSession.currentRound + 1}/${gameSession.totalRounds}) ➔`
-                    : 'See final results 🏆 ➔'
-                  : 'Next question tomorrow'}
+                    ? `Next question (${gameSession.currentRound + 1}/${gameSession.totalRounds}) ✨`
+                    : 'See final results 🏆 ✨'
+                  : 'Next question ✨'}
               </span>
             </button>
           </div>
@@ -1649,6 +1685,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
             className="absolute -right-[8px] bottom-[8px] w-[50px] h-[48px] object-contain pointer-events-none select-none z-0"
             draggable={false}
           />
+          </div>
         </div>
       )}
 
