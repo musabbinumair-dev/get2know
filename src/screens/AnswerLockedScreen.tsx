@@ -65,7 +65,6 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
   const [toastMessage, setToastMessage] = useState<string>('');
   const [nudgeCooldown, setNudgeCooldown] = useState<number>(0);
   const [friendStatus, setFriendStatus] = useState<string>('Answering...');
-  const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [isAnswerLocked, setIsAnswerLocked] = useState<boolean>(false);
   const simulationTimers = useRef<NodeJS.Timeout[]>([]);
 
@@ -88,33 +87,23 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
     };
   }, []);
 
-  // Simulation for partner response
-  const handleSimulatePartnerAnswer = () => {
-    if (isSimulating || isAnswerLocked) return;
-    setIsSimulating(true);
-    setFriendStatus(`${resolvedFriendName} is answering...`);
-    setToastMessage(`Simulating ${resolvedFriendName}'s response...`);
+  // Avatar click handler: triggers state change from lightened/grayscale to full vibrant normal state and advances
+  const handleAvatarClick = () => {
+    if (isAnswerLocked) return;
+    setIsAnswerLocked(true);
+    setFriendStatus('Answer locked in! 🎉');
 
-    // Step 1: Partner locks in their answer
-    const t1 = setTimeout(() => {
-      setIsAnswerLocked(true);
-      setFriendStatus('Answer locked in! 🎉');
-      setToastMessage(`🎉 ${resolvedFriendName} locked in their answer!`);
-
-      // Step 2: Transition to the next screen after celebrating lock-in
-      const t2 = setTimeout(() => {
-        if (isInGame) {
-          gameSession.advanceFromWaiting();
-        } else if (onPlayer2Answered) {
-          onPlayer2Answered();
-        } else {
-          navigate('/guess');
-        }
-      }, 1400);
-      simulationTimers.current.push(t2);
+    // Transition to the guess/next screen
+    const t2 = setTimeout(() => {
+      if (isInGame) {
+        gameSession.advanceFromWaiting();
+      } else if (onPlayer2Answered) {
+        onPlayer2Answered();
+      } else {
+        navigate('/guess');
+      }
     }, 1200);
-
-    simulationTimers.current.push(t1);
+    simulationTimers.current.push(t2);
   };
 
   // Cooldown countdown effect for Nudge button
@@ -195,7 +184,7 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
         />
 
         {/* ---------------- MAIN CONTENT BODY ---------------- */}
-        <div className="w-full px-5 flex-1 flex flex-col items-center justify-center pt-[78px] pb-6 relative z-10">
+        <div className="w-full px-5 flex-1 flex flex-col items-center justify-start pt-[82px] pb-6 relative z-10">
           {/* Lock Cluster: Lock-blob + sparkles centered; heart top-left, blue star top-right, green cross right below star */}
           <div className="relative w-full max-w-[340px] h-[185px] sm:h-[195px] flex items-center justify-center">
             {/* Sparkle lines behind lock-blob (same center) */}
@@ -255,8 +244,10 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
 
           {/* Avatar + STATIC Ring Arcs (NO animation) + Clock Badge (Enlarged avatar and blob) */}
           <div
-            className="relative flex items-center justify-center my-3 sm:my-4 select-none"
+            onClick={handleAvatarClick}
+            className="relative flex items-center justify-center my-3 sm:my-4 select-none cursor-pointer active:scale-95 transition-transform"
             style={{ width: '172px', height: '166px' }}
+            title="Click avatar to see answer state"
           >
             {/* STATIC Ring Arcs (animation removed) */}
             <img
@@ -269,10 +260,10 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
             {/* Enlarged Dynamic Avatar Container: size increased under the ring */}
             <div className="relative w-[116px] h-[116px] flex items-center justify-center z-10">
               <div
-                className="w-full h-full flex items-center justify-center"
+                className="w-full h-full flex items-center justify-center transition-all duration-300"
                 style={{
-                  opacity: 0.55,
-                  filter: 'grayscale(25%)',
+                  opacity: isAnswerLocked ? 1 : 0.55,
+                  filter: isAnswerLocked ? 'none' : 'grayscale(25%)',
                 }}
               >
                 <ProfileAvatar
@@ -295,27 +286,11 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
 
           {/* Action Buttons: Nudge, Edit Answer, Caption */}
           <div className="w-full max-w-[342px] flex flex-col items-center gap-2.5 mt-2 sm:mt-3 z-20">
-            {/* Discreet simulator link for previewing partner responses */}
-            <button
-              type="button"
-              onClick={handleSimulatePartnerAnswer}
-              disabled={isSimulating || isAnswerLocked}
-              className="text-[12px] font-bold text-[#1B1D20]/45 hover:text-[#1B1D20] underline underline-offset-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none bg-transparent border-none p-0"
-            >
-              {isSimulating
-                ? isAnswerLocked
-                  ? 'Answer locked in! Advancing...'
-                  : `${resolvedFriendName} is answering...`
-                : isAnswerLocked
-                ? 'Answer locked in! 🎉'
-                : `⚡ Simulate ${resolvedFriendName} answered`}
-            </button>
-
             {/* Button 1: "Nudge them 👋" */}
             <button
               type="button"
               onClick={handleNudge}
-              disabled={nudgeCooldown > 0 || isSimulating}
+              disabled={nudgeCooldown > 0 || isAnswerLocked}
               className="btn-press w-full h-[54px] rounded-full bg-[#1B1D20] hover:bg-[#2B2E33] active:scale-[0.98] transition-all text-white font-black text-[18px] tracking-tight flex items-center justify-center gap-2 cursor-pointer shadow-sm focus:outline-none disabled:opacity-80 disabled:cursor-not-allowed"
             >
               <span>{nudgeCooldown > 0 ? `Nudged (${nudgeCooldown}s)` : 'Nudge them'}</span>
@@ -326,7 +301,7 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
             <button
               type="button"
               onClick={handleEditClick}
-              disabled={isSimulating}
+              disabled={isAnswerLocked}
               className="btn-press w-full h-[54px] rounded-full bg-[#FAF3DF] hover:bg-[#F2E8CD] active:scale-[0.98] transition-all text-[#1B1D20] font-black text-[18px] tracking-tight flex items-center justify-center shadow-xs border border-[#1B1D20]/5 cursor-pointer focus:outline-none"
             >
               Edit answer
@@ -515,10 +490,10 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
             </svg>
           </button>
 
-          {/* MAIN STAGE CONTENT (Centered vertically between top bar and bottom) */}
+          {/* MAIN STAGE CONTENT (Moved closer to top bar) */}
           <div
-            className="flex-1 flex flex-col items-center justify-center w-full"
-            style={{ marginTop: 'calc(90 * var(--u))' }}
+            className="flex-1 flex flex-col items-center justify-start w-full"
+            style={{ marginTop: 'calc(88 * var(--u))' }}
           >
             {/* Lock Blob + Sparkles + Surrounding Deco */}
             <div
@@ -616,13 +591,15 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
 
             {/* Dynamic Avatar with STATIC Ring Arcs (enlarged avatar and blob) */}
             <div
-              className="relative flex items-center justify-center select-none"
+              onClick={handleAvatarClick}
+              className="relative flex items-center justify-center select-none cursor-pointer active:scale-95 transition-transform"
               style={{
                 width: 'calc(185 * var(--u))',
                 height: 'calc(180 * var(--u))',
-                marginTop: 'calc(16 * var(--u))',
-                marginBottom: 'calc(16 * var(--u))',
+                marginTop: 'calc(12 * var(--u))',
+                marginBottom: 'calc(12 * var(--u))',
               }}
+              title="Click avatar to see answer state"
             >
               {/* STATIC Ring Arcs (NO animation) */}
               <img
@@ -641,10 +618,10 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
                 }}
               >
                 <div
-                  className="w-full h-full flex items-center justify-center"
+                  className="w-full h-full flex items-center justify-center transition-all duration-300"
                   style={{
-                    opacity: 0.55,
-                    filter: 'grayscale(25%)',
+                    opacity: isAnswerLocked ? 1 : 0.55,
+                    filter: isAnswerLocked ? 'none' : 'grayscale(25%)',
                   }}
                 >
                   <ProfileAvatar
@@ -680,27 +657,12 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
                 marginTop: 'calc(6 * var(--u))',
               }}
             >
-              <button
-                type="button"
-                onClick={handleSimulatePartnerAnswer}
-                disabled={isSimulating || isAnswerLocked}
-                className="font-bold text-[#1B1D20]/45 hover:text-[#1B1D20] underline transition-all cursor-pointer bg-transparent border-none p-0"
-                style={{ fontSize: 'calc(13 * var(--u))' }}
-              >
-                {isSimulating
-                  ? isAnswerLocked
-                    ? 'Answer locked in! Advancing...'
-                    : `${resolvedFriendName} is answering...`
-                  : isAnswerLocked
-                  ? 'Answer locked in! 🎉'
-                  : `⚡ Simulate ${resolvedFriendName} answered`}
-              </button>
 
               {/* Black Pill Button: Nudge */}
               <button
                 type="button"
                 onClick={handleNudge}
-                disabled={nudgeCooldown > 0 || isSimulating}
+                disabled={nudgeCooldown > 0 || isAnswerLocked}
                 className="btn-press w-full rounded-full bg-[#1B1D20] hover:bg-[#2B2E33] active:scale-[0.98] transition-all text-white font-black tracking-tight flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-80 disabled:cursor-not-allowed"
                 style={{
                   height: 'calc(58 * var(--u))',
@@ -715,7 +677,7 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
               <button
                 type="button"
                 onClick={handleEditClick}
-                disabled={isSimulating}
+                disabled={isAnswerLocked}
                 className="btn-press w-full rounded-full bg-[#FAF3DF] hover:bg-[#F2E8CD] active:scale-[0.98] transition-all text-[#1B1D20] font-black tracking-tight flex items-center justify-center cursor-pointer shadow-xs border border-[#1B1D20]/5"
                 style={{
                   height: 'calc(58 * var(--u))',

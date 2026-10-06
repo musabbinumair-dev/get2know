@@ -137,7 +137,12 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
           setProfile(JSON.parse(guestProfile));
         } catch {}
       } else {
-        setSessionType('NEW');
+        const newGuestId = `guest_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const defaultProfile: UserProfile = { avatarId: 1, name: 'Player 1', color: 'salmon' };
+        localStorage.setItem('gty_guest_id', newGuestId);
+        localStorage.setItem('gty_profile', JSON.stringify(defaultProfile));
+        setSessionType('GUEST');
+        setProfile(defaultProfile);
       }
     }
     setIsLoading(false);

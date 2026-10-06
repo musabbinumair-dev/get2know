@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Screen } from '../components/Screen';
-import { MemoryCard, MemoryCardProps, getAvatarBlobSrc, getAvatarFaceSrc } from '../components/MemoryCard';
+import {
+  MemoryCard,
+  MemoryCardProps,
+  getAvatarBlobSrc,
+  getAvatarFaceSrc,
+  resolveReactionInfo,
+} from '../components/MemoryCard';
 import { BottomNav, NavTab } from '../components/BottomNav';
 import { UserProfile } from './CreateProfileScreen';
 
@@ -21,6 +27,7 @@ export const INITIAL_CARDS: MemoryCardProps[] = [
     p1Answer: 'Fried crickets',
     p2Answer: 'Anchovies',
     matched: true,
+    reactions: 'laugh',
     category: 'funny',
   },
   {
@@ -31,6 +38,7 @@ export const INITIAL_CARDS: MemoryCardProps[] = [
     p1Answer: 'Deep water',
     p2Answer: 'Being forgotten',
     deco: 'moon',
+    reactions: 'heart',
     category: 'deep',
   },
   {
@@ -41,6 +49,7 @@ export const INITIAL_CARDS: MemoryCardProps[] = [
     p1Answer: 'Tokyo',
     p2Answer: 'Lisbon',
     deco: 'star',
+    reactions: 'smile',
     category: 'other',
   },
   {
@@ -51,6 +60,7 @@ export const INITIAL_CARDS: MemoryCardProps[] = [
     p1Answer: 'Anime marathons',
     p2Answer: 'Late night snacks',
     matched: true,
+    reactions: 'smirk',
     category: 'funny',
   },
   {
@@ -61,6 +71,7 @@ export const INITIAL_CARDS: MemoryCardProps[] = [
     p1Answer: 'Teleportation',
     p2Answer: 'Mind reading',
     deco: 'cross',
+    reactions: 'surprised',
     category: 'funny',
   },
   {
@@ -71,6 +82,7 @@ export const INITIAL_CARDS: MemoryCardProps[] = [
     p1Answer: 'Gaming + food',
     p2Answer: 'Nature + chill',
     deco: 'heart',
+    reactions: 'heart',
     category: 'other',
   },
   {
@@ -82,6 +94,7 @@ export const INITIAL_CARDS: MemoryCardProps[] = [
     p2Answer: 'Gojo',
     deco: 'star',
     decoOffset: { top: 13, w: 31 },
+    reactions: 'laugh',
     category: 'funny',
   },
   {
@@ -92,19 +105,52 @@ export const INITIAL_CARDS: MemoryCardProps[] = [
     p1Answer: 'The future',
     p2Answer: 'Past mistakes',
     deco: 'moon',
+    reactions: 'cry',
     category: 'deep',
   },
 ];
 
 export const MemoryWallScreen: React.FC<MemoryWallScreenProps> = ({
   onNavigateTab,
-  cards = INITIAL_CARDS,
+  cards: propCards = INITIAL_CARDS,
   userProfile,
 }) => {
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('all');
   const [selectedCard, setSelectedCard] = useState<MemoryCardProps | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+
+  // Read saved cards from persistent storage, merging with initial cards
+  const [localCards, setLocalCards] = useState<MemoryCardProps[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('game_memory_cards');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        } catch {}
+      }
+    }
+    return propCards;
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('game_memory_cards');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setLocalCards(parsed);
+          }
+        } catch {}
+      }
+    }
+  }, [propCards]);
+
+  const cards = localCards;
 
   // Active user profile (from prop or localStorage)
   const [activeProfile, setActiveProfile] = useState<UserProfile>(() => {
@@ -372,16 +418,43 @@ export const MemoryWallScreen: React.FC<MemoryWallScreenProps> = ({
               ×
             </button>
 
-            {/* Date & Tag */}
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[12px] font-bold text-[#17181B]/60">
-                {selectedCard.date}
-              </span>
-              {selectedCard.matched && (
-                <span className="px-2 py-0.5 rounded-full bg-[#FEDF6B] text-[10px] font-extrabold text-[#17181B] shadow-xs">
-                  ✨ Matched
+            {/* Date & Tag & Instagram Reaction Pill */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] font-bold text-[#17181B]/60">
+                  {selectedCard.date}
                 </span>
-              )}
+                {selectedCard.matched && (
+                  <span className="px-2 py-0.5 rounded-full bg-[#FEDF6B] text-[10px] font-extrabold text-[#17181B] shadow-xs">
+                    ✨ Matched
+                  </span>
+                )}
+              </div>
+
+              {/* Instagram-style Reaction Pill */}
+              {(() => {
+                const modalReactionInfo = resolveReactionInfo(selectedCard.reactions);
+                if (!modalReactionInfo) return null;
+                return (
+                  <div className="flex items-center gap-1 bg-white/90 rounded-full px-2.5 py-1 shadow-xs border border-[#17181B]/10 animate-pop">
+                    {modalReactionInfo.imgSrc ? (
+                      <img
+                        src={modalReactionInfo.imgSrc}
+                        alt=""
+                        className="w-[18px] h-[18px] object-contain -rotate-[8deg]"
+                        draggable={false}
+                      />
+                    ) : (
+                      <span className="text-[14px] leading-none -rotate-[8deg]">
+                        {modalReactionInfo.char}
+                      </span>
+                    )}
+                    <span className="text-[11px] font-extrabold text-[#17181B]">
+                      {modalReactionInfo.count}
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Question */}

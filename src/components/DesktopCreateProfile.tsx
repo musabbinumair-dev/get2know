@@ -399,7 +399,14 @@ export const DesktopCreateProfile: React.FC<DesktopCreateProfileProps> = ({
                   return (
                     <div
                       key={avatar.id}
-                      onClick={() => setSelectedAvatarId(avatar.id)}
+                      onClick={() => {
+                        setSelectedAvatarId(avatar.id);
+                        if (avatar.color === 'teal' || avatar.color === 'indigo') {
+                          setSelectedColor('teal');
+                        } else if (avatar.color === 'salmon' || avatar.color === 'pink') {
+                          setSelectedColor('salmon');
+                        }
+                      }}
                       className="cursor-pointer transition-transform select-none"
                       style={{
                         position: 'relative',

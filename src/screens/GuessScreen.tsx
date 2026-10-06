@@ -359,9 +359,7 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
             zIndex: 10,
           }}
         >
-          {isInGame && gameSession.currentRoundType === 'trivia'
-            ? 'Trivia question'
-            : 'Guess their answer'}
+          {`Question ${String(isInGame ? gameSession.currentRound : 1).padStart(2, '0')}`}
         </span>
 
         {/* Question Text (Increased size & bold weight 900, zero overlay on decorations) */}

@@ -134,14 +134,31 @@ export const CreateProfileScreen: React.FC<CreateProfileScreenProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const handleSelectAvatar = (avatar: (typeof AVATAR_OPTIONS)[0]) => {
+    setSelectedAvatarId(avatar.id);
+    if (!selectedColor) {
+      if (avatar.color === 'teal' || avatar.color === 'indigo') {
+        setSelectedColor('teal');
+      } else if (avatar.color === 'salmon' || avatar.color === 'pink') {
+        setSelectedColor('salmon');
+      }
+    }
+  };
+
   const handleContinue = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     await new Promise((r) => setTimeout(r, 400));
+    const matchingOption = AVATAR_OPTIONS.find((a) => a.id === selectedAvatarId);
+    const resolvedColor =
+      selectedColor ||
+      (matchingOption?.color === 'teal' || matchingOption?.color === 'indigo'
+        ? 'teal'
+        : 'salmon');
     onContinue({
       avatarId: selectedAvatarId ?? 1,
       name: name.trim() || 'Player',
-      color: selectedColor ?? 'salmon',
+      color: resolvedColor,
     });
     setIsSubmitting(false);
   };
@@ -250,7 +267,7 @@ export const CreateProfileScreen: React.FC<CreateProfileScreenProps> = ({
               return (
                 <div
                   key={avatar.id}
-                  onClick={() => setSelectedAvatarId(avatar.id)}
+                  onClick={() => handleSelectAvatar(avatar)}
                   className="aspect-square relative flex items-center justify-center cursor-pointer active:scale-95 transition-transform max-w-[96px] sm:max-w-[104px] mx-auto w-full"
                 >
                   {/* Colored Blob Swatch */}

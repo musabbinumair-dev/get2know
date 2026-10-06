@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Screen } from '../components/Screen';
-import { PillButton } from '../components/PillButton';
-import { BottomNav, NavTab } from '../components/BottomNav';
 import { TopBar } from '../components/TopBar';
 import { GameHeader } from '../components/GameHeader';
 import { UserProfile } from './CreateProfileScreen';
 import { QuestionData } from '../data/gameData';
 import { useGameSession } from '../services/gameSessionContext';
+import { getBlobConfig } from '../lib/blobs';
+import { getAvatarFaceImageSrc } from '../components/ProfileAvatar';
+import { NavTab } from '../components/BottomNav';
+import { useSession } from '../services/sessionContext';
 
 interface TodayQuestionScreenProps {
   userProfile?: UserProfile;
+  partnerProfile?: UserProfile;
   questionData?: QuestionData;
   streak?: number;
   onOpenSettings?: () => void;
@@ -19,20 +21,20 @@ interface TodayQuestionScreenProps {
 }
 
 export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
-  userProfile: _userProfile = { avatarId: 1, name: 'Player 1', color: 'salmon' },
+  userProfile,
+  partnerProfile: _partnerProfile,
   questionData,
   streak = 12,
   onOpenSettings,
-  onNavigateTab,
   onLockInSuccess,
-  onShuffleQuestion,
 }) => {
   const gameSession = useGameSession();
+  const { profile: sessionProfile } = useSession();
   const isInGame = gameSession.isActive;
 
   const currentQuestionText = isInGame
     ? gameSession.currentQuestion.question
-    : questionData?.question || "What’s a fear you’d never tell anyone?";
+    : questionData?.question || 'What’s a fear you’d never tell anyone?';
 
   const [answer, setAnswer] = useState<string>(() => {
     return localStorage.getItem('today_answer') || questionData?.player1DefaultAnswer || '';
@@ -40,17 +42,39 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
   const [isLocked, setIsLocked] = useState<boolean>(() => {
     return localStorage.getItem('today_answer_locked') === 'true';
   });
-  const [showLockedToast, setShowLockedToast] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<NavTab>('home');
 
   const maxChars = 200;
+
+  // Resolve user avatar + blob dynamically (only what the User chose in profile creating page)
+  const resolvedUser: UserProfile = (() => {
+    if (userProfile && (userProfile.avatarId || userProfile.color)) {
+      return userProfile;
+    }
+    if (sessionProfile && (sessionProfile.avatarId || sessionProfile.color)) {
+      return sessionProfile;
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        const savedGoogle = localStorage.getItem('gty_google_profile');
+        if (savedGoogle) return JSON.parse(savedGoogle);
+        const savedGuest = localStorage.getItem('gty_profile');
+        if (savedGuest) return JSON.parse(savedGuest);
+      } catch {}
+    }
+    return { avatarId: 1, name: 'Player 1', color: 'salmon' };
+  })();
+
+  const userAvatarId = resolvedUser.avatarId || 1;
+  const userColor = resolvedUser.color || 'salmon';
+  const userBlobConfig = getBlobConfig(userColor, userAvatarId);
+  const userFaceSrc = getAvatarFaceImageSrc(userAvatarId);
+  const userBlobSrc = userBlobConfig.src || userBlobConfig.legacySrc;
 
   // Clear answer on new round in game
   useEffect(() => {
     if (isInGame) {
       setAnswer('');
       setIsLocked(false);
-      setShowLockedToast(false);
     }
   }, [isInGame, gameSession.currentRound]);
 
@@ -76,7 +100,6 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
   const handleLockIn = () => {
     const finalAnswer = answer.trim() || 'My secret answer';
     setIsLocked(true);
-    setShowLockedToast(true);
 
     if (isInGame) {
       setTimeout(() => {
@@ -106,78 +129,135 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
     hasAutoSubmitted.current = false;
   }, [gameSession.currentRound]);
 
-  const handleTabChange = (tab: NavTab) => {
-    setActiveTab(tab);
-    onNavigateTab?.(tab);
+  // Dynamic question number label (e.g. Question 01, 02, 03...)
+  const getModeLabel = () => {
+    const roundNum = isInGame ? gameSession.currentRound : 1;
+    return `Question ${String(roundNum).padStart(2, '0')}`;
   };
 
   return (
-    <Screen bg="#FEE273" className="h-full min-h-[100dvh]">
-      {/* ---------------- DECORATIVE BACKGROUND BLOBS ---------------- */}
-      <div
-        className="absolute top-[102px] -left-[24px] pointer-events-none select-none z-0"
-        style={{ width: '92px', height: '92px' }}
-      >
-        <img
-          src="/assets/blobs/heart-pink-small.svg"
-          alt=""
-          className="w-full h-full object-contain rotate-[-15deg] select-none pointer-events-none"
-          draggable={false}
-        />
-      </div>
+    <div
+      className="w-full min-h-[100dvh] flex flex-col items-center justify-start select-none overflow-x-hidden overflow-y-auto"
+      style={{ backgroundColor: '#FEE273' }}
+    >
+      <style>{`
+        .today-stage {
+          --u: calc(100vw / 852);
+          --u390: calc(100vw / 390);
+          width: calc(852 * var(--u));
+          height: calc(1846 * var(--u));
+          min-height: 100dvh;
+          position: relative;
+          overflow: visible;
+          margin: 0 auto;
+        }
+        @media (min-width: 600px) and (min-height: 600px) {
+          .today-stage {
+            --u: min(calc(100vw / 852), calc(100dvh / 1846));
+            --u390: min(calc(100vw / 390), calc(100dvh / 844));
+          }
+        }
+      `}</style>
 
-      <div
-        className="absolute top-[96px] right-[88px] pointer-events-none select-none z-0"
-        style={{ width: '76px', height: '80px' }}
-      >
+      {/* 852 x 1846 Stage */}
+      <div className="today-stage flex-shrink-0">
+        {/* =========================================================================
+            DECORATIONS (WebP assets moved to /assets/today/, sizes on 390-wide stage)
+           ========================================================================= */}
+        {/* 1. Pink heart top-left: x 0, top -81 from label center, w 67, h 67 (flush left, cut by it) */}
         <img
-          src="/assets/blobs/cross-olive-decorative.svg"
+          src="/assets/today/deco-heart-pink-topleft.webp"
           alt=""
-          className="w-full h-full object-contain rotate-[12deg] select-none pointer-events-none"
+          width={67}
+          height={67}
+          aria-hidden="true"
           draggable={false}
+          className="absolute object-contain pointer-events-none select-none z-0"
+          style={{
+            left: 0,
+            top: 'calc(372 * var(--u) - 81 * var(--u390))',
+            width: 'calc(67 * var(--u390))',
+            height: 'calc(67 * var(--u390))',
+          }}
         />
-      </div>
 
-      <div
-        className="absolute top-[64px] -right-[28px] pointer-events-none select-none z-0 opacity-75"
-        style={{ width: '74px', height: '74px' }}
-      >
+        {/* 2. Green cross: x 245, top -81 from label center, w 66, h 68 */}
         <img
-          src="/assets/blobs/starburst-blue-join.svg"
+          src="/assets/today/deco-cross-olive.webp"
           alt=""
-          className="w-full h-full object-contain rotate-[10deg] select-none pointer-events-none"
+          width={66}
+          height={68}
+          aria-hidden="true"
           draggable={false}
+          className="absolute object-contain pointer-events-none select-none z-0"
+          style={{
+            left: 'calc(245 * var(--u390))',
+            top: 'calc(372 * var(--u) - 81 * var(--u390))',
+            width: 'calc(66 * var(--u390))',
+            height: 'calc(68 * var(--u390))',
+          }}
         />
-      </div>
 
-      <div
-        className="absolute bottom-[98px] -left-[16px] pointer-events-none select-none z-0"
-        style={{ width: '96px', height: '96px' }}
-      >
+        {/* 3. Blue star top-right: right edge flush, top -54 from label center, w 60, h 80 (cut by right edge) */}
         <img
-          src="/assets/blobs/heart-pink-small.svg"
+          src="/assets/today/deco-star-blue-topright.webp"
           alt=""
-          className="w-full h-full object-contain rotate-[-10deg] select-none pointer-events-none"
+          width={60}
+          height={80}
+          aria-hidden="true"
           draggable={false}
+          className="absolute object-contain pointer-events-none select-none z-0"
+          style={{
+            right: 0,
+            top: 'calc(372 * var(--u) - 54 * var(--u390))',
+            width: 'calc(60 * var(--u390))',
+            height: 'calc(80 * var(--u390))',
+          }}
         />
-      </div>
 
-      <div
-        className="absolute bottom-[108px] -right-[16px] pointer-events-none select-none z-0"
-        style={{ width: '96px', height: '96px' }}
-      >
+        {/* 4. Pink heart bottom-left: x 4, bottom edge 8px above nav top edge, w 85, h 79 */}
         <img
-          src="/assets/blobs/starburst-blue-join.svg"
+          src="/assets/today/deco-heart-pink-bottomleft.webp"
           alt=""
-          className="w-full h-full object-contain rotate-[-5deg] select-none pointer-events-none"
+          width={85}
+          height={79}
+          aria-hidden="true"
           draggable={false}
+          className="absolute object-contain pointer-events-none select-none z-0"
+          style={{
+            left: 'calc(4 * var(--u390))',
+            bottom: 'calc(80 * var(--u390))',
+            width: 'calc(85 * var(--u390))',
+            height: 'calc(79 * var(--u390))',
+          }}
         />
-      </div>
 
-      {/* ---------------- MAIN CONTENT ---------------- */}
-      <div className={`relative z-10 flex flex-col justify-between h-full overflow-y-auto overflow-x-hidden ${isInGame ? 'pt-4 pb-6' : 'pt-9 pb-[84px]'} select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}>
-        <div>
-          {/* Top Bar: GameHeader when in game, else standard TopBar */}
+        {/* 5. Blue star bottom-right: right edge flush, bottom edge 8px above nav top edge, w 76, h 75 (cut by right edge) */}
+        <img
+          src="/assets/today/deco-star-blue-bottomright.webp"
+          alt=""
+          width={76}
+          height={75}
+          aria-hidden="true"
+          draggable={false}
+          className="absolute object-contain pointer-events-none select-none z-0"
+          style={{
+            right: 0,
+            bottom: 'calc(80 * var(--u390))',
+            width: 'calc(76 * var(--u390))',
+            height: 'calc(75 * var(--u390))',
+          }}
+        />
+
+        {/* =========================================================================
+            TOP BAR: KEEP AS IS (same components, same position)
+           ========================================================================= */}
+        <div
+          className="absolute left-0 right-0 z-20 flex justify-center"
+          style={{
+            top: 'calc(28 * var(--u))',
+          }}
+        >
           {isInGame ? (
             <GameHeader
               showLogo={true}
@@ -193,120 +273,209 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
           ) : (
             <TopBar streak={streak} onSettingsClick={onOpenSettings} />
           )}
+        </div>
 
-          <div className="px-7 sm:px-8 mt-2">
-            {/* Question Heading Section */}
-            <div>
-              <div className="flex items-center justify-between">
-                <h2 className="text-[17.5px] sm:text-[18.5px] font-bold text-[#4E5244] tracking-tight">
-                  {isInGame ? 'Tell about yourself' : `Today’s question ${questionData?.category ? `· ${questionData.category}` : ''}`}
-                </h2>
-                {!isInGame && onShuffleQuestion && (
-                  <button
-                    type="button"
-                    onClick={onShuffleQuestion}
-                    className="text-[13px] font-extrabold text-[#1A1C22]/70 hover:text-[#1A1C22] flex items-center gap-1 cursor-pointer bg-white/40 px-2.5 py-1 rounded-full active:scale-95 transition-all shadow-none"
-                  >
-                    <span>🎲</span> Shuffle
-                  </button>
-                )}
-              </div>
-              {/* Responsive Question Heading */}
-              {(() => {
-                const qLen = currentQuestionText.length;
-                const qHeadingFontClass =
-                  qLen > 75
-                    ? 'text-[20px] sm:text-[23px] leading-[1.2]'
-                    : qLen > 48
-                    ? 'text-[24px] sm:text-[28px] leading-[1.16]'
-                    : 'text-[28px] sm:text-[34px] leading-[1.12]';
-                return (
-                  <h1 className={`mt-2 ${qHeadingFontClass} font-black text-[#1A1C22] tracking-[-0.03em] font-['Nunito',sans-serif] pr-3 sm:pr-4 break-words`}>
-                    {currentQuestionText}
-                  </h1>
-                );
-              })()}
-            </div>
+        {/* =========================================================================
+            1. LABEL: "Today's question"
+            font 36, medium, gray-dark (~#5C5A47), left x=72, center y=372
+           ========================================================================= */}
+        <div
+          className="absolute font-medium select-none z-10"
+          style={{
+            left: 'calc(72 * var(--u))',
+            top: 'calc(352 * var(--u))',
+            fontSize: 'calc(36 * var(--u))',
+            color: '#5C5A47',
+            lineHeight: 1.1,
+            fontFamily: "'Nunito', sans-serif",
+          }}
+        >
+          {getModeLabel()}
+        </div>
 
-            {/* Cream Textarea Card */}
-            <div className="mt-5 relative w-full max-w-[342px] mx-auto bg-[#FAF6EB] rounded-[34px] p-6 flex flex-col justify-between min-h-[178px] shadow-sm border border-[#1A1C22]/5">
-              <textarea
-                value={answer}
-                onChange={handleTextChange}
-                disabled={isLocked}
-                placeholder="Type your answer..."
-                rows={4}
-                className="w-full bg-transparent resize-none border-none outline-none font-medium text-[19px] sm:text-[21px] text-[#1A1C22] placeholder:text-[#1A1C22]/30 leading-[1.3] font-['Nunito',sans-serif]"
-                autoFocus={!isLocked}
-              />
+        {/* =========================================================================
+            2. HEADING (QUESTION)
+            font 88, extra-bold (Nunito 900), near-black, line-height ~1.08,
+            left x=72, wraps to 3 lines, spans y=425 to 720.
+           ========================================================================= */}
+        <h1
+          className="absolute font-black text-[#17181B] select-none z-10 break-words"
+          style={{
+            left: 'calc(72 * var(--u))',
+            top: 'calc(425 * var(--u))',
+            width: 'calc(708 * var(--u))',
+            fontSize: 'calc(88 * var(--u))',
+            lineHeight: 1.08,
+            letterSpacing: '-0.03em',
+            fontFamily: "'Nunito', sans-serif",
+            fontWeight: 900,
+          }}
+        >
+          {currentQuestionText}
+        </h1>
 
-              {/* Character counter & lock status */}
-              <div className="flex justify-between items-center text-[13px] font-bold text-[#1A1C22]/40 pt-2 border-t border-[#1A1C22]/10">
-                <span>{answer.length}/{maxChars}</span>
-                {answer.trim().length > 0 && !isLocked && (
-                  <span className="text-[#1A1C22]/70 font-semibold">Ready to lock in</span>
-                )}
-              </div>
-            </div>
+        {/* =========================================================================
+            3. ANSWER CARD
+            x=67 to 786 (719w), y=776 to 1037 (261h), radius 48, cream (#FAF4E3),
+            NO divider line inside.
+           ========================================================================= */}
+        <div
+          className="absolute z-10 select-none"
+          style={{
+            left: 'calc(67 * var(--u))',
+            top: 'calc(776 * var(--u))',
+            width: 'calc(719 * var(--u))',
+            height: 'calc(261 * var(--u))',
+            borderRadius: 'calc(48 * var(--u))',
+            backgroundColor: '#FAF4E3',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)',
+          }}
+        >
+          <textarea
+            value={answer}
+            onChange={handleTextChange}
+            disabled={isLocked}
+            placeholder="Type your answer…"
+            rows={3}
+            className="w-full h-full bg-transparent resize-none border-none outline-none font-medium text-[#17181B] placeholder:text-[#17181B]/35 leading-[1.28]"
+            style={{
+              fontSize: 'calc(34 * var(--u))',
+              paddingLeft: 'calc(52 * var(--u))',
+              paddingTop: 'calc(40 * var(--u))',
+              paddingRight: 'calc(52 * var(--u))',
+              paddingBottom: 'calc(54 * var(--u))',
+              fontFamily: "'Nunito', sans-serif",
+            }}
+            autoFocus={!isLocked}
+          />
 
-            {/* Privacy info note */}
-            <div className="mt-4 flex items-center justify-center gap-2.5 text-center max-w-[320px] mx-auto">
-              <div className="w-[26px] h-[26px] rounded-full bg-[#FAF6EB] flex items-center justify-center flex-shrink-0 shadow-sm">
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#1A1C22"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
-              </div>
-              <p className="text-[14px] font-bold text-[#4E5244] leading-[1.25]">
-                {isLocked
-                  ? "Locked! Friend will guess your answer."
-                  : 'Your friend will have to guess what you wrote.'}
-              </p>
-            </div>
-
-            {/* Primary Action Button: Lock in my answer */}
-            <div className="mt-5 w-full max-w-[342px] mx-auto">
-              <PillButton
-                variant="black"
-                onClick={handleLockIn}
-                disabled={!answer.trim() && !isInGame}
-                className={`w-full h-[54px] text-[17.5px] font-black tracking-tight shadow-sm transition-all ${
-                  isLocked
-                    ? 'bg-[#1A1C22] opacity-90 cursor-default'
-                    : answer.trim() || isInGame
-                    ? 'hover:bg-[#2A2C34] cursor-pointer active:scale-98'
-                    : 'opacity-50 cursor-not-allowed'
-                }`}
-              >
-                {isLocked ? 'Answer locked! 🔒' : 'Lock in my answer'}
-              </PillButton>
-            </div>
-
-            {/* Feedback message when locked */}
-            {showLockedToast && (
-              <p className="mt-2 text-center text-[13px] font-extrabold text-[#1A1C22]/80 animate-pop">
-                Saved! Waiting for friend... ✨
-              </p>
-            )}
+          {/* Counter "0 / 200" bottom-RIGHT inside the card, right padding 30, bottom padding 24 */}
+          <div
+            className="absolute font-bold select-none pointer-events-none"
+            style={{
+              right: 'calc(30 * var(--u))',
+              bottom: 'calc(24 * var(--u))',
+              fontSize: 'calc(24 * var(--u))',
+              color: '#8C8A7B',
+              fontFamily: "'Nunito', sans-serif",
+            }}
+          >
+            {answer.length} / {maxChars}
           </div>
         </div>
-      </div>
 
-      {/* Bottom Navigation Dock (Hidden during gameplay) */}
-      {!isInGame && (
-        <div className="absolute bottom-0 left-0 right-0 pb-[max(0.5rem,env(safe-area-inset-bottom))] z-30 pointer-events-auto">
-          <BottomNav activeTab={activeTab} onTabChange={handleTabChange} className="mb-0" />
+        {/* =========================================================================
+            4. LOCK ROW
+            y=1060 to 1205, left x=72
+            - Dynamic avatar blob chosen by the user in profile creating page ~140 diameter
+            - Small black circle lock badge (~48) at bottom-right.
+            - Text "They can't see it until you both answer." font 30, gray-dark,
+              left x=246, 2 lines, vertically centered with avatar.
+           ========================================================================= */}
+        <div
+          className="absolute z-10 flex items-center select-none"
+          style={{
+            left: 'calc(72 * var(--u))',
+            top: 'calc(1060 * var(--u))',
+            height: 'calc(145 * var(--u))',
+          }}
+        >
+          {/* Dynamic User Avatar Blob 140 diameter */}
+          <div
+            className="relative inline-flex items-center justify-center flex-shrink-0"
+            style={{
+              width: 'calc(140 * var(--u))',
+              height: 'calc(140 * var(--u))',
+            }}
+          >
+            <img
+              src={userBlobSrc}
+              alt=""
+              className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
+              draggable={false}
+            />
+            <div
+              className="relative z-10 flex items-center justify-center pointer-events-none select-none"
+              style={{
+                width: `${userBlobConfig.avatarScale * 100}%`,
+                height: `${userBlobConfig.avatarScale * 100}%`,
+                transform: `translate(${userBlobConfig.offsetX}px, ${userBlobConfig.offsetY}px)`,
+              }}
+            >
+              <img
+                src={userFaceSrc}
+                alt=""
+                className="w-full h-full object-contain pointer-events-none select-none"
+                draggable={false}
+              />
+            </div>
+
+            {/* lock-badge: w 22, h 22, anchored to bottom-right corner of avatar slot (right edge 2px past avatar right edge, bottom edge aligned) */}
+            <img
+              src="/assets/today/lock-badge.webp"
+              alt=""
+              width={22}
+              height={22}
+              draggable={false}
+              className="absolute pointer-events-none select-none z-20 object-contain"
+              style={{
+                width: 'calc(22 * var(--u390))',
+                height: 'calc(22 * var(--u390))',
+                right: 'calc(-2 * var(--u390))',
+                bottom: 0,
+              }}
+            />
+          </div>
+
+          {/* Privacy text: left x=246 (margin-left: 34), font 30, gray-dark, 2 lines */}
+          <div
+            className="font-bold select-none"
+            style={{
+              marginLeft: 'calc(34 * var(--u))',
+              maxWidth: 'calc(534 * var(--u))',
+              fontSize: 'calc(30 * var(--u))',
+              lineHeight: 1.25,
+              color: '#5C5A47',
+              fontFamily: "'Nunito', sans-serif",
+            }}
+          >
+            They can’t see it until
+            <br />
+            you both answer.
+          </div>
         </div>
-      )}
-    </Screen>
+
+        {/* =========================================================================
+            5. BUTTON "Lock in my answer"
+            x=71 to 779 (708w), y=1259 to 1362 (103h), full pill, near-black,
+            text font 38 bold white, centered.
+           ========================================================================= */}
+        <button
+          type="button"
+          onClick={handleLockIn}
+          disabled={!answer.trim() && !isInGame}
+          className={`btn-press absolute flex items-center justify-center text-center font-bold text-white transition-all outline-none z-10 ${
+            isLocked
+              ? 'opacity-90 cursor-default'
+              : answer.trim() || isInGame
+              ? 'cursor-pointer hover:bg-[#252830] active:scale-[0.98]'
+              : 'opacity-50 cursor-not-allowed'
+          }`}
+          style={{
+            left: 'calc(71 * var(--u))',
+            top: 'calc(1259 * var(--u))',
+            width: 'calc(708 * var(--u))',
+            height: 'calc(103 * var(--u))',
+            borderRadius: 'calc(52 * var(--u))',
+            backgroundColor: '#17181B',
+            fontSize: 'calc(38 * var(--u))',
+            fontFamily: "'Nunito', sans-serif",
+            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.1)',
+          }}
+        >
+          {isLocked ? 'Answer locked! 🔒' : 'Lock in my answer'}
+        </button>
+      </div>
+    </div>
   );
 };

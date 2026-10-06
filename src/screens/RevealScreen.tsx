@@ -110,7 +110,34 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
     return null;
   });
   const [bouncingEmojiId, setBouncingEmojiId] = useState<string | null>(null);
+  const [floatingEmojis, setFloatingEmojis] = useState<
+    Array<{
+      id: number;
+      emojiId: string;
+      file: string;
+      startX: number;
+      startY: number;
+      driftX: number;
+      driftY: number;
+      size: number;
+      scale: number;
+      startRot: number;
+      wobbleRot: number;
+      duration: number;
+      delay: number;
+    }>
+  >([]);
   const [toastMessage, setToastMessage] = useState<string>('');
+  const holdIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Clean up any reaction hold timers on unmount
+  useEffect(() => {
+    return () => {
+      if (holdIntervalRef.current) {
+        clearInterval(holdIntervalRef.current);
+      }
+    };
+  }, []);
 
   // Inspect full answer modal
   const [inspectingPlayer, setInspectingPlayer] = useState<{
@@ -260,21 +287,118 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
   const winnerText =
     p1Score > p2Score ? 'You won 🎉' : p2Score > p1Score ? 'They won 👏' : 'Tied game! 🤝';
 
-  const handleEmojiClick = (emojiId: string) => {
+  const triggerReactionBurst = (emojiId: string, count: number = 8) => {
+    const emojiObj = REACTION_EMOJIS.find((e) => e.id === emojiId);
+    if (!emojiObj) return;
+
+    const newParticles = Array.from({ length: count }, (_, i) => {
+      const tilt = (Math.random() - 0.5) * 60; // -30deg to +30deg
+      const driftX = (Math.random() - 0.5) * 70; // -35px to +35px
+      const driftY = -(180 + Math.random() * 160); // -180px to -340px
+      const size = 26 + Math.random() * 16; // 26px to 42px
+      const scale = 0.9 + Math.random() * 0.6; // 0.9 to 1.5
+      const wobbleRot = (Math.random() - 0.5) * 24;
+      const duration = 1.2 + Math.random() * 0.6; // 1.2s to 1.8s
+      const delay = Math.random() * 120; // 0ms to 120ms
+
+      return {
+        id: Date.now() + Math.random() + i,
+        emojiId,
+        file: emojiObj.file,
+        startX: 0,
+        startY: 0,
+        driftX,
+        driftY,
+        size,
+        scale,
+        startRot: tilt,
+        wobbleRot,
+        duration,
+        delay,
+      };
+    });
+
+    setFloatingEmojis((prev) => [...prev, ...newParticles]);
+
+    setTimeout(() => {
+      setFloatingEmojis((prev) => prev.filter((p) => !newParticles.some((b) => b.id === p.id)));
+    }, 2400);
+  };
+
+  const handleEmojiPressStart = (emojiId: string) => {
     setInternalReaction(emojiId);
     if (typeof window !== 'undefined') {
       localStorage.setItem('reveal_selected_reaction', emojiId);
+      localStorage.setItem('gty_latest_reaction', emojiId);
     }
     onSelectReaction?.(emojiId);
     setBouncingEmojiId(emojiId);
+
+    // Initial burst eruption
+    triggerReactionBurst(emojiId, 10);
+
+    // Continuous fountain while holding
+    if (holdIntervalRef.current) clearInterval(holdIntervalRef.current);
+    holdIntervalRef.current = setInterval(() => {
+      triggerReactionBurst(emojiId, 4);
+    }, 120);
+  };
+
+  const handleEmojiPressEnd = () => {
+    if (holdIntervalRef.current) {
+      clearInterval(holdIntervalRef.current);
+      holdIntervalRef.current = null;
+    }
+  };
+
+  const handleEmojiClick = (emojiId: string) => {
+    handleEmojiPressStart(emojiId);
+    setTimeout(handleEmojiPressEnd, 180);
     setTimeout(() => {
       setBouncingEmojiId((prev) => (prev === emojiId ? null : prev));
-    }, 280);
+    }, 650);
   };
 
   const handleSave = () => {
+    const chosenReaction = activeReaction || localStorage.getItem('reveal_selected_reaction') || 'heart';
     if (typeof window !== 'undefined') {
       localStorage.setItem('reveal_saved_to_memory_wall', 'true');
+      localStorage.setItem('reveal_selected_reaction', chosenReaction);
+      localStorage.setItem('gty_latest_reaction', chosenReaction);
+
+      // Create or update card in game_memory_cards to reflect exact reaction dynamically
+      try {
+        const existingCardsStr = localStorage.getItem('game_memory_cards');
+        const existingCards = existingCardsStr ? JSON.parse(existingCardsStr) : [];
+        const cardToSave = {
+          id: `card-${Date.now()}`,
+          category: isTriviaRound ? 'Food' : 'funny',
+          color: isTriviaRound ? 'yellow' : 'pink',
+          cardBg: isSuccess ? '#E0ECB5' : '#F7E7CD',
+          date: 'TODAY',
+          question: rawQuestion,
+          isMatched: isSuccess,
+          matched: isSuccess,
+          p1Name: p1LabelText,
+          p1AvatarId: session.profile?.avatarId || _p1AvatarId || 1,
+          p1Color: session.profile?.color || 'salmon',
+          p1Answer: resolvedP1Answer,
+          p2Name: p2LabelText,
+          p2AvatarId: _p2AvatarId || 2,
+          p2Color: 'teal',
+          p2Answer: resolvedP2Answer,
+          reactions: chosenReaction
+            ? [
+                {
+                  emoji: chosenReaction,
+                  count: 1,
+                },
+              ]
+            : undefined,
+        };
+        const updated = [cardToSave, ...existingCards.filter((c: any) => c.question !== rawQuestion)];
+        localStorage.setItem('game_memory_cards', JSON.stringify(updated));
+      } catch {}
     }
     onSaveToMemoryWall?.();
     setToastMessage('Saved to Memory Wall! ✨');
@@ -326,7 +450,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
             className="w-full absolute top-0 left-0"
           />
 
-          <div className="w-full px-5 flex-1 flex flex-col items-center justify-start pt-[78px] pb-12 relative z-10">
+          <div className="w-full px-5 flex-1 flex flex-col items-center justify-start pt-[56px] pb-12 relative z-10">
 
           {/* 2. CATEGORY PILL: "Trivia · Food" */}
           <div className="w-full flex justify-center mb-3 z-10">
@@ -632,32 +756,71 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
             />
           </div>
 
-          {/* 7. EMOJI REACTION ROW: 6 Dashed Circles */}
-          <div className="w-full flex items-center justify-between mb-5 px-1 z-10">
+          {/* 7. EMOJI REACTION ROW: 6 Dashed Circles with Instagram-style Floating & Tilted Reaction Animations */}
+          <div className="w-full flex items-center justify-between mb-5 px-1 z-10 relative">
             {REACTION_EMOJIS.map((emoji) => {
               const isSelected = activeReaction === emoji.id;
               const isBouncing = bouncingEmojiId === emoji.id;
+              const matchingFloats = floatingEmojis.filter((f) => f.emojiId === emoji.id);
 
               return (
-                <button
-                  key={emoji.id}
-                  type="button"
-                  onClick={() => handleEmojiClick(emoji.id)}
-                  aria-label={emoji.alt}
-                  aria-pressed={isSelected}
-                  className={`w-[44px] h-[44px] rounded-full border-[1.5px] border-dashed flex items-center justify-center cursor-pointer transition-all focus:outline-none p-0 bg-transparent ${
-                    isSelected
-                      ? 'border-[#1B1D20] bg-white/40 scale-105'
-                      : 'border-[#1B1D20]/45 hover:border-[#1B1D20]/75 active:scale-95'
-                  } ${isBouncing ? 'animate-avatar-bounce' : ''}`}
-                >
-                  <img
-                    src={emoji.file}
-                    alt={emoji.alt}
-                    className="w-[25px] h-[25px] object-contain pointer-events-none select-none"
-                    draggable={false}
-                  />
-                </button>
+                <div key={emoji.id} className="relative flex items-center justify-center">
+                  {/* Instagram-style floating reaction emojis */}
+                  {matchingFloats.map((floatItem) => (
+                    <div
+                      key={floatItem.id}
+                      className="absolute z-50 pointer-events-none animate-ig-stream select-none flex items-center justify-center"
+                      style={{
+                        bottom: '100%',
+                        left: '50%',
+                        marginLeft: `-${floatItem.size / 2}px`,
+                        width: `${floatItem.size}px`,
+                        height: `${floatItem.size}px`,
+                        ['--drift-x' as any]: `${floatItem.driftX}px`,
+                        ['--drift-y' as any]: `${floatItem.driftY}px`,
+                        ['--start-rot' as any]: `${floatItem.startRot}deg`,
+                        ['--tilt-wobble' as any]: `${floatItem.wobbleRot}deg`,
+                        ['--target-scale' as any]: `${floatItem.scale}`,
+                        ['--anim-duration' as any]: `${floatItem.duration}s`,
+                        animationDelay: `${floatItem.delay}ms`,
+                      }}
+                    >
+                      <img
+                        src={floatItem.file}
+                        alt=""
+                        className="w-full h-full object-contain drop-shadow-md pointer-events-none select-none"
+                        draggable={false}
+                      />
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onPointerDown={() => handleEmojiPressStart(emoji.id)}
+                    onPointerUp={handleEmojiPressEnd}
+                    onPointerLeave={handleEmojiPressEnd}
+                    onTouchStart={() => handleEmojiPressStart(emoji.id)}
+                    onTouchEnd={handleEmojiPressEnd}
+                    onTouchCancel={handleEmojiPressEnd}
+                    onClick={() => handleEmojiClick(emoji.id)}
+                    aria-label={emoji.alt}
+                    aria-pressed={isSelected}
+                    className={`w-[44px] h-[44px] rounded-full border-[1.5px] border-dashed flex items-center justify-center cursor-pointer transition-all focus:outline-none p-0 bg-transparent select-none touch-none ${
+                      isSelected
+                        ? 'border-[#1B1D20] bg-white/40 scale-105'
+                        : 'border-[#1B1D20]/45 hover:border-[#1B1D20]/75 active:scale-95'
+                    } ${isBouncing ? 'animate-ig-tap-tilt' : ''}`}
+                  >
+                    <img
+                      src={emoji.file}
+                      alt={emoji.alt}
+                      className={`w-[25px] h-[25px] object-contain pointer-events-none select-none transition-transform ${
+                        isSelected ? 'scale-110' : ''
+                      }`}
+                      draggable={false}
+                    />
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -1333,44 +1496,83 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
                   </div>
                 </div>
 
-                {/* Reaction Emoji Row */}
+                {/* Reaction Emoji Row: With Instagram-style Floating & Tilted Reaction Animations */}
                 <div
-                  className="w-full flex items-center justify-between"
+                  className="w-full flex items-center justify-between relative"
                   style={{ marginBottom: 'calc(32 * var(--u))' }}
                 >
                   {REACTION_EMOJIS.map((emoji) => {
                     const isSelected = activeReaction === emoji.id;
                     const isBouncing = bouncingEmojiId === emoji.id;
+                    const matchingFloats = floatingEmojis.filter((f) => f.emojiId === emoji.id);
 
                     return (
-                      <button
-                        key={emoji.id}
-                        type="button"
-                        onClick={() => handleEmojiClick(emoji.id)}
-                        aria-label={emoji.alt}
-                        aria-pressed={isSelected}
-                        className={`rounded-full border-dashed flex items-center justify-center cursor-pointer transition-all focus:outline-none p-0 bg-transparent ${
-                          isSelected
-                            ? 'border-[#1B1D20] bg-white/40 scale-105'
-                            : 'border-[#1B1D20]/45 hover:border-[#1B1D20]/75 active:scale-95'
-                        } ${isBouncing ? 'animate-avatar-bounce' : ''}`}
-                        style={{
-                          width: 'calc(68 * var(--u))',
-                          height: 'calc(68 * var(--u))',
-                          borderWidth: 'calc(2 * var(--u))',
-                        }}
-                      >
-                        <img
-                          src={emoji.file}
-                          alt={emoji.alt}
-                          className="object-contain pointer-events-none select-none"
+                      <div key={emoji.id} className="relative flex items-center justify-center">
+                        {/* Instagram-style floating reaction emojis */}
+                        {matchingFloats.map((floatItem) => (
+                          <div
+                            key={floatItem.id}
+                            className="absolute z-50 pointer-events-none animate-ig-stream select-none flex items-center justify-center"
+                            style={{
+                              bottom: '100%',
+                              left: '50%',
+                              marginLeft: `calc(-${floatItem.size / 2} * var(--u))`,
+                              width: `calc(${floatItem.size * 1.3} * var(--u))`,
+                              height: `calc(${floatItem.size * 1.3} * var(--u))`,
+                              ['--drift-x' as any]: `calc(${floatItem.driftX * 1.4} * var(--u))`,
+                              ['--drift-y' as any]: `calc(${floatItem.driftY * 1.4} * var(--u))`,
+                              ['--start-rot' as any]: `${floatItem.startRot}deg`,
+                              ['--tilt-wobble' as any]: `${floatItem.wobbleRot}deg`,
+                              ['--target-scale' as any]: `${floatItem.scale}`,
+                              ['--anim-duration' as any]: `${floatItem.duration}s`,
+                              animationDelay: `${floatItem.delay}ms`,
+                            }}
+                          >
+                            <img
+                              src={floatItem.file}
+                              alt=""
+                              className="w-full h-full object-contain drop-shadow-md pointer-events-none select-none"
+                              draggable={false}
+                            />
+                          </div>
+                        ))}
+
+                        <button
+                          type="button"
+                          onPointerDown={() => handleEmojiPressStart(emoji.id)}
+                          onPointerUp={handleEmojiPressEnd}
+                          onPointerLeave={handleEmojiPressEnd}
+                          onTouchStart={() => handleEmojiPressStart(emoji.id)}
+                          onTouchEnd={handleEmojiPressEnd}
+                          onTouchCancel={handleEmojiPressEnd}
+                          onClick={() => handleEmojiClick(emoji.id)}
+                          aria-label={emoji.alt}
+                          aria-pressed={isSelected}
+                          className={`rounded-full border-dashed flex items-center justify-center cursor-pointer transition-all focus:outline-none p-0 bg-transparent select-none touch-none ${
+                            isSelected
+                              ? 'border-[#1B1D20] bg-white/40 scale-105'
+                              : 'border-[#1B1D20]/45 hover:border-[#1B1D20]/75 active:scale-95'
+                          } ${isBouncing ? 'animate-ig-tap-tilt' : ''}`}
                           style={{
-                            width: 'calc(38 * var(--u))',
-                            height: 'calc(38 * var(--u))',
+                            width: 'calc(68 * var(--u))',
+                            height: 'calc(68 * var(--u))',
+                            borderWidth: 'calc(2 * var(--u))',
                           }}
-                          draggable={false}
-                        />
-                      </button>
+                        >
+                          <img
+                            src={emoji.file}
+                            alt={emoji.alt}
+                            className={`object-contain pointer-events-none select-none transition-transform ${
+                              isSelected ? 'scale-110' : ''
+                            }`}
+                            style={{
+                              width: 'calc(38 * var(--u))',
+                              height: 'calc(38 * var(--u))',
+                            }}
+                            draggable={false}
+                          />
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -1447,7 +1649,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
             className="w-full absolute top-0 left-0"
           />
 
-          <div className="w-full px-5 flex-1 flex flex-col items-center justify-start pt-[78px] pb-14 relative z-10">
+          <div className="w-full px-5 flex-1 flex flex-col items-center justify-start pt-[56px] pb-14 relative z-10">
 
           {/* Note: DAYS/TIMELINE STRIP (MON 12 - SUN 18) DELETED PER EXPLICIT INSTRUCTION */}
 
@@ -1605,32 +1807,71 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
             </p>
           </div>
 
-          {/* 5. REACTION EMOJIS ROW */}
-          <div className="w-full flex items-center justify-between mb-7 px-1">
+          {/* 5. REACTION EMOJIS ROW: With Instagram-style Floating & Tilted Reaction Animations */}
+          <div className="w-full flex items-center justify-between mb-7 px-1 relative">
             {REACTION_EMOJIS.map((emoji) => {
               const isSelected = activeReaction === emoji.id;
               const isBouncing = bouncingEmojiId === emoji.id;
+              const matchingFloats = floatingEmojis.filter((f) => f.emojiId === emoji.id);
 
               return (
-                <button
-                  key={emoji.id}
-                  type="button"
-                  onClick={() => handleEmojiClick(emoji.id)}
-                  aria-label={emoji.alt}
-                  aria-pressed={isSelected}
-                  className={`w-[44px] h-[44px] rounded-full border-[1.5px] border-dashed flex items-center justify-center cursor-pointer transition-all focus:outline-none p-0 bg-transparent ${
-                    isSelected
-                      ? 'border-[#1B1D20] bg-white/40 scale-105'
-                      : 'border-[#1B1D20]/45 hover:border-[#1B1D20]/75 active:scale-95'
-                  } ${isBouncing ? 'animate-avatar-bounce' : ''}`}
-                >
-                  <img
-                    src={emoji.file}
-                    alt={emoji.alt}
-                    className="w-[25px] h-[25px] object-contain pointer-events-none select-none"
-                    draggable={false}
-                  />
-                </button>
+                <div key={emoji.id} className="relative flex items-center justify-center">
+                  {/* Instagram-style floating reaction emojis */}
+                  {matchingFloats.map((floatItem) => (
+                    <div
+                      key={floatItem.id}
+                      className="absolute z-50 pointer-events-none animate-ig-stream select-none flex items-center justify-center"
+                      style={{
+                        bottom: '100%',
+                        left: '50%',
+                        marginLeft: `-${floatItem.size / 2}px`,
+                        width: `${floatItem.size}px`,
+                        height: `${floatItem.size}px`,
+                        ['--drift-x' as any]: `${floatItem.driftX}px`,
+                        ['--drift-y' as any]: `${floatItem.driftY}px`,
+                        ['--start-rot' as any]: `${floatItem.startRot}deg`,
+                        ['--tilt-wobble' as any]: `${floatItem.wobbleRot}deg`,
+                        ['--target-scale' as any]: `${floatItem.scale}`,
+                        ['--anim-duration' as any]: `${floatItem.duration}s`,
+                        animationDelay: `${floatItem.delay}ms`,
+                      }}
+                    >
+                      <img
+                        src={floatItem.file}
+                        alt=""
+                        className="w-full h-full object-contain drop-shadow-md pointer-events-none select-none"
+                        draggable={false}
+                      />
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onPointerDown={() => handleEmojiPressStart(emoji.id)}
+                    onPointerUp={handleEmojiPressEnd}
+                    onPointerLeave={handleEmojiPressEnd}
+                    onTouchStart={() => handleEmojiPressStart(emoji.id)}
+                    onTouchEnd={handleEmojiPressEnd}
+                    onTouchCancel={handleEmojiPressEnd}
+                    onClick={() => handleEmojiClick(emoji.id)}
+                    aria-label={emoji.alt}
+                    aria-pressed={isSelected}
+                    className={`w-[44px] h-[44px] rounded-full border-[1.5px] border-dashed flex items-center justify-center cursor-pointer transition-all focus:outline-none p-0 bg-transparent select-none touch-none ${
+                      isSelected
+                        ? 'border-[#1B1D20] bg-white/40 scale-105'
+                        : 'border-[#1B1D20]/45 hover:border-[#1B1D20]/75 active:scale-95'
+                    } ${isBouncing ? 'animate-ig-tap-tilt' : ''}`}
+                  >
+                    <img
+                      src={emoji.file}
+                      alt={emoji.alt}
+                      className={`w-[25px] h-[25px] object-contain pointer-events-none select-none transition-transform ${
+                        isSelected ? 'scale-110' : ''
+                      }`}
+                      draggable={false}
+                    />
+                  </button>
+                </div>
               );
             })}
           </div>

@@ -111,9 +111,9 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
 
   const friendName = partnerProfile.name || 'Sam';
 
-  // 1. DEFAULT STATE: NOBODY IS READY
-  const [isUserReady, setIsUserReady] = useState<boolean>(false);
-  const [isFriendReady, setIsFriendReady] = useState<boolean>(false);
+  // 1. DEFAULT STATE: BOTH READY
+  const [isUserReady, setIsUserReady] = useState<boolean>(true);
+  const [isFriendReady, setIsFriendReady] = useState<boolean>(true);
   const [isNudgeDisabled, setIsNudgeDisabled] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showLeaveModal, setShowLeaveModal] = useState<boolean>(false);
@@ -164,10 +164,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
     setIsUserReady(true);
   };
 
-  // 3. Simulation Control
-  const handleToggleFriendReady = () => {
-    setIsFriendReady((prev) => !prev);
-  };
+  // Simulation control removed
 
   const handleBackClick = () => {
     if (onBack) {
@@ -592,31 +589,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
             </svg>
           </button>
 
-          {/* ---------------- SIMULATION CONTROL (TOP RIGHT) ---------------- */}
-          <button
-            type="button"
-            onClick={handleToggleFriendReady}
-            style={{
-              position: 'absolute',
-              right: '24px',
-              top: `${layout.backTop + 8}px`,
-              fontFamily: "'Nunito', sans-serif",
-              fontWeight: 600,
-              fontSize: '11px',
-              lineHeight: '1.2',
-              color: 'rgba(104, 106, 117, 0.65)',
-              background: 'transparent',
-              border: 'none',
-              padding: '4px 6px',
-              cursor: 'pointer',
-              zIndex: 20,
-              outline: 'none',
-              textDecoration: 'underline',
-            }}
-            className="hover:text-[#17181B] active:scale-95 transition-all"
-          >
-            {isFriendReady ? `Simulate ${friendName} not ready` : `Simulate ${friendName} ready`}
-          </button>
+          {/* Simulation control removed */}
 
           {/* ---------------- HEAD BLOCK ---------------- */}
           <div

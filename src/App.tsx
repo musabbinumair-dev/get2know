@@ -36,7 +36,7 @@ import { LoaderProvider, useAppLoader } from './services/loaderContext';
 
 // ── ENTRY GUARD COMPONENT ──
 function EntryGuard({ children }: { children: React.ReactNode }) {
-  const { isLoading, profile, setPendingInviteCode } = useSession();
+  const { isLoading, profile, setPendingInviteCode, startGuestSession } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -52,14 +52,12 @@ function EntryGuard({ children }: { children: React.ReactNode }) {
       setPendingInviteCode(codeParam);
     }
 
-    // If user has a profile, visiting /welcome or root / redirects to /home
-    if (profile && (pathname === '/welcome' || pathname === '/')) {
-      navigate('/home', { replace: true });
-      return;
+    // Save last pathname so refresh on game pages preserves location
+    if (pathname !== '/welcome' && pathname !== '/') {
+      localStorage.setItem('gty_last_pathname', pathname);
     }
 
-    // Protected game routes require a profile
-    const protectedRoutes = [
+    const gameRoutes = [
       '/home',
       '/guess',
       '/scores',
@@ -71,12 +69,27 @@ function EntryGuard({ children }: { children: React.ReactNode }) {
       '/countdown',
       '/today-question',
       '/game-final',
+      '/reveal',
+      '/locked',
     ];
-    if (!profile && protectedRoutes.includes(pathname)) {
-      navigate('/welcome', { replace: true });
+
+    // If user has a profile, visiting /welcome or root / restores last game route if any, else /home
+    if (profile && (pathname === '/welcome' || pathname === '/')) {
+      const lastPath = localStorage.getItem('gty_last_pathname');
+      if (lastPath && gameRoutes.includes(lastPath) && lastPath !== '/home') {
+        navigate(lastPath, { replace: true });
+        return;
+      }
+      navigate('/home', { replace: true });
       return;
     }
-  }, [isLoading, profile, location.pathname, location.search, navigate, setPendingInviteCode]);
+
+    // Never redirect away from game pages on refresh
+    if (!profile && gameRoutes.includes(pathname)) {
+      startGuestSession();
+      return;
+    }
+  }, [isLoading, profile, location.pathname, location.search, navigate, setPendingInviteCode, startGuestSession]);
 
   if (isLoading) {
     return <AppLoader theme="cream" message="Getting things ready…" />;
@@ -219,16 +232,7 @@ function AppContent() {
       reactions: selectedReaction
         ? [
             {
-              emoji:
-                selectedReaction === '1'
-                  ? '✨'
-                  : selectedReaction === '2'
-                  ? '💀'
-                  : selectedReaction === '3'
-                  ? '😍'
-                  : selectedReaction === '4'
-                  ? '🔥'
-                  : '👀',
+              emoji: selectedReaction,
               count: 1,
             },
           ]
@@ -373,6 +377,7 @@ function AppContent() {
           element={
             <TodayQuestionScreen
               userProfile={currentProfile}
+              partnerProfile={partnerProfile}
               onOpenSettings={() => navigateWithLoader('/profile')}
               onNavigateTab={handleTabNavigate}
               onLockInSuccess={() => navigateWithLoader('/locked')}

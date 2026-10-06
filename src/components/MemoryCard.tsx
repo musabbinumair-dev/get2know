@@ -19,7 +19,7 @@ export interface MemoryCardProps {
   matched?: boolean;
   isMatched?: boolean;
   category?: 'Food' | 'funny' | 'deep' | 'other' | string;
-  reactions?: Array<{ emoji: string; count: number }>;
+  reactions?: Array<{ emoji: string; count?: number }> | string | { emoji: string; count?: number };
   onClick?: () => void;
   className?: string;
   'data-spec'?: string;
@@ -30,6 +30,63 @@ const COLOR_MAP: Record<string, string> = {
   blue: '#9DBDFD',
   yellow: '#FEDF6B',
   olive: '#B5C68B',
+};
+
+export const resolveReactionInfo = (
+  reactions?: MemoryCardProps['reactions']
+): { char: string; imgSrc?: string; count: number } | null => {
+  if (!reactions) return null;
+  let rawEmoji = '';
+  let count = 1;
+
+  if (Array.isArray(reactions)) {
+    if (reactions.length === 0) return null;
+    const first = reactions[0];
+    if (typeof first === 'string') {
+      rawEmoji = first;
+    } else if (typeof first === 'object' && first !== null) {
+      rawEmoji = (first as any).emoji || (first as any).id || '';
+      count = (first as any).count || 1;
+    }
+  } else if (typeof reactions === 'object' && reactions !== null) {
+    rawEmoji = (reactions as any).emoji || (reactions as any).id || '';
+    count = (reactions as any).count || 1;
+  } else if (typeof reactions === 'string') {
+    rawEmoji = reactions;
+  }
+
+  if (!rawEmoji) return null;
+
+  const MAP: Record<string, { char: string; imgSrc?: string }> = {
+    heart: { char: '❤️', imgSrc: '/assets/reveal/emoji-heart.webp' },
+    love: { char: '❤️', imgSrc: '/assets/reveal/emoji-heart.webp' },
+    smile: { char: '✨', imgSrc: '/assets/reveal/emoji-smile.webp' },
+    sparkles: { char: '✨', imgSrc: '/assets/reveal/emoji-smile.webp' },
+    laugh: { char: '😂', imgSrc: '/assets/reveal/emoji-laugh.webp' },
+    surprised: { char: '😮', imgSrc: '/assets/reveal/emoji-surprised.webp' },
+    wow: { char: '😮', imgSrc: '/assets/reveal/emoji-surprised.webp' },
+    smirk: { char: '😏', imgSrc: '/assets/reveal/emoji-smirk.webp' },
+    cry: { char: '😭', imgSrc: '/assets/reveal/emoji-cry.webp' },
+    sad: { char: '😭', imgSrc: '/assets/reveal/emoji-cry.webp' },
+    '❤️': { char: '❤️', imgSrc: '/assets/reveal/emoji-heart.webp' },
+    '✨': { char: '✨', imgSrc: '/assets/reveal/emoji-smile.webp' },
+    '😂': { char: '😂', imgSrc: '/assets/reveal/emoji-laugh.webp' },
+    '😮': { char: '😮', imgSrc: '/assets/reveal/emoji-surprised.webp' },
+    '😏': { char: '😏', imgSrc: '/assets/reveal/emoji-smirk.webp' },
+    '😭': { char: '😭', imgSrc: '/assets/reveal/emoji-cry.webp' },
+    '1': { char: '✨', imgSrc: '/assets/reveal/emoji-smile.webp' },
+    '2': { char: '💀' },
+    '3': { char: '😍' },
+    '4': { char: '🔥' },
+    '5': { char: '👀' },
+  };
+
+  const item = MAP[rawEmoji.toLowerCase()] || MAP[rawEmoji] || { char: rawEmoji };
+  return {
+    char: item.char,
+    imgSrc: item.imgSrc,
+    count,
+  };
 };
 
 export const getAvatarBlobSrc = (avatarId: number = 1, color?: string): string => {
@@ -63,11 +120,13 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
   deco: _deco,
   decoOffset,
   matched = false,
+  reactions,
   onClick,
   className = '',
   'data-spec': dataSpec,
 }) => {
   const bgColor = cardBg || (color && COLOR_MAP[color]) || '#FBBCDE';
+  const reactionInfo = resolveReactionInfo(reactions);
 
   return (
     <div
@@ -113,21 +172,23 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
       )}
 
       {/* ---------------- CARD CONTENT (QUESTION NEVER OVERLAPS DECORATION) ---------------- */}
-      <div className="relative z-0 flex flex-col">
-        {/* Date: Nunito 700 10px, ink at 55% */}
-        <span
-          style={{
-            fontFamily: "'Nunito', sans-serif",
-            fontSize: '10px',
-            fontWeight: 700,
-            color: 'rgba(23, 24, 27, 0.55)',
-            letterSpacing: '-0.01em',
-            lineHeight: 1,
-            marginBottom: '4px',
-          }}
-        >
-          {date}
-        </span>
+      <div className="relative z-0 flex flex-col flex-1">
+        {/* Date Row with Reaction Badge */}
+        <div className="flex items-center justify-between mb-1">
+          {/* Date: Nunito 700 10px, ink at 55% */}
+          <span
+            style={{
+              fontFamily: "'Nunito', sans-serif",
+              fontSize: '10px',
+              fontWeight: 700,
+              color: 'rgba(23, 24, 27, 0.55)',
+              letterSpacing: '-0.01em',
+              lineHeight: 1,
+            }}
+          >
+            {date}
+          </span>
+        </div>
 
         {/* Question: Nunito 900 16px, line-height 19px, ink, wraps naturally up to 3 lines */}
         {/* Sized with right clearance so text NEVER overlays on the top-right decoration */}
@@ -148,7 +209,7 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
         </h3>
 
         {/* Two Dynamic Answer Rows with pitch */}
-        <div className="flex flex-col gap-2 mt-auto pt-1">
+        <div className="flex flex-col gap-2 mt-auto pt-1 relative">
           {/* Answer Row 1: Player 1 (User's chosen avatar & color blob) */}
           <div className="flex items-center gap-2 min-h-[35px]">
             <div className="relative w-[35px] h-[35px] flex items-center justify-center flex-shrink-0 select-none">
@@ -185,7 +246,7 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
                   color: '#17181B',
                   lineHeight: '13px',
                 }}
-                className="truncate whitespace-nowrap overflow-hidden text-ellipsis max-w-[110px]"
+                className="truncate whitespace-nowrap overflow-hidden text-ellipsis max-w-[96px]"
                 title={p1Answer}
               >
                 {p1Answer}
@@ -229,13 +290,50 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
                   color: '#17181B',
                   lineHeight: '13px',
                 }}
-                className="truncate whitespace-nowrap overflow-hidden text-ellipsis max-w-[110px]"
+                className="truncate whitespace-nowrap overflow-hidden text-ellipsis max-w-[96px]"
                 title={p2Answer}
               >
                 {p2Answer}
               </span>
             </div>
           </div>
+
+          {/* ---------------- INSTAGRAM-STYLE EMOJI REACTION BADGE (Pill attached to bottom right) ---------------- */}
+          {reactionInfo && (
+            <div
+              className="absolute right-2.5 bottom-2.5 z-30 pointer-events-none select-none flex items-center shadow-md bg-white/95 backdrop-blur-xs rounded-full px-2 py-0.5 border border-[#17181B]/15"
+              style={{
+                gap: '3px',
+              }}
+              title="Reaction"
+            >
+              {reactionInfo.imgSrc ? (
+                <img
+                  src={reactionInfo.imgSrc}
+                  alt={reactionInfo.char}
+                  className="w-[18px] h-[18px] object-contain flex-shrink-0 -rotate-[8deg]"
+                  draggable={false}
+                />
+              ) : (
+                <span className="text-[15px] leading-none -rotate-[8deg] select-none">
+                  {reactionInfo.char}
+                </span>
+              )}
+              {reactionInfo.count > 1 && (
+                <span
+                  style={{
+                    fontFamily: "'Nunito', sans-serif",
+                    fontSize: '11px',
+                    fontWeight: 900,
+                    color: '#17181B',
+                    lineHeight: 1,
+                  }}
+                >
+                  {reactionInfo.count}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
