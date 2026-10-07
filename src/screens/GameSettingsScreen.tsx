@@ -322,17 +322,13 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack, 
         zIndex: 50,
       }}
     >
-      {/* 
-        390-wide stage container:
-        - Width = 390 * s, centered.
-        - Page height PH = 844 * s * k.
-        - On tall screens (k > 1): PH = viewportHeight, fills screen with NO scrolling.
-        - On compact screens (k = 1): PH = 844 * s, scrolls vertically.
-      */}
+      {/* =========================================================================
+          MOBILE LAYOUT (< 768px: UNTOUCHED)
+         ========================================================================= */}
       <div
         id="game-settings-stage"
         ref={stageRef}
-        className="relative flex-shrink-0"
+        className="relative flex-shrink-0 md:hidden"
         style={{
           width: `${390 * s}px`,
           height: `${PH}px`,
@@ -1304,6 +1300,538 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack, 
             {toastMessage}
           </div>
         )}
+      </div>
+
+      {/* =========================================================================
+          TABLET & DESKTOP LAYOUT (768px and up: Responsive --u Scale min(vw, dvh))
+         ========================================================================= */}
+      <div
+        className="hidden md:flex flex-col items-center justify-center relative w-full h-[100dvh] overflow-hidden select-none font-['Nunito']"
+        style={{
+          ['--u' as any]: 'min(calc(100vw / 1586), calc(100dvh / 992))',
+          backgroundColor: '#F6EFDD',
+        }}
+      >
+        {/* VIEWPORT FIXED DECORATIONS */}
+        <img
+          src="/deco-heart-pink-top-left-cropped.webp"
+          alt=""
+          className="fixed top-0 left-0 object-contain pointer-events-none select-none z-10"
+          style={{
+            width: 'calc(100 * var(--u))',
+            height: 'calc(140 * var(--u))',
+          }}
+          draggable={false}
+        />
+        <img
+          src="/game-settings-decorations/deco-moon-yellow.webp"
+          alt=""
+          className="fixed top-0 right-0 object-contain pointer-events-none select-none z-10"
+          style={{
+            width: 'calc(80 * var(--u))',
+            height: 'calc(150 * var(--u))',
+          }}
+          draggable={false}
+        />
+        <img
+          src="/deco-cross-olive-bottom-left.webp"
+          alt=""
+          className="fixed object-contain pointer-events-none select-none z-10"
+          style={{
+            left: 'calc(12 * var(--u))',
+            bottom: 'calc(24 * var(--u))',
+            width: 'calc(105 * var(--u))',
+            height: 'calc(110 * var(--u))',
+          }}
+          draggable={false}
+        />
+        <img
+          src="/deco-crescent-yellow-bottom-right.webp"
+          alt=""
+          className="fixed object-contain pointer-events-none select-none z-10"
+          style={{
+            right: 'calc(25 * var(--u))',
+            bottom: 'calc(35 * var(--u))',
+            width: 'calc(80 * var(--u))',
+            height: 'calc(107 * var(--u))',
+          }}
+          draggable={false}
+        />
+
+        {/* 1586 x 992 DESIGN CANVAS */}
+        <div
+          className="relative flex-shrink-0"
+          style={{
+            width: 'calc(1586 * var(--u))',
+            height: 'calc(992 * var(--u))',
+          }}
+        >
+          {/* HEADER: Back Button at left x=112, center y=75 */}
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back"
+            className="btn-press absolute rounded-full flex items-center justify-center bg-transparent hover:bg-[#17181B]/5 transition-colors cursor-pointer focus:outline-none z-20"
+            style={{
+              left: 'calc(112 * var(--u))',
+              top: 'calc(75 * var(--u))',
+              transform: 'translate(-50%, -50%)',
+              width: 'calc(78 * var(--u))',
+              height: 'calc(78 * var(--u))',
+              border: 'calc(3.5 * var(--u)) dashed #17181B',
+            }}
+          >
+            <svg
+              style={{ width: 'calc(34 * var(--u))', height: 'calc(34 * var(--u))' }}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#17181B"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          {/* Title in center top */}
+          <div
+            className="absolute rounded-full bg-[#191D21] flex items-center justify-center shadow-sm pointer-events-none z-20"
+            style={{
+              left: 'calc(793 * var(--u))',
+              top: 'calc(75 * var(--u))',
+              transform: 'translate(-50%, -50%)',
+              height: 'calc(54 * var(--u))',
+              paddingLeft: 'calc(28 * var(--u))',
+              paddingRight: 'calc(28 * var(--u))',
+              borderRadius: 'calc(27 * var(--u))',
+            }}
+          >
+            <span
+              className="text-white font-extrabold tracking-tight"
+              style={{ fontSize: 'calc(26 * var(--u))' }}
+            >
+              Game Setup
+            </span>
+          </div>
+
+          {/* LEFT COLUMN: x=112 to 770 (658w) */}
+          <p
+            className="absolute font-bold text-[#191D21]/60 tracking-tight leading-none m-0 z-20"
+            style={{
+              left: 'calc(112 * var(--u))',
+              top: 'calc(166 * var(--u))',
+              fontSize: 'calc(34 * var(--u))',
+            }}
+          >
+            Customize match
+          </p>
+
+          <h1
+            className="absolute font-black text-[#191D21] tracking-[-0.03em] leading-none m-0 z-20 whitespace-nowrap"
+            style={{
+              left: 'calc(112 * var(--u))',
+              top: 'calc(212 * var(--u))',
+              fontSize: 'calc(92 * var(--u))',
+              maxWidth: 'calc(658 * var(--u))',
+            }}
+          >
+            Game settings
+          </h1>
+
+          {/* Short description */}
+          <p
+            className="absolute font-bold text-[#191D21]/70 leading-relaxed m-0 z-20"
+            style={{
+              left: 'calc(112 * var(--u))',
+              top: 'calc(322 * var(--u))',
+              width: 'calc(658 * var(--u))',
+              fontSize: 'calc(30 * var(--u))',
+            }}
+          >
+            Choose your game mode, categories, time limits, and round count for your next face-off with your partner.
+          </p>
+
+          {/* Summary Preview Card */}
+          <div
+            className="absolute shadow-sm overflow-hidden z-20 flex flex-col justify-between"
+            style={{
+              left: 'calc(112 * var(--u))',
+              top: 'calc(430 * var(--u))',
+              width: 'calc(658 * var(--u))',
+              height: 'calc(430 * var(--u))',
+              borderRadius: 'calc(40 * var(--u))',
+              backgroundColor: '#FEE36F',
+              padding: 'calc(36 * var(--u))',
+            }}
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span
+                  className="font-extrabold uppercase tracking-wider text-[#191D21]/60"
+                  style={{ fontSize: 'calc(24 * var(--u))' }}
+                >
+                  Current Match Config
+                </span>
+                <span
+                  className="font-black px-3 py-1 rounded-full bg-[#191D21] text-white"
+                  style={{
+                    fontSize: 'calc(22 * var(--u))',
+                    borderRadius: 'calc(16 * var(--u))',
+                  }}
+                >
+                  {selectedMode === 'know-me' ? 'Know Me' : selectedMode === 'trivia' ? 'Trivia' : 'Mixed'}
+                </span>
+              </div>
+
+              <div
+                className="font-black text-[#191D21] tracking-tight mt-3"
+                style={{ fontSize: 'calc(44 * var(--u))' }}
+              >
+                {selectedCategories.length} Categories Selected
+              </div>
+
+              <div
+                className="flex flex-wrap gap-2 mt-3"
+                style={{ gap: 'calc(10 * var(--u))' }}
+              >
+                {selectedCategories.slice(0, 6).map((cat) => (
+                  <span
+                    key={cat}
+                    className="font-bold bg-white/70 text-[#191D21] px-3 py-1 rounded-full"
+                    style={{
+                      fontSize: 'calc(22 * var(--u))',
+                      borderRadius: 'calc(14 * var(--u))',
+                    }}
+                  >
+                    {cat}
+                  </span>
+                ))}
+                {selectedCategories.length > 6 && (
+                  <span
+                    className="font-bold bg-white/70 text-[#191D21] px-3 py-1 rounded-full"
+                    style={{
+                      fontSize: 'calc(22 * var(--u))',
+                      borderRadius: 'calc(14 * var(--u))',
+                    }}
+                  >
+                    +{selectedCategories.length - 6} more
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div
+              className="flex items-center justify-between pt-4 border-t border-[#191D21]/15"
+              style={{ gap: 'calc(16 * var(--u))' }}
+            >
+              <div className="flex flex-col">
+                <span className="font-semibold text-[#191D21]/60" style={{ fontSize: 'calc(22 * var(--u))' }}>
+                  Rounds
+                </span>
+                <span className="font-extrabold text-[#191D21]" style={{ fontSize: 'calc(30 * var(--u))' }}>
+                  {rounds} Rounds
+                </span>
+              </div>
+              <div className="flex flex-col">
+                <span className="font-semibold text-[#191D21]/60" style={{ fontSize: 'calc(22 * var(--u))' }}>
+                  Timer
+                </span>
+                <span className="font-extrabold text-[#191D21]" style={{ fontSize: 'calc(30 * var(--u))' }}>
+                  {timer}
+                </span>
+              </div>
+              <div className="flex flex-col">
+                <span className="font-semibold text-[#191D21]/60" style={{ fontSize: 'calc(22 * var(--u))' }}>
+                  Difficulty
+                </span>
+                <span className="font-extrabold text-[#191D21]" style={{ fontSize: 'calc(30 * var(--u))' }}>
+                  {difficulty}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: x=825 to 1500 (675w, 55 gap) */}
+          <h2
+            className="absolute font-black text-[#191D21] tracking-tight pointer-events-none select-none m-0 z-20"
+            style={{
+              left: 'calc(825 * var(--u))',
+              top: 'calc(212 * var(--u))',
+              fontSize: 'calc(54 * var(--u))',
+              lineHeight: 1,
+            }}
+          >
+            Mode & rules
+          </h2>
+
+          {/* Mode Selector 3 cards */}
+          <div
+            className="absolute flex items-center justify-between z-20"
+            style={{
+              left: 'calc(825 * var(--u))',
+              top: 'calc(280 * var(--u))',
+              width: 'calc(675 * var(--u))',
+              gap: 'calc(16 * var(--u))',
+            }}
+          >
+            {[
+              { id: 'know-me', label: 'Know Me', icon: '/game-settings-decorations/icon-wink.webp' },
+              { id: 'trivia', label: 'Trivia', icon: '/game-settings-decorations/icon-bulb.webp' },
+              { id: 'mixed', label: 'Mixed', icon: '/game-settings-decorations/icon-dice-color.webp' },
+            ].map((m) => {
+              const active = selectedMode === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setSelectedMode(m.id as any)}
+                  className="btn-press flex-1 flex flex-col items-center justify-center cursor-pointer transition-all border-none outline-none"
+                  style={{
+                    height: 'calc(105 * var(--u))',
+                    borderRadius: 'calc(24 * var(--u))',
+                    backgroundColor: active ? '#191D21' : '#FAEECA',
+                    color: active ? '#FFFFFF' : '#191D21',
+                    boxShadow: active ? '0 8px 20px rgba(0,0,0,0.12)' : 'none',
+                    gap: 'calc(6 * var(--u))',
+                  }}
+                >
+                  <img
+                    src={m.icon}
+                    alt=""
+                    style={{ width: 'calc(38 * var(--u))', height: 'calc(38 * var(--u))' }}
+                    className="object-contain"
+                  />
+                  <span
+                    className="font-extrabold tracking-tight"
+                    style={{ fontSize: 'calc(24 * var(--u))' }}
+                  >
+                    {m.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Category Chips Container */}
+          <div
+            className="absolute z-20"
+            style={{
+              left: 'calc(825 * var(--u))',
+              top: 'calc(410 * var(--u))',
+              width: 'calc(675 * var(--u))',
+            }}
+          >
+            <span
+              className="block font-bold text-[#191D21]/60 tracking-tight mb-2"
+              style={{ fontSize: 'calc(22 * var(--u))' }}
+            >
+              CATEGORIES
+            </span>
+            <div
+              className="flex flex-wrap"
+              style={{ gap: 'calc(10 * var(--u))' }}
+            >
+              {CATEGORIES.map((cat) => {
+                const active = selectedCategories.includes(cat.name);
+                return (
+                  <button
+                    key={cat.name}
+                    type="button"
+                    onClick={() => toggleCategory(cat.name)}
+                    className="btn-press flex items-center cursor-pointer transition-all border-none outline-none"
+                    style={{
+                      height: 'calc(50 * var(--u))',
+                      paddingLeft: 'calc(18 * var(--u))',
+                      paddingRight: 'calc(18 * var(--u))',
+                      borderRadius: 'calc(25 * var(--u))',
+                      backgroundColor: active ? '#191D21' : '#FAEECA',
+                      color: active ? '#FFFFFF' : '#191D21',
+                      gap: 'calc(10 * var(--u))',
+                    }}
+                  >
+                    <img
+                      src={cat.icon}
+                      alt=""
+                      style={{ width: 'calc(24 * var(--u))', height: 'calc(24 * var(--u))' }}
+                      className="object-contain"
+                    />
+                    <span
+                      className="font-bold tracking-tight"
+                      style={{ fontSize: 'calc(22 * var(--u))' }}
+                    >
+                      {cat.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Rules: Rounds & Timer Row */}
+          <div
+            className="absolute z-20 flex items-center justify-between"
+            style={{
+              left: 'calc(825 * var(--u))',
+              top: 'calc(580 * var(--u))',
+              width: 'calc(675 * var(--u))',
+              gap: 'calc(24 * var(--u))',
+            }}
+          >
+            {/* Rounds */}
+            <div className="flex-1">
+              <span
+                className="block font-bold text-[#191D21]/60 tracking-tight mb-2"
+                style={{ fontSize: 'calc(22 * var(--u))' }}
+              >
+                ROUNDS
+              </span>
+              <div
+                className="flex items-center bg-[#FAEECA] p-1"
+                style={{
+                  borderRadius: 'calc(24 * var(--u))',
+                  height: 'calc(54 * var(--u))',
+                }}
+              >
+                {([5, 10, 15] as const).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRounds(r)}
+                    className="flex-1 h-full flex items-center justify-center font-extrabold cursor-pointer border-none transition-all"
+                    style={{
+                      borderRadius: 'calc(20 * var(--u))',
+                      backgroundColor: rounds === r ? '#191D21' : 'transparent',
+                      color: rounds === r ? '#FFFFFF' : '#191D21',
+                      fontSize: 'calc(22 * var(--u))',
+                    }}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Timer */}
+            <div className="flex-1">
+              <span
+                className="block font-bold text-[#191D21]/60 tracking-tight mb-2"
+                style={{ fontSize: 'calc(22 * var(--u))' }}
+              >
+                TIMER
+              </span>
+              <div
+                className="flex items-center bg-[#FAEECA] p-1"
+                style={{
+                  borderRadius: 'calc(24 * var(--u))',
+                  height: 'calc(54 * var(--u))',
+                }}
+              >
+                {(['10s', '20s', '30s', 'Off'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTimer(t)}
+                    className="flex-1 h-full flex items-center justify-center font-extrabold cursor-pointer border-none transition-all"
+                    style={{
+                      borderRadius: 'calc(20 * var(--u))',
+                      backgroundColor: timer === t ? '#191D21' : 'transparent',
+                      color: timer === t ? '#FFFFFF' : '#191D21',
+                      fontSize: 'calc(20 * var(--u))',
+                    }}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Difficulty */}
+            <div className="flex-1">
+              <span
+                className="block font-bold text-[#191D21]/60 tracking-tight mb-2"
+                style={{ fontSize: 'calc(22 * var(--u))' }}
+              >
+                DIFFICULTY
+              </span>
+              <div
+                className="flex items-center bg-[#FAEECA] p-1"
+                style={{
+                  borderRadius: 'calc(24 * var(--u))',
+                  height: 'calc(54 * var(--u))',
+                }}
+              >
+                {(['Easy', 'Medium', 'Hard'] as const).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDifficulty(d)}
+                    className="flex-1 h-full flex items-center justify-center font-extrabold cursor-pointer border-none transition-all"
+                    style={{
+                      borderRadius: 'calc(20 * var(--u))',
+                      backgroundColor: difficulty === d ? '#191D21' : 'transparent',
+                      color: difficulty === d ? '#FFFFFF' : '#191D21',
+                      fontSize: 'calc(20 * var(--u))',
+                    }}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Toggles Row */}
+          <div
+            className="absolute z-20 flex items-center justify-between"
+            style={{
+              left: 'calc(825 * var(--u))',
+              top: 'calc(690 * var(--u))',
+              width: 'calc(675 * var(--u))',
+            }}
+          >
+            <label className="flex items-center cursor-pointer select-none" style={{ gap: 'calc(12 * var(--u))' }}>
+              <input
+                type="checkbox"
+                checked={speedBonus}
+                onChange={(e) => setSpeedBonus(e.target.checked)}
+                className="w-5 h-5 accent-[#191D21]"
+              />
+              <span className="font-bold text-[#191D21]" style={{ fontSize: 'calc(24 * var(--u))' }}>
+                Speed bonus points
+              </span>
+            </label>
+
+            <label className="flex items-center cursor-pointer select-none" style={{ gap: 'calc(12 * var(--u))' }}>
+              <input
+                type="checkbox"
+                checked={soundEffects}
+                onChange={(e) => setSoundEffects(e.target.checked)}
+                className="w-5 h-5 accent-[#191D21]"
+              />
+              <span className="font-bold text-[#191D21]" style={{ fontSize: 'calc(24 * var(--u))' }}>
+                Sound effects
+              </span>
+            </label>
+          </div>
+
+          {/* Main Action Button: Black pill button, 675w x 80h, font 38, radius 40 */}
+          <button
+            type="button"
+            onClick={handleCreateGame}
+            className="btn-press absolute bg-[#1A1E22] text-white font-extrabold tracking-tight flex items-center justify-center cursor-pointer shadow-sm outline-none hover:opacity-95 active:scale-98 transition-all z-30"
+            style={{
+              left: 'calc(825 * var(--u))',
+              top: 'calc(780 * var(--u))',
+              width: 'calc(675 * var(--u))',
+              height: 'calc(80 * var(--u))',
+              borderRadius: 'calc(40 * var(--u))',
+              fontSize: 'calc(38 * var(--u))',
+            }}
+          >
+            Continue to Lobby
+          </button>
+        </div>
       </div>
 
       {/* =========================================================================

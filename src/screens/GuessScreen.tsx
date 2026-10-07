@@ -224,6 +224,7 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
     <Screen bg="#96B9FC" className="h-full min-h-[100dvh]">
       {/* ---------------- STAGE CONTAINER ---------------- */}
       <div
+        className="md:hidden"
         style={{
           position: 'relative',
           width: '390px',
@@ -919,6 +920,281 @@ export const GuessScreen: React.FC<GuessScreenProps> = ({
             />
           </div>
         )}
+      </div>
+
+      {/* =========================================================================
+          TABLET & DESKTOP LAYOUT (768px and up: Responsive --u Scale min(vw, dvh))
+         ========================================================================= */}
+      <div
+        className="hidden md:flex flex-col items-center justify-center relative w-full h-[100dvh] overflow-hidden select-none font-['Nunito']"
+        style={{
+          ['--u' as any]: 'min(calc(100vw / 1586), calc(100dvh / 992))',
+          backgroundColor: '#96B9FC',
+        }}
+      >
+        {/* VIEWPORT FIXED DECORATIONS */}
+        <img
+          src="/assets/guess/deco-moon-yellow.webp"
+          alt=""
+          className="fixed top-0 left-0 object-contain pointer-events-none select-none z-10"
+          style={{
+            width: 'calc(100 * var(--u))',
+            height: 'calc(140 * var(--u))',
+          }}
+          draggable={false}
+        />
+        <img
+          src="/assets/guess/deco-heart-pink.webp"
+          alt=""
+          className="fixed top-0 right-0 object-contain pointer-events-none select-none z-10"
+          style={{
+            width: 'calc(80 * var(--u))',
+            height: 'calc(150 * var(--u))',
+          }}
+          draggable={false}
+        />
+        <img
+          src="/assets/guess/deco-star-blue.webp"
+          alt=""
+          className="fixed object-contain pointer-events-none select-none z-10"
+          style={{
+            left: 'calc(12 * var(--u))',
+            bottom: 'calc(24 * var(--u))',
+            width: 'calc(105 * var(--u))',
+            height: 'calc(110 * var(--u))',
+          }}
+          draggable={false}
+        />
+        <img
+          src="/assets/guess/deco-cross-olive.webp"
+          alt=""
+          className="fixed object-contain pointer-events-none select-none z-10"
+          style={{
+            right: 'calc(25 * var(--u))',
+            bottom: 'calc(35 * var(--u))',
+            width: 'calc(80 * var(--u))',
+            height: 'calc(107 * var(--u))',
+          }}
+          draggable={false}
+        />
+
+        {/* 1586 x 992 DESIGN CANVAS */}
+        <div
+          className="relative flex-shrink-0"
+          style={{
+            width: 'calc(1586 * var(--u))',
+            height: 'calc(992 * var(--u))',
+          }}
+        >
+          {/* HEADER: Back Button at left x=112, center y=75 */}
+          <button
+            type="button"
+            onClick={_onBack}
+            aria-label="Back"
+            className="btn-press absolute rounded-full flex items-center justify-center bg-transparent hover:bg-[#17181B]/5 transition-colors cursor-pointer focus:outline-none z-20"
+            style={{
+              left: 'calc(112 * var(--u))',
+              top: 'calc(75 * var(--u))',
+              transform: 'translate(-50%, -50%)',
+              width: 'calc(78 * var(--u))',
+              height: 'calc(78 * var(--u))',
+              border: 'calc(3.5 * var(--u)) dashed #17181B',
+            }}
+          >
+            <svg
+              style={{ width: 'calc(34 * var(--u))', height: 'calc(34 * var(--u))' }}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#17181B"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          {/* Center Round Indicator */}
+          <div
+            className="absolute rounded-full bg-[#191D21] flex items-center justify-center shadow-sm pointer-events-none z-20"
+            style={{
+              left: 'calc(793 * var(--u))',
+              top: 'calc(75 * var(--u))',
+              transform: 'translate(-50%, -50%)',
+              height: 'calc(54 * var(--u))',
+              paddingLeft: 'calc(28 * var(--u))',
+              paddingRight: 'calc(28 * var(--u))',
+              borderRadius: 'calc(27 * var(--u))',
+            }}
+          >
+            <span
+              className="text-white font-extrabold tracking-tight"
+              style={{ fontSize: 'calc(26 * var(--u))' }}
+            >
+              {isInGame ? `Round ${gameSession.currentRound} of ${gameSession.totalRounds}` : 'Guess Round'}
+            </span>
+          </div>
+
+          {/* LEFT COLUMN: x=112 to 770 (658w) */}
+          <p
+            className="absolute font-bold text-[#17181B]/60 tracking-tight leading-none m-0 z-20"
+            style={{
+              left: 'calc(112 * var(--u))',
+              top: 'calc(166 * var(--u))',
+              fontSize: 'calc(34 * var(--u))',
+            }}
+          >
+            Guess their answer
+          </p>
+
+          <h1
+            className="absolute font-black text-[#17181B] tracking-[-0.03em] leading-[1.12] m-0 z-20 break-words"
+            style={{
+              left: 'calc(112 * var(--u))',
+              top: 'calc(212 * var(--u))',
+              width: 'calc(658 * var(--u))',
+              fontSize: 'calc(78 * var(--u))',
+            }}
+          >
+            {rawQuestionText}
+          </h1>
+
+          {/* Starburst badge + hint card */}
+          <div
+            className="absolute shadow-sm overflow-hidden z-20 flex items-center"
+            style={{
+              left: 'calc(112 * var(--u))',
+              top: 'calc(520 * var(--u))',
+              width: 'calc(658 * var(--u))',
+              height: 'calc(160 * var(--u))',
+              borderRadius: 'calc(36 * var(--u))',
+              backgroundColor: '#FAF4E3',
+              padding: 'calc(24 * var(--u)) calc(32 * var(--u))',
+              gap: 'calc(20 * var(--u))',
+            }}
+          >
+            <img
+              src="/assets/guess/badge-starburst-yellow.webp"
+              alt=""
+              style={{ width: 'calc(90 * var(--u))', height: 'calc(90 * var(--u))' }}
+              className="object-contain flex-shrink-0"
+            />
+            <div className="flex flex-col">
+              <span className="font-black text-[#17181B]" style={{ fontSize: 'calc(30 * var(--u))' }}>
+                +15 points if you match!
+              </span>
+              <span className="font-bold text-[#17181B]/60 mt-1" style={{ fontSize: 'calc(24 * var(--u))' }}>
+                Pick the choice you think your partner locked in.
+              </span>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: x=825 to 1500 (675w, 55 gap) */}
+          <h2
+            className="absolute font-black text-[#17181B] tracking-tight pointer-events-none select-none m-0 z-20"
+            style={{
+              left: 'calc(825 * var(--u))',
+              top: 'calc(212 * var(--u))',
+              fontSize: 'calc(54 * var(--u))',
+              lineHeight: 1,
+            }}
+          >
+            Select an option
+          </h2>
+
+          {/* 2x2 Answer Blobs Grid */}
+          <div
+            className="absolute z-20 grid grid-cols-2"
+            style={{
+              left: 'calc(825 * var(--u))',
+              top: 'calc(280 * var(--u))',
+              width: 'calc(675 * var(--u))',
+              gap: 'calc(20 * var(--u))',
+            }}
+          >
+            {[
+              {
+                id: 'pink' as OptionId,
+                text: pinkText,
+                defaultSrc: '/assets/guess/answer-blob-pink.webp',
+                selectedSrc: '/assets/guess/answer-blob-pink-selected.webp',
+              },
+              {
+                id: 'yellow' as OptionId,
+                text: yellowText,
+                defaultSrc: '/assets/guess/answer-blob-yellow.webp',
+                selectedSrc: '/assets/guess/answer-blob-yellow-selected.webp',
+              },
+              {
+                id: 'cream' as OptionId,
+                text: creamText,
+                defaultSrc: '/assets/guess/answer-blob-cream.webp',
+                selectedSrc: '/assets/guess/answer-blob-cream-selected.webp',
+              },
+              {
+                id: 'green' as OptionId,
+                text: greenText,
+                defaultSrc: '/assets/guess/answer-blob-green.webp',
+                selectedSrc: '/assets/guess/answer-blob-green-selected.webp',
+              },
+            ].map((opt) => {
+              const isSelected = selectedId === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => handleSelect(opt.id)}
+                  className="btn-press relative flex items-center justify-center p-0 border-none bg-transparent cursor-pointer outline-none transition-transform active:scale-95 group"
+                  style={{
+                    width: 'calc(325 * var(--u))',
+                    height: 'calc(200 * var(--u))',
+                  }}
+                >
+                  <img
+                    src={isSelected ? opt.selectedSrc : opt.defaultSrc}
+                    alt=""
+                    className="w-full h-full object-contain pointer-events-none select-none drop-shadow-sm"
+                    draggable={false}
+                  />
+                  <span
+                    className="absolute font-black text-center text-[#17181B] tracking-tight pointer-events-none select-none px-6"
+                    style={{
+                      fontSize: 'calc(26 * var(--u))',
+                      lineHeight: 1.15,
+                      maxWidth: 'calc(270 * var(--u))',
+                    }}
+                  >
+                    {opt.text}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Lock in Guess Button: Black pill button, 675w x 80h, font 38, radius 40 */}
+          <button
+            type="button"
+            onClick={() => handleLock()}
+            disabled={!selectedId || isLocking}
+            className={`btn-press absolute bg-[#1A1E22] text-white font-extrabold tracking-tight flex items-center justify-center cursor-pointer shadow-sm outline-none transition-all z-30 ${
+              !selectedId || isLocking ? 'opacity-70 cursor-not-allowed' : 'hover:opacity-95 active:scale-98'
+            }`}
+            style={{
+              left: 'calc(825 * var(--u))',
+              top: 'calc(740 * var(--u))',
+              width: 'calc(675 * var(--u))',
+              height: 'calc(80 * var(--u))',
+              borderRadius: 'calc(40 * var(--u))',
+              fontSize: 'calc(38 * var(--u))',
+            }}
+          >
+            {isLocking ? (
+              <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              'Lock my guess'
+            )}
+          </button>
+        </div>
       </div>
     </Screen>
   );

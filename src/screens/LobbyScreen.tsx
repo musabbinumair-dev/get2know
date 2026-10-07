@@ -455,6 +455,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
       {/* ---------------- STAGE WRAPPER ---------------- */}
       <div
         id="lobby-stage-container"
+        className="md:hidden"
         style={{
           width: `${390 * layout.scale}px`,
           height: `${layout.stageHeight * layout.scale}px`,
@@ -1201,6 +1202,466 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
               />
             </div>
           )}
+        </div>
+      </div>
+
+      {/* =========================================================================
+          TABLET & DESKTOP LAYOUT (768px and up: Responsive --u Scale min(vw, dvh))
+         ========================================================================= */}
+      <div
+        className="hidden md:flex flex-col items-center justify-center relative w-full h-[100dvh] overflow-hidden select-none font-['Nunito']"
+        style={{
+          ['--u' as any]: 'min(calc(100vw / 1586), calc(100dvh / 992))',
+          backgroundColor: '#F6EFDD',
+        }}
+      >
+        {/* VIEWPORT FIXED DECORATIONS */}
+        <img
+          src="/assets/lobby/deco-moon-yellow.webp"
+          alt=""
+          className="fixed top-0 left-0 object-contain pointer-events-none select-none z-10"
+          style={{
+            width: 'calc(100 * var(--u))',
+            height: 'calc(140 * var(--u))',
+          }}
+          draggable={false}
+        />
+        <img
+          src="/assets/lobby/deco-heart-pink.webp"
+          alt=""
+          className="fixed top-0 right-0 object-contain pointer-events-none select-none z-10"
+          style={{
+            width: 'calc(80 * var(--u))',
+            height: 'calc(150 * var(--u))',
+          }}
+          draggable={false}
+        />
+        <img
+          src="/assets/lobby/deco-star-blue.webp"
+          alt=""
+          className="fixed object-contain pointer-events-none select-none z-10"
+          style={{
+            left: 'calc(12 * var(--u))',
+            bottom: 'calc(24 * var(--u))',
+            width: 'calc(105 * var(--u))',
+            height: 'calc(110 * var(--u))',
+          }}
+          draggable={false}
+        />
+        <img
+          src="/assets/lobby/deco-cross-olive.webp"
+          alt=""
+          className="fixed object-contain pointer-events-none select-none z-10"
+          style={{
+            right: 'calc(25 * var(--u))',
+            bottom: 'calc(35 * var(--u))',
+            width: 'calc(80 * var(--u))',
+            height: 'calc(107 * var(--u))',
+          }}
+          draggable={false}
+        />
+
+        {/* 1586 x 992 DESIGN CANVAS */}
+        <div
+          className="relative flex-shrink-0"
+          style={{
+            width: 'calc(1586 * var(--u))',
+            height: 'calc(992 * var(--u))',
+          }}
+        >
+          {/* HEADER: Back Button at left x=112, center y=75 */}
+          <button
+            type="button"
+            onClick={handleBackClick}
+            aria-label="Back"
+            className="btn-press absolute rounded-full flex items-center justify-center bg-transparent hover:bg-[#17181B]/5 transition-colors cursor-pointer focus:outline-none z-20"
+            style={{
+              left: 'calc(112 * var(--u))',
+              top: 'calc(75 * var(--u))',
+              transform: 'translate(-50%, -50%)',
+              width: 'calc(78 * var(--u))',
+              height: 'calc(78 * var(--u))',
+              border: 'calc(3.5 * var(--u)) dashed #17181B',
+            }}
+          >
+            <svg
+              style={{ width: 'calc(34 * var(--u))', height: 'calc(34 * var(--u))' }}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#17181B"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          {/* Lobby pill center top */}
+          <div
+            className="absolute rounded-full bg-[#191D21] flex items-center justify-center shadow-sm pointer-events-none z-20"
+            style={{
+              left: 'calc(793 * var(--u))',
+              top: 'calc(75 * var(--u))',
+              transform: 'translate(-50%, -50%)',
+              height: 'calc(54 * var(--u))',
+              paddingLeft: 'calc(28 * var(--u))',
+              paddingRight: 'calc(28 * var(--u))',
+              borderRadius: 'calc(27 * var(--u))',
+            }}
+          >
+            <span
+              className="text-white font-extrabold tracking-tight"
+              style={{ fontSize: 'calc(26 * var(--u))' }}
+            >
+              Game Lobby
+            </span>
+          </div>
+
+          {/* Settings button on right x=1426, y=75 */}
+          <button
+            type="button"
+            onClick={handleChangeSettingsClick}
+            aria-label="Game Settings"
+            className="btn-press absolute rounded-full flex items-center justify-center bg-transparent hover:bg-[#17181B]/5 transition-colors cursor-pointer focus:outline-none z-20"
+            style={{
+              left: 'calc(1426 * var(--u))',
+              top: 'calc(75 * var(--u))',
+              transform: 'translate(-50%, -50%)',
+              width: 'calc(78 * var(--u))',
+              height: 'calc(78 * var(--u))',
+              border: 'calc(3.5 * var(--u)) dashed #17181B',
+            }}
+          >
+            <img
+              src="/icon-gear-settings.webp"
+              alt=""
+              style={{ width: 'calc(36 * var(--u))', height: 'calc(36 * var(--u))' }}
+              className="object-contain"
+            />
+          </button>
+
+          {/* LEFT COLUMN: x=112 to 770 (658w) */}
+          <p
+            className="absolute font-bold text-[#191D21]/60 tracking-tight leading-none m-0 z-20"
+            style={{
+              left: 'calc(112 * var(--u))',
+              top: 'calc(166 * var(--u))',
+              fontSize: 'calc(34 * var(--u))',
+            }}
+          >
+            Private room
+          </p>
+
+          <h1
+            className="absolute font-black text-[#191D21] tracking-[-0.03em] leading-none m-0 z-20 whitespace-nowrap"
+            style={{
+              left: 'calc(112 * var(--u))',
+              top: 'calc(212 * var(--u))',
+              fontSize: 'calc(92 * var(--u))',
+              maxWidth: 'calc(658 * var(--u))',
+            }}
+          >
+            Match lobby
+          </h1>
+
+          <p
+            className="absolute font-bold text-[#191D21]/70 leading-relaxed m-0 z-20"
+            style={{
+              left: 'calc(112 * var(--u))',
+              top: 'calc(322 * var(--u))',
+              width: 'calc(658 * var(--u))',
+              fontSize: 'calc(32 * var(--u))',
+            }}
+          >
+            {subtitleText}
+          </p>
+
+          {/* Invite Code & Share Card */}
+          <div
+            className="absolute shadow-sm overflow-hidden z-20 flex flex-col justify-between"
+            style={{
+              left: 'calc(112 * var(--u))',
+              top: 'calc(410 * var(--u))',
+              width: 'calc(658 * var(--u))',
+              height: 'calc(430 * var(--u))',
+              borderRadius: 'calc(40 * var(--u))',
+              backgroundColor: '#FEE36F',
+              padding: 'calc(36 * var(--u))',
+            }}
+          >
+            <div>
+              <span
+                className="font-extrabold uppercase tracking-wider text-[#191D21]/60"
+                style={{ fontSize: 'calc(24 * var(--u))' }}
+              >
+                Invite Your Friend
+              </span>
+              <div
+                className="font-black text-[#191D21] tracking-tight mt-2"
+                style={{ fontSize: 'calc(38 * var(--u))' }}
+              >
+                Share code to play together
+              </div>
+
+              {/* Code pill */}
+              <div
+                className="flex items-center justify-between bg-white/80 rounded-2xl px-6 py-4 mt-6 border-2 border-[#191D21]/10"
+                style={{
+                  borderRadius: 'calc(24 * var(--u))',
+                  padding: 'calc(20 * var(--u)) calc(28 * var(--u))',
+                }}
+              >
+                <span
+                  className="font-black text-[#191D21] tracking-widest font-mono"
+                  style={{ fontSize: 'calc(42 * var(--u))' }}
+                >
+                  DUO-8824
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard?.writeText('DUO-8824');
+                    showToast('Invite code copied! 📋');
+                  }}
+                  className="btn-press bg-[#191D21] text-white font-extrabold px-5 py-2.5 rounded-full cursor-pointer border-none outline-none"
+                  style={{
+                    fontSize: 'calc(22 * var(--u))',
+                    borderRadius: 'calc(20 * var(--u))',
+                    padding: 'calc(12 * var(--u)) calc(22 * var(--u))',
+                  }}
+                >
+                  Copy code
+                </button>
+              </div>
+
+              <p
+                className="font-medium text-[#191D21]/65 mt-4"
+                style={{ fontSize: 'calc(24 * var(--u))', lineHeight: 1.35 }}
+              >
+                When your friend enters the code or link, their status will instantly flip to Ready.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t border-[#191D21]/15">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard?.writeText(window.location.origin + '/join?code=DUO-8824');
+                  showToast('Invite link copied! 🔗');
+                }}
+                className="btn-press font-extrabold text-[#191D21] bg-white/60 hover:bg-white px-5 py-3 rounded-full flex items-center gap-2 cursor-pointer border-none"
+                style={{
+                  fontSize: 'calc(24 * var(--u))',
+                  borderRadius: 'calc(24 * var(--u))',
+                }}
+              >
+                <span>🔗 Share invite link</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowLeaveModal(true)}
+                className="font-bold text-[#191D21]/60 hover:text-[#191D21] cursor-pointer bg-transparent border-none"
+                style={{ fontSize: 'calc(24 * var(--u))' }}
+              >
+                Leave lobby
+              </button>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: x=825 to 1500 (675w, 55 gap) */}
+          <h2
+            className="absolute font-black text-[#191D21] tracking-tight pointer-events-none select-none m-0 z-20"
+            style={{
+              left: 'calc(825 * var(--u))',
+              top: 'calc(212 * var(--u))',
+              fontSize: 'calc(54 * var(--u))',
+              lineHeight: 1,
+            }}
+          >
+            Players & status
+          </h2>
+
+          {/* Two Players Card */}
+          <div
+            className="absolute shadow-sm overflow-hidden z-20 flex flex-col justify-between"
+            style={{
+              left: 'calc(825 * var(--u))',
+              top: 'calc(280 * var(--u))',
+              width: 'calc(675 * var(--u))',
+              height: 'calc(360 * var(--u))',
+              borderRadius: 'calc(40 * var(--u))',
+              backgroundColor: '#FAEECA',
+              padding: 'calc(32 * var(--u))',
+            }}
+          >
+            <div className="relative flex items-center justify-around h-full">
+              {/* Left Player: You */}
+              <div className="flex flex-col items-center">
+                <div
+                  className="relative"
+                  style={{
+                    width: 'calc(170 * var(--u))',
+                    height: 'calc(170 * var(--u))',
+                  }}
+                >
+                  <ProfileAvatar
+                    avatarId={currentUser.avatarId}
+                    blobId={currentUser.color}
+                    size={170}
+                  />
+                  <div
+                    className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full font-black text-white"
+                    style={{
+                      backgroundColor: isUserReady ? '#4ADE80' : '#8A8A93',
+                      fontSize: 'calc(18 * var(--u))',
+                      borderRadius: 'calc(12 * var(--u))',
+                    }}
+                  >
+                    {isUserReady ? 'READY' : 'WAITING'}
+                  </div>
+                </div>
+                <span
+                  className="font-black text-[#191D21] mt-3"
+                  style={{ fontSize: 'calc(28 * var(--u))' }}
+                >
+                  {currentUser.name} (You)
+                </span>
+              </div>
+
+              {/* VS Starburst in center */}
+              <div
+                className="flex items-center justify-center relative"
+                style={{
+                  width: 'calc(100 * var(--u))',
+                  height: 'calc(100 * var(--u))',
+                }}
+              >
+                <img
+                  src="/badge-vs-starburst-yellow.webp"
+                  alt=""
+                  className="w-full h-full object-contain pointer-events-none select-none"
+                  draggable={false}
+                />
+                <span
+                  className="absolute font-black text-[#191D21] tracking-tighter"
+                  style={{ fontSize: 'calc(38 * var(--u))' }}
+                >
+                  VS
+                </span>
+              </div>
+
+              {/* Right Player: Friend */}
+              <div className="flex flex-col items-center">
+                <div
+                  className="relative cursor-pointer transition-transform hover:scale-105 active:scale-95"
+                  onClick={() => setIsFriendReady((r) => !r)}
+                  style={{
+                    width: 'calc(170 * var(--u))',
+                    height: 'calc(170 * var(--u))',
+                  }}
+                  title="Click to toggle friend ready state"
+                >
+                  <ProfileAvatar
+                    avatarId={partnerProfile.avatarId}
+                    blobId={partnerProfile.color}
+                    size={170}
+                  />
+                  <div
+                    className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full font-black text-white"
+                    style={{
+                      backgroundColor: isFriendReady ? '#4ADE80' : '#8A8A93',
+                      fontSize: 'calc(18 * var(--u))',
+                      borderRadius: 'calc(12 * var(--u))',
+                    }}
+                  >
+                    {isFriendReady ? 'READY' : 'WAITING'}
+                  </div>
+                </div>
+                <span
+                  className="font-black text-[#191D21] mt-3"
+                  style={{ fontSize: 'calc(28 * var(--u))' }}
+                >
+                  {friendName}
+                </span>
+              </div>
+            </div>
+
+            {/* Bottom info row in card */}
+            <div className="flex items-center justify-between pt-2 border-t border-[#191D21]/10 text-[#191D21]/70 font-bold" style={{ fontSize: 'calc(22 * var(--u))' }}>
+              <span>Mode: {gameSettings.mode.toUpperCase()}</span>
+              <span>{gameSettings.rounds} Rounds • {gameSettings.timer}</span>
+              <button
+                type="button"
+                onClick={handleChangeSettingsClick}
+                className="underline text-[#191D21] font-black cursor-pointer bg-transparent border-none p-0"
+              >
+                Change rules
+              </button>
+            </div>
+          </div>
+
+          {/* Match Settings Chips Row */}
+          <div
+            className="absolute z-20 flex items-center justify-between"
+            style={{
+              left: 'calc(825 * var(--u))',
+              top: 'calc(670 * var(--u))',
+              width: 'calc(675 * var(--u))',
+            }}
+          >
+            <div className="flex flex-wrap gap-2" style={{ gap: 'calc(8 * var(--u))' }}>
+              {gameSettings.categories.map((cat) => (
+                <span
+                  key={cat}
+                  className="bg-white/80 text-[#191D21] font-bold px-3 py-1.5 rounded-full shadow-xs"
+                  style={{
+                    fontSize: 'calc(20 * var(--u))',
+                    borderRadius: 'calc(16 * var(--u))',
+                  }}
+                >
+                  {cat}
+                </span>
+              ))}
+            </div>
+
+            {!isFriendReady && (
+              <button
+                type="button"
+                onClick={handleNudge}
+                disabled={isNudgeDisabled}
+                className="btn-press font-extrabold text-[#191D21] bg-[#FEE36F] hover:bg-[#FDD835] px-4 py-2 rounded-full cursor-pointer border-none outline-none shadow-xs"
+                style={{
+                  fontSize: 'calc(22 * var(--u))',
+                  borderRadius: 'calc(20 * var(--u))',
+                }}
+              >
+                👋 Nudge {friendName}
+              </button>
+            )}
+          </div>
+
+          {/* Main Start / Ready Button: Black pill button, 675w x 80h, font 38, radius 40 */}
+          <button
+            type="button"
+            onClick={handleMainButtonClick}
+            className="btn-press absolute bg-[#1A1E22] text-white font-extrabold tracking-tight flex items-center justify-center cursor-pointer shadow-sm outline-none hover:opacity-95 active:scale-98 transition-all z-30"
+            style={{
+              left: 'calc(825 * var(--u))',
+              top: 'calc(760 * var(--u))',
+              width: 'calc(675 * var(--u))',
+              height: 'calc(80 * var(--u))',
+              borderRadius: 'calc(40 * var(--u))',
+              fontSize: 'calc(38 * var(--u))',
+            }}
+          >
+            {isUserReady && isFriendReady
+              ? "Start game"
+              : isUserReady
+              ? "Cancel ready"
+              : "I'm ready!"}
+          </button>
         </div>
       </div>
 

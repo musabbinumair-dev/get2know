@@ -348,10 +348,10 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
           alt=""
           className="fixed pointer-events-none select-none z-10"
           style={{
-            top: 'calc(20 * var(--u))',
-            left: 'calc(24 * var(--u))',
+            top: 0,
+            left: 0,
             width: 'calc(100 * var(--u))',
-            height: 'calc(94 * var(--u))',
+            height: 'calc(140 * var(--u))',
           }}
           draggable={false}
         />
@@ -362,10 +362,10 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
           alt=""
           className="fixed pointer-events-none select-none z-10"
           style={{
-            top: 'calc(20 * var(--u))',
-            right: 'calc(28 * var(--u))',
-            width: 'calc(98 * var(--u))',
-            height: 'calc(98 * var(--u))',
+            top: 0,
+            right: 0,
+            width: 'calc(80 * var(--u))',
+            height: 'calc(150 * var(--u))',
           }}
           draggable={false}
         />
@@ -376,10 +376,10 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
           alt=""
           className="fixed pointer-events-none select-none z-10"
           style={{
-            bottom: 'calc(30 * var(--u))',
-            left: 'calc(28 * var(--u))',
-            width: 'calc(90 * var(--u))',
-            height: 'calc(88 * var(--u))',
+            bottom: 'calc(24 * var(--u))',
+            left: 'calc(12 * var(--u))',
+            width: 'calc(105 * var(--u))',
+            height: 'calc(110 * var(--u))',
           }}
           draggable={false}
         />
@@ -390,17 +390,17 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
           alt=""
           className="fixed pointer-events-none select-none z-10"
           style={{
-            bottom: 'calc(26 * var(--u))',
-            right: 'calc(24 * var(--u))',
-            width: 'calc(92 * var(--u))',
-            height: 'calc(102 * var(--u))',
+            bottom: 'calc(35 * var(--u))',
+            right: 'calc(25 * var(--u))',
+            width: 'calc(80 * var(--u))',
+            height: 'calc(107 * var(--u))',
           }}
           draggable={false}
         />
 
-        {/* 1586 x 992 DESIGN CANVAS (Matching Homepage Structure & Top Bar) */}
+        {/* 1586 x 992 DESIGN CANVAS */}
         <div
-          className="relative flex flex-col justify-between items-center z-20 flex-shrink-0"
+          className="relative flex flex-col items-center z-20 flex-shrink-0"
           style={{
             width: 'calc(1586 * var(--u))',
             height: 'calc(992 * var(--u))',
@@ -486,21 +486,21 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
               strokeLinejoin="round"
             >
               <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-            <circle cx="12" cy="12" r="3" />
+              <circle cx="12" cy="12" r="3" />
             </svg>
           </button>
 
-          {/* MAIN STAGE CONTENT (Moved closer to top bar) */}
+          {/* MAIN STAGE CONTENT (Single centered column) */}
           <div
-            className="flex-1 flex flex-col items-center justify-start w-full"
-            style={{ marginTop: 'calc(88 * var(--u))' }}
+            className="flex flex-col items-center justify-center w-full"
+            style={{ marginTop: 'calc(110 * var(--u))' }}
           >
-            {/* Lock Blob + Sparkles + Surrounding Deco */}
+            {/* Lock Blob + Sparkles */}
             <div
               className="relative flex items-center justify-center"
               style={{
-                width: 'calc(380 * var(--u))',
-                height: 'calc(210 * var(--u))',
+                width: 'calc(440 * var(--u))',
+                height: 'calc(230 * var(--u))',
               }}
             >
               {/* Sparkles centered behind lock */}
@@ -509,7 +509,7 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
                 alt=""
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 object-contain pointer-events-none select-none z-0"
                 style={{
-                  width: 'calc(250 * var(--u))',
+                  width: 'calc(320 * var(--u))',
                 }}
                 draggable={false}
               />
@@ -520,10 +520,10 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
                 alt=""
                 className="absolute object-contain pointer-events-none select-none z-10"
                 style={{
-                  left: 'calc(20 * var(--u))',
+                  left: 'calc(40 * var(--u))',
                   top: 'calc(14 * var(--u))',
-                  width: 'calc(58 * var(--u))',
-                  height: 'calc(54 * var(--u))',
+                  width: 'calc(65 * var(--u))',
+                  height: 'calc(62 * var(--u))',
                 }}
                 draggable={false}
               />
@@ -534,24 +534,10 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
                 alt=""
                 className="absolute object-contain pointer-events-none select-none z-10"
                 style={{
-                  right: 'calc(22 * var(--u))',
+                  right: 'calc(42 * var(--u))',
                   top: 'calc(10 * var(--u))',
-                  width: 'calc(60 * var(--u))',
-                  height: 'calc(60 * var(--u))',
-                }}
-                draggable={false}
-              />
-
-              {/* Cross below star */}
-              <img
-                src="/assets/cross-green.webp"
-                alt=""
-                className="absolute object-contain pointer-events-none select-none z-10"
-                style={{
-                  right: 'calc(28 * var(--u))',
-                  top: 'calc(90 * var(--u))',
-                  width: 'calc(52 * var(--u))',
-                  height: 'calc(50 * var(--u))',
+                  width: 'calc(68 * var(--u))',
+                  height: 'calc(68 * var(--u))',
                 }}
                 draggable={false}
               />
@@ -560,48 +546,48 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
               <img
                 src="/assets/lock-blob.webp"
                 alt="Answer locked"
-                className="relative z-10 object-contain pointer-events-none select-none"
+                className="relative z-10 object-contain pointer-events-none select-none drop-shadow-sm"
                 style={{
-                  width: 'calc(150 * var(--u))',
+                  width: 'calc(190 * var(--u))',
                 }}
                 draggable={false}
               />
             </div>
 
             {/* Heading & Subtitle */}
-            <div className="text-center flex flex-col items-center">
+            <div className="text-center flex flex-col items-center mt-2">
               <h1
                 className="font-black text-[#1B1D20] tracking-[-0.035em] leading-tight m-0 select-none whitespace-nowrap"
-                style={{ fontSize: 'calc(42 * var(--u))' }}
+                style={{ fontSize: 'calc(80 * var(--u))' }}
               >
-                Answer locked in
+                Answer locked in!
               </h1>
               <p
                 className="font-bold text-[#1B1D20]/60 tracking-tight m-0 select-none"
                 style={{
-                  fontSize: 'calc(20 * var(--u))',
-                  marginTop: 'calc(6 * var(--u))',
+                  fontSize: 'calc(34 * var(--u))',
+                  marginTop: 'calc(10 * var(--u))',
                 }}
               >
                 {friendStatus !== 'Answering...'
                   ? friendStatus
-                  : `Waiting for ${resolvedFriendName}…`}
+                  : `Waiting for ${resolvedFriendName} to answer…`}
               </p>
             </div>
 
-            {/* Dynamic Avatar with STATIC Ring Arcs (enlarged avatar and blob) */}
+            {/* Dynamic Avatar with STATIC Ring Arcs */}
             <div
               onClick={handleAvatarClick}
               className="relative flex items-center justify-center select-none cursor-pointer active:scale-95 transition-transform"
               style={{
-                width: 'calc(185 * var(--u))',
-                height: 'calc(180 * var(--u))',
-                marginTop: 'calc(12 * var(--u))',
-                marginBottom: 'calc(12 * var(--u))',
+                width: 'calc(240 * var(--u))',
+                height: 'calc(240 * var(--u))',
+                marginTop: 'calc(20 * var(--u))',
+                marginBottom: 'calc(20 * var(--u))',
               }}
-              title="Click avatar to see answer state"
+              title="Click avatar to simulate friend answering"
             >
-              {/* STATIC Ring Arcs (NO animation) */}
+              {/* STATIC Ring Arcs */}
               <img
                 src="/assets/waiting-ring-arcs.webp"
                 alt=""
@@ -609,25 +595,25 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
                 draggable={false}
               />
 
-              {/* Enlarged Dimmed Avatar Container */}
+              {/* Avatar Container */}
               <div
                 className="relative flex items-center justify-center z-10"
                 style={{
-                  width: 'calc(125 * var(--u))',
-                  height: 'calc(125 * var(--u))',
+                  width: 'calc(160 * var(--u))',
+                  height: 'calc(160 * var(--u))',
                 }}
               >
                 <div
                   className="w-full h-full flex items-center justify-center transition-all duration-300"
                   style={{
-                    opacity: isAnswerLocked ? 1 : 0.55,
+                    opacity: isAnswerLocked ? 1 : 0.6,
                     filter: isAnswerLocked ? 'none' : 'grayscale(25%)',
                   }}
                 >
                   <ProfileAvatar
                     avatarId={resolvedAvatarId}
                     blobId={resolvedBlobId}
-                    size={125}
+                    size={160}
                     useNewBlob={true}
                   />
                 </div>
@@ -640,8 +626,8 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
                   style={{
                     right: 'calc(-2 * var(--u))',
                     bottom: 'calc(-2 * var(--u))',
-                    width: 'calc(40 * var(--u))',
-                    height: 'calc(40 * var(--u))',
+                    width: 'calc(50 * var(--u))',
+                    height: 'calc(50 * var(--u))',
                   }}
                   draggable={false}
                 />
@@ -652,25 +638,25 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
             <div
               className="flex flex-col items-center w-full"
               style={{
-                width: 'calc(370 * var(--u))',
-                gap: 'calc(12 * var(--u))',
-                marginTop: 'calc(6 * var(--u))',
+                width: 'calc(540 * var(--u))',
+                gap: 'calc(16 * var(--u))',
+                marginTop: 'calc(8 * var(--u))',
               }}
             >
-
               {/* Black Pill Button: Nudge */}
               <button
                 type="button"
                 onClick={handleNudge}
                 disabled={nudgeCooldown > 0 || isAnswerLocked}
-                className="btn-press w-full rounded-full bg-[#1B1D20] hover:bg-[#2B2E33] active:scale-[0.98] transition-all text-white font-black tracking-tight flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-80 disabled:cursor-not-allowed"
+                className="btn-press w-full rounded-full bg-[#1B1D20] hover:bg-[#2B2E33] active:scale-[0.98] transition-all text-white font-black tracking-tight flex items-center justify-center gap-3 cursor-pointer shadow-sm disabled:opacity-80 disabled:cursor-not-allowed"
                 style={{
-                  height: 'calc(58 * var(--u))',
-                  fontSize: 'calc(20 * var(--u))',
+                  height: 'calc(80 * var(--u))',
+                  borderRadius: 'calc(40 * var(--u))',
+                  fontSize: 'calc(38 * var(--u))',
                 }}
               >
                 <span>{nudgeCooldown > 0 ? `Nudged (${nudgeCooldown}s)` : 'Nudge them'}</span>
-                <span style={{ fontSize: 'calc(22 * var(--u))' }}>👋</span>
+                <span>👋</span>
               </button>
 
               {/* Cream Pill Button: Edit Answer */}
@@ -680,8 +666,9 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
                 disabled={isAnswerLocked}
                 className="btn-press w-full rounded-full bg-[#FAF3DF] hover:bg-[#F2E8CD] active:scale-[0.98] transition-all text-[#1B1D20] font-black tracking-tight flex items-center justify-center cursor-pointer shadow-xs border border-[#1B1D20]/5"
                 style={{
-                  height: 'calc(58 * var(--u))',
-                  fontSize: 'calc(20 * var(--u))',
+                  height: 'calc(76 * var(--u))',
+                  borderRadius: 'calc(38 * var(--u))',
+                  fontSize: 'calc(34 * var(--u))',
                 }}
               >
                 Edit answer
@@ -689,13 +676,12 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
 
               {/* Footnote */}
               <p
-                className="font-bold text-[#1B1D20]/50 tracking-tight text-center m-0 select-none"
+                className="font-bold text-[#1B1D20]/50 tracking-tight text-center m-0 select-none mt-1"
                 style={{
-                  fontSize: 'calc(15 * var(--u))',
-                  marginTop: 'calc(2 * var(--u))',
+                  fontSize: 'calc(24 * var(--u))',
                 }}
               >
-                We’ll tell you when they answer.
+                We’ll notify you both as soon as results are ready.
               </p>
             </div>
           </div>

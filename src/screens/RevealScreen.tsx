@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NavTab } from '../components/BottomNav';
 import { QuestionData } from '../data/gameData';
@@ -6,6 +6,7 @@ import { useGameSession } from '../services/gameSessionContext';
 import { useSession } from '../services/sessionContext';
 import { TriviaQuestion } from '../data/gameQuestions';
 import { TopBar } from '../components/TopBar';
+import { triggerHaptic } from '../utils/haptics';
 
 export interface RevealScreenProps {
   player1Name?: string;
@@ -30,13 +31,33 @@ export interface RevealScreenProps {
   mode?: 'trivia' | 'know-me';
 }
 
+export interface ReactionParticle {
+  id: string;
+  emojiChar: string;
+  x: number;
+  drift: number;
+  rot: number;
+  size: number;
+  duration: number;
+  delay: number;
+}
+
+const EMOJI_MAP: Record<string, string> = {
+  smile: '😊',
+  heart: '❤️',
+  laugh: '😂',
+  surprised: '😮',
+  smirk: '😏',
+  cry: '😭',
+};
+
 const REACTION_EMOJIS = [
-  { id: 'smile', file: '/assets/reveal/emoji-smile.webp', alt: 'Smile' },
-  { id: 'heart', file: '/assets/reveal/emoji-heart.webp', alt: 'Heart' },
-  { id: 'laugh', file: '/assets/reveal/emoji-laugh.webp', alt: 'Laugh' },
-  { id: 'surprised', file: '/assets/reveal/emoji-surprised.webp', alt: 'Surprised' },
-  { id: 'smirk', file: '/assets/reveal/emoji-smirk.webp', alt: 'Smirk' },
-  { id: 'cry', file: '/assets/reveal/emoji-cry.webp', alt: 'Cry' },
+  { id: 'smile', file: '/assets/reveal/emoji-smile.webp', alt: 'Smile', emoji: '😊' },
+  { id: 'heart', file: '/assets/reveal/emoji-heart.webp', alt: 'Heart', emoji: '❤️' },
+  { id: 'laugh', file: '/assets/reveal/emoji-laugh.webp', alt: 'Laugh', emoji: '😂' },
+  { id: 'surprised', file: '/assets/reveal/emoji-surprised.webp', alt: 'Surprised', emoji: '😮' },
+  { id: 'smirk', file: '/assets/reveal/emoji-smirk.webp', alt: 'Smirk', emoji: '😏' },
+  { id: 'cry', file: '/assets/reveal/emoji-cry.webp', alt: 'Cry', emoji: '😭' },
 ];
 
 export const RevealScreen: React.FC<RevealScreenProps> = ({
@@ -109,35 +130,156 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
     }
     return null;
   });
-  const [bouncingEmojiId, setBouncingEmojiId] = useState<string | null>(null);
-  const [floatingEmojis, setFloatingEmojis] = useState<
-    Array<{
-      id: number;
-      emojiId: string;
-      file: string;
-      startX: number;
-      startY: number;
-      driftX: number;
-      driftY: number;
-      size: number;
-      scale: number;
-      startRot: number;
-      wobbleRot: number;
-      duration: number;
-      delay: number;
-    }>
-  >([]);
+  const [particles, setParticles] = useState<ReactionParticle[]>([]);
+  const [heldEmojiId, setHeldEmojiId] = useState<string | null>(null);
+  const holdIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const holdCounterRef = useRef<number>(0);
+  const activeOriginXRef = useRef<number | undefined>(undefined);
+  const activeEmojiIdRef = useRef<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string>('');
-  const holdIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
 
-  // Clean up any reaction hold timers on unmount
-  useEffect(() => {
-    return () => {
+  const removeParticle = useCallback((id: string) => {
+    setParticles((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
+  const spawnParticles = useCallback((emojiId: string, count: number, originX?: number) => {
+    const emojiChar = EMOJI_MAP[emojiId] || '❤️';
+    const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 390;
+
+    setParticles((prev) => {
+      const MAX_PARTICLES = 60;
+      const available = MAX_PARTICLES - prev.length;
+      if (available <= 0) return prev;
+
+      const actualCount = Math.min(count, available);
+      const newItems: ReactionParticle[] = [];
+
+      for (let i = 0; i < actualCount; i++) {
+        // Random size 28-76px
+        const size = Math.round(28 + Math.random() * (76 - 28));
+        // Random start tilt -35° to +35°
+        const rot = Math.round((Math.random() * 70 - 35) * 10) / 10;
+        // Horizontal sine drift
+        const drift = Math.round((Math.random() * 160 - 80) * 10) / 10;
+        // Random duration 2.2-3.6s
+        const duration = Math.round((2.2 + Math.random() * 1.4) * 100) / 100;
+        // Random delay 0-150ms
+        const delay = Math.round(Math.random() * 150);
+
+        // Spawn at bottom of screen across full width, plus a few near pressed button
+        let x: number;
+        const spawnNearButton = originX !== undefined && i % 3 === 0;
+        if (spawnNearButton) {
+          const offset = (Math.random() - 0.5) * 90;
+          x = Math.max(8, Math.min(screenWidth - size - 8, originX - size / 2 + offset));
+        } else {
+          const minX = 8;
+          const maxX = Math.max(minX, screenWidth - size - 8);
+          x = Math.round(minX + Math.random() * (maxX - minX));
+        }
+
+        const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${i}`;
+
+        // Safety fallback timer to ensure cleanup if animationend does not fire
+        setTimeout(() => {
+          setParticles((current) => current.filter((p) => p.id !== id));
+        }, (duration + 0.5) * 1000 + delay);
+
+        newItems.push({
+          id,
+          emojiChar,
+          x,
+          drift,
+          rot,
+          size,
+          duration,
+          delay,
+        });
+      }
+
+      return [...prev, ...newItems];
+    });
+  }, []);
+
+  const stopHold = useCallback(() => {
+    if (holdIntervalRef.current) {
+      clearInterval(holdIntervalRef.current);
+      holdIntervalRef.current = null;
+    }
+    setHeldEmojiId(null);
+    activeEmojiIdRef.current = null;
+  }, []);
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLButtonElement>, emojiId: string) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+      setInternalReaction(emojiId);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('reveal_selected_reaction', emojiId);
+        localStorage.setItem('gty_latest_reaction', emojiId);
+      }
+      onSelectReaction?.(emojiId);
+
+      setHeldEmojiId(emojiId);
+      activeEmojiIdRef.current = emojiId;
+
+      const rect = e.currentTarget.getBoundingClientRect();
+      const originX = rect.left + rect.width / 2;
+      activeOriginXRef.current = originX;
+
+      triggerHaptic(8);
+
+      const prefersReducedMotion =
+        typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      if (prefersReducedMotion) {
+        spawnParticles(emojiId, 4, originX);
+        return;
+      }
+
+      // Tap burst of ~8 copies
+      spawnParticles(emojiId, 8, originX);
+
+      // Continuous hold spawning (every ~70ms) until release
       if (holdIntervalRef.current) {
         clearInterval(holdIntervalRef.current);
       }
+      holdCounterRef.current = 0;
+      holdIntervalRef.current = setInterval(() => {
+        holdCounterRef.current += 1;
+        spawnParticles(emojiId, 1, activeOriginXRef.current);
+
+        if (holdCounterRef.current % 4 === 0) {
+          triggerHaptic(8);
+        }
+      }, 70);
+    },
+    [onSelectReaction, spawnParticles]
+  );
+
+  const handlePointerUp = useCallback(() => {
+    stopHold();
+  }, [stopHold]);
+
+  // Global pointerup/pointercancel listener to release hold even if pointer leaves window
+  useEffect(() => {
+    const handleGlobalPointerUp = () => {
+      if (activeEmojiIdRef.current) {
+        stopHold();
+      }
     };
-  }, []);
+
+    window.addEventListener('pointerup', handleGlobalPointerUp);
+    window.addEventListener('pointercancel', handleGlobalPointerUp);
+
+    return () => {
+      window.removeEventListener('pointerup', handleGlobalPointerUp);
+      window.removeEventListener('pointercancel', handleGlobalPointerUp);
+      stopHold();
+    };
+  }, [stopHold]);
 
   // Inspect full answer modal
   const [inspectingPlayer, setInspectingPlayer] = useState<{
@@ -164,6 +306,11 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
           localStorage.getItem('gty_active_mode') === 'trivia' ||
           localStorage.getItem('gty_reveal_mode') === 'trivia' ||
           true)); // Default to trivia reveal to match the primary target screen
+
+  // Clean up timers on screen/mode change
+  useEffect(() => {
+    stopHold();
+  }, [isTriviaRound, stopHold]);
 
   const isKnowMeRound = !isTriviaRound;
 
@@ -287,77 +434,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
   const winnerText =
     p1Score > p2Score ? 'You won 🎉' : p2Score > p1Score ? 'They won 👏' : 'Tied game! 🤝';
 
-  const triggerReactionBurst = (emojiId: string, count: number = 8) => {
-    const emojiObj = REACTION_EMOJIS.find((e) => e.id === emojiId);
-    if (!emojiObj) return;
 
-    const newParticles = Array.from({ length: count }, (_, i) => {
-      const tilt = (Math.random() - 0.5) * 60; // -30deg to +30deg
-      const driftX = (Math.random() - 0.5) * 70; // -35px to +35px
-      const driftY = -(180 + Math.random() * 160); // -180px to -340px
-      const size = 26 + Math.random() * 16; // 26px to 42px
-      const scale = 0.9 + Math.random() * 0.6; // 0.9 to 1.5
-      const wobbleRot = (Math.random() - 0.5) * 24;
-      const duration = 1.2 + Math.random() * 0.6; // 1.2s to 1.8s
-      const delay = Math.random() * 120; // 0ms to 120ms
-
-      return {
-        id: Date.now() + Math.random() + i,
-        emojiId,
-        file: emojiObj.file,
-        startX: 0,
-        startY: 0,
-        driftX,
-        driftY,
-        size,
-        scale,
-        startRot: tilt,
-        wobbleRot,
-        duration,
-        delay,
-      };
-    });
-
-    setFloatingEmojis((prev) => [...prev, ...newParticles]);
-
-    setTimeout(() => {
-      setFloatingEmojis((prev) => prev.filter((p) => !newParticles.some((b) => b.id === p.id)));
-    }, 2400);
-  };
-
-  const handleEmojiPressStart = (emojiId: string) => {
-    setInternalReaction(emojiId);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('reveal_selected_reaction', emojiId);
-      localStorage.setItem('gty_latest_reaction', emojiId);
-    }
-    onSelectReaction?.(emojiId);
-    setBouncingEmojiId(emojiId);
-
-    // Initial burst eruption
-    triggerReactionBurst(emojiId, 10);
-
-    // Continuous fountain while holding
-    if (holdIntervalRef.current) clearInterval(holdIntervalRef.current);
-    holdIntervalRef.current = setInterval(() => {
-      triggerReactionBurst(emojiId, 4);
-    }, 120);
-  };
-
-  const handleEmojiPressEnd = () => {
-    if (holdIntervalRef.current) {
-      clearInterval(holdIntervalRef.current);
-      holdIntervalRef.current = null;
-    }
-  };
-
-  const handleEmojiClick = (emojiId: string) => {
-    handleEmojiPressStart(emojiId);
-    setTimeout(handleEmojiPressEnd, 180);
-    setTimeout(() => {
-      setBouncingEmojiId((prev) => (prev === emojiId ? null : prev));
-    }, 650);
-  };
 
   const handleSave = () => {
     const chosenReaction = activeReaction || localStorage.getItem('reveal_selected_reaction') || 'heart';
@@ -434,6 +511,32 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
           </div>
         </div>
       )}
+
+      {/* Instagram-style Full-screen Floating Reaction Overlay */}
+      <div
+        className="fixed inset-0 pointer-events-none z-[100] overflow-hidden select-none"
+        aria-hidden="true"
+      >
+        {particles.map((p) => (
+          <span
+            key={p.id}
+            onAnimationEnd={() => removeParticle(p.id)}
+            className="ig-reaction-particle select-none pointer-events-none"
+            style={
+              {
+                '--x': `${p.x}px`,
+                '--drift': `${p.drift}px`,
+                '--rot': `${p.rot}deg`,
+                '--size': `${p.size}px`,
+                '--dur': `${p.duration}s`,
+                animationDelay: `${p.delay}ms`,
+              } as React.CSSProperties
+            }
+          >
+            {p.emojiChar}
+          </span>
+        ))}
+      </div>
 
       {/* =========================================================================
           TRIVIA REVEAL SCREEN (MOBILE FIRST: < 768px)
@@ -757,64 +860,57 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
           </div>
 
           {/* 7. EMOJI REACTION ROW: 6 Dashed Circles with Instagram-style Floating & Tilted Reaction Animations */}
-          <div className="w-full flex items-center justify-between mb-5 px-1 z-10 relative">
+          <div
+            className="w-full flex items-center justify-between mb-5 px-1 z-10 relative"
+            onContextMenu={(e) => e.preventDefault()}
+          >
             {REACTION_EMOJIS.map((emoji) => {
               const isSelected = activeReaction === emoji.id;
-              const isBouncing = bouncingEmojiId === emoji.id;
-              const matchingFloats = floatingEmojis.filter((f) => f.emojiId === emoji.id);
+              const isHeld = heldEmojiId === emoji.id;
 
               return (
                 <div key={emoji.id} className="relative flex items-center justify-center">
-                  {/* Instagram-style floating reaction emojis */}
-                  {matchingFloats.map((floatItem) => (
-                    <div
-                      key={floatItem.id}
-                      className="absolute z-50 pointer-events-none animate-ig-stream select-none flex items-center justify-center"
-                      style={{
-                        bottom: '100%',
-                        left: '50%',
-                        marginLeft: `-${floatItem.size / 2}px`,
-                        width: `${floatItem.size}px`,
-                        height: `${floatItem.size}px`,
-                        ['--drift-x' as any]: `${floatItem.driftX}px`,
-                        ['--drift-y' as any]: `${floatItem.driftY}px`,
-                        ['--start-rot' as any]: `${floatItem.startRot}deg`,
-                        ['--tilt-wobble' as any]: `${floatItem.wobbleRot}deg`,
-                        ['--target-scale' as any]: `${floatItem.scale}`,
-                        ['--anim-duration' as any]: `${floatItem.duration}s`,
-                        animationDelay: `${floatItem.delay}ms`,
-                      }}
-                    >
-                      <img
-                        src={floatItem.file}
-                        alt=""
-                        className="w-full h-full object-contain drop-shadow-md pointer-events-none select-none"
-                        draggable={false}
-                      />
-                    </div>
-                  ))}
-
                   <button
                     type="button"
-                    onPointerDown={() => handleEmojiPressStart(emoji.id)}
-                    onPointerUp={handleEmojiPressEnd}
-                    onPointerLeave={handleEmojiPressEnd}
-                    onTouchStart={() => handleEmojiPressStart(emoji.id)}
-                    onTouchEnd={handleEmojiPressEnd}
-                    onTouchCancel={handleEmojiPressEnd}
-                    onClick={() => handleEmojiClick(emoji.id)}
+                    onPointerDown={(e) => handlePointerDown(e, emoji.id)}
+                    onPointerUp={handlePointerUp}
+                    onPointerLeave={handlePointerUp}
+                    onPointerCancel={handlePointerUp}
+                    onContextMenu={(e) => e.preventDefault()}
+                    onClick={(e) => e.preventDefault()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handlePointerDown(
+                          {
+                            currentTarget: e.currentTarget,
+                            pointerType: 'mouse',
+                            button: 0,
+                            preventDefault: () => {},
+                          } as any,
+                          emoji.id
+                        );
+                        setTimeout(handlePointerUp, 150);
+                      }
+                    }}
                     aria-label={emoji.alt}
                     aria-pressed={isSelected}
-                    className={`w-[44px] h-[44px] rounded-full border-[1.5px] border-dashed flex items-center justify-center cursor-pointer transition-all focus:outline-none p-0 bg-transparent select-none touch-none ${
+                    style={{
+                      touchAction: 'manipulation',
+                      userSelect: 'none',
+                      WebkitUserSelect: 'none',
+                      WebkitTouchCallout: 'none',
+                    }}
+                    className={`w-[44px] h-[44px] rounded-full border-[1.5px] border-dashed flex items-center justify-center cursor-pointer transition-transform duration-150 ease-out focus:outline-none p-0 bg-transparent select-none touch-manipulation ${
                       isSelected
-                        ? 'border-[#1B1D20] bg-white/40 scale-105'
-                        : 'border-[#1B1D20]/45 hover:border-[#1B1D20]/75 active:scale-95'
-                    } ${isBouncing ? 'animate-ig-tap-tilt' : ''}`}
+                        ? 'border-[#1B1D20] bg-white/40'
+                        : 'border-[#1B1D20]/45 hover:border-[#1B1D20]/75'
+                    } ${isHeld ? 'scale-[0.92]' : isSelected ? 'scale-105' : 'scale-100 hover:scale-105'}`}
                   >
                     <img
                       src={emoji.file}
                       alt={emoji.alt}
-                      className={`w-[25px] h-[25px] object-contain pointer-events-none select-none transition-transform ${
+                      className={`w-[25px] h-[25px] object-contain pointer-events-none select-none transition-transform duration-150 ${
                         isSelected ? 'scale-110' : ''
                       }`}
                       draggable={false}
@@ -1500,69 +1596,58 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
                 <div
                   className="w-full flex items-center justify-between relative"
                   style={{ marginBottom: 'calc(32 * var(--u))' }}
+                  onContextMenu={(e) => e.preventDefault()}
                 >
                   {REACTION_EMOJIS.map((emoji) => {
                     const isSelected = activeReaction === emoji.id;
-                    const isBouncing = bouncingEmojiId === emoji.id;
-                    const matchingFloats = floatingEmojis.filter((f) => f.emojiId === emoji.id);
+                    const isHeld = heldEmojiId === emoji.id;
 
                     return (
                       <div key={emoji.id} className="relative flex items-center justify-center">
-                        {/* Instagram-style floating reaction emojis */}
-                        {matchingFloats.map((floatItem) => (
-                          <div
-                            key={floatItem.id}
-                            className="absolute z-50 pointer-events-none animate-ig-stream select-none flex items-center justify-center"
-                            style={{
-                              bottom: '100%',
-                              left: '50%',
-                              marginLeft: `calc(-${floatItem.size / 2} * var(--u))`,
-                              width: `calc(${floatItem.size * 1.3} * var(--u))`,
-                              height: `calc(${floatItem.size * 1.3} * var(--u))`,
-                              ['--drift-x' as any]: `calc(${floatItem.driftX * 1.4} * var(--u))`,
-                              ['--drift-y' as any]: `calc(${floatItem.driftY * 1.4} * var(--u))`,
-                              ['--start-rot' as any]: `${floatItem.startRot}deg`,
-                              ['--tilt-wobble' as any]: `${floatItem.wobbleRot}deg`,
-                              ['--target-scale' as any]: `${floatItem.scale}`,
-                              ['--anim-duration' as any]: `${floatItem.duration}s`,
-                              animationDelay: `${floatItem.delay}ms`,
-                            }}
-                          >
-                            <img
-                              src={floatItem.file}
-                              alt=""
-                              className="w-full h-full object-contain drop-shadow-md pointer-events-none select-none"
-                              draggable={false}
-                            />
-                          </div>
-                        ))}
-
                         <button
                           type="button"
-                          onPointerDown={() => handleEmojiPressStart(emoji.id)}
-                          onPointerUp={handleEmojiPressEnd}
-                          onPointerLeave={handleEmojiPressEnd}
-                          onTouchStart={() => handleEmojiPressStart(emoji.id)}
-                          onTouchEnd={handleEmojiPressEnd}
-                          onTouchCancel={handleEmojiPressEnd}
-                          onClick={() => handleEmojiClick(emoji.id)}
+                          onPointerDown={(e) => handlePointerDown(e, emoji.id)}
+                          onPointerUp={handlePointerUp}
+                          onPointerLeave={handlePointerUp}
+                          onPointerCancel={handlePointerUp}
+                          onContextMenu={(e) => e.preventDefault()}
+                          onClick={(e) => e.preventDefault()}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handlePointerDown(
+                                {
+                                  currentTarget: e.currentTarget,
+                                  pointerType: 'mouse',
+                                  button: 0,
+                                  preventDefault: () => {},
+                                } as any,
+                                emoji.id
+                              );
+                              setTimeout(handlePointerUp, 150);
+                            }
+                          }}
                           aria-label={emoji.alt}
                           aria-pressed={isSelected}
-                          className={`rounded-full border-dashed flex items-center justify-center cursor-pointer transition-all focus:outline-none p-0 bg-transparent select-none touch-none ${
+                          className={`rounded-full border-dashed flex items-center justify-center cursor-pointer transition-transform duration-150 ease-out focus:outline-none p-0 bg-transparent select-none touch-manipulation ${
                             isSelected
-                              ? 'border-[#1B1D20] bg-white/40 scale-105'
-                              : 'border-[#1B1D20]/45 hover:border-[#1B1D20]/75 active:scale-95'
-                          } ${isBouncing ? 'animate-ig-tap-tilt' : ''}`}
+                              ? 'border-[#1B1D20] bg-white/40'
+                              : 'border-[#1B1D20]/45 hover:border-[#1B1D20]/75'
+                          } ${isHeld ? 'scale-[0.92]' : isSelected ? 'scale-105' : 'scale-100 hover:scale-105'}`}
                           style={{
                             width: 'calc(68 * var(--u))',
                             height: 'calc(68 * var(--u))',
                             borderWidth: 'calc(2 * var(--u))',
+                            touchAction: 'manipulation',
+                            userSelect: 'none',
+                            WebkitUserSelect: 'none',
+                            WebkitTouchCallout: 'none',
                           }}
                         >
                           <img
                             src={emoji.file}
                             alt={emoji.alt}
-                            className={`object-contain pointer-events-none select-none transition-transform ${
+                            className={`object-contain pointer-events-none select-none transition-transform duration-150 ${
                               isSelected ? 'scale-110' : ''
                             }`}
                             style={{
@@ -1808,64 +1893,57 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
           </div>
 
           {/* 5. REACTION EMOJIS ROW: With Instagram-style Floating & Tilted Reaction Animations */}
-          <div className="w-full flex items-center justify-between mb-7 px-1 relative">
+          <div
+            className="w-full flex items-center justify-between mb-7 px-1 relative"
+            onContextMenu={(e) => e.preventDefault()}
+          >
             {REACTION_EMOJIS.map((emoji) => {
               const isSelected = activeReaction === emoji.id;
-              const isBouncing = bouncingEmojiId === emoji.id;
-              const matchingFloats = floatingEmojis.filter((f) => f.emojiId === emoji.id);
+              const isHeld = heldEmojiId === emoji.id;
 
               return (
                 <div key={emoji.id} className="relative flex items-center justify-center">
-                  {/* Instagram-style floating reaction emojis */}
-                  {matchingFloats.map((floatItem) => (
-                    <div
-                      key={floatItem.id}
-                      className="absolute z-50 pointer-events-none animate-ig-stream select-none flex items-center justify-center"
-                      style={{
-                        bottom: '100%',
-                        left: '50%',
-                        marginLeft: `-${floatItem.size / 2}px`,
-                        width: `${floatItem.size}px`,
-                        height: `${floatItem.size}px`,
-                        ['--drift-x' as any]: `${floatItem.driftX}px`,
-                        ['--drift-y' as any]: `${floatItem.driftY}px`,
-                        ['--start-rot' as any]: `${floatItem.startRot}deg`,
-                        ['--tilt-wobble' as any]: `${floatItem.wobbleRot}deg`,
-                        ['--target-scale' as any]: `${floatItem.scale}`,
-                        ['--anim-duration' as any]: `${floatItem.duration}s`,
-                        animationDelay: `${floatItem.delay}ms`,
-                      }}
-                    >
-                      <img
-                        src={floatItem.file}
-                        alt=""
-                        className="w-full h-full object-contain drop-shadow-md pointer-events-none select-none"
-                        draggable={false}
-                      />
-                    </div>
-                  ))}
-
                   <button
                     type="button"
-                    onPointerDown={() => handleEmojiPressStart(emoji.id)}
-                    onPointerUp={handleEmojiPressEnd}
-                    onPointerLeave={handleEmojiPressEnd}
-                    onTouchStart={() => handleEmojiPressStart(emoji.id)}
-                    onTouchEnd={handleEmojiPressEnd}
-                    onTouchCancel={handleEmojiPressEnd}
-                    onClick={() => handleEmojiClick(emoji.id)}
+                    onPointerDown={(e) => handlePointerDown(e, emoji.id)}
+                    onPointerUp={handlePointerUp}
+                    onPointerLeave={handlePointerUp}
+                    onPointerCancel={handlePointerUp}
+                    onContextMenu={(e) => e.preventDefault()}
+                    onClick={(e) => e.preventDefault()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handlePointerDown(
+                          {
+                            currentTarget: e.currentTarget,
+                            pointerType: 'mouse',
+                            button: 0,
+                            preventDefault: () => {},
+                          } as any,
+                          emoji.id
+                        );
+                        setTimeout(handlePointerUp, 150);
+                      }
+                    }}
                     aria-label={emoji.alt}
                     aria-pressed={isSelected}
-                    className={`w-[44px] h-[44px] rounded-full border-[1.5px] border-dashed flex items-center justify-center cursor-pointer transition-all focus:outline-none p-0 bg-transparent select-none touch-none ${
+                    style={{
+                      touchAction: 'manipulation',
+                      userSelect: 'none',
+                      WebkitUserSelect: 'none',
+                      WebkitTouchCallout: 'none',
+                    }}
+                    className={`w-[44px] h-[44px] rounded-full border-[1.5px] border-dashed flex items-center justify-center cursor-pointer transition-transform duration-150 ease-out focus:outline-none p-0 bg-transparent select-none touch-manipulation ${
                       isSelected
-                        ? 'border-[#1B1D20] bg-white/40 scale-105'
-                        : 'border-[#1B1D20]/45 hover:border-[#1B1D20]/75 active:scale-95'
-                    } ${isBouncing ? 'animate-ig-tap-tilt' : ''}`}
+                        ? 'border-[#1B1D20] bg-white/40'
+                        : 'border-[#1B1D20]/45 hover:border-[#1B1D20]/75'
+                    } ${isHeld ? 'scale-[0.92]' : isSelected ? 'scale-105' : 'scale-100 hover:scale-105'}`}
                   >
                     <img
                       src={emoji.file}
                       alt={emoji.alt}
-                      className={`w-[25px] h-[25px] object-contain pointer-events-none select-none transition-transform ${
+                      className={`w-[25px] h-[25px] object-contain pointer-events-none select-none transition-transform duration-150 ${
                         isSelected ? 'scale-110' : ''
                       }`}
                       draggable={false}

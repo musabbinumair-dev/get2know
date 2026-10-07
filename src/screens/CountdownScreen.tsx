@@ -899,6 +899,7 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
       {/* ── STAGE WRAPPER: EXACT vw x vh (CENTERED IF WINDOW > 430) ── */}
       <div
         ref={stageRef}
+        className="md:hidden"
         style={{
           position: 'absolute',
           left: `${Math.max(0, (windowW - vw) / 2)}px`,
@@ -1349,6 +1350,241 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
           }}
         >
           {displayFriendName}
+        </div>
+      </div>
+
+      {/* =========================================================================
+          TABLET & DESKTOP LAYOUT (768px and up: Responsive --u Scale min(vw, dvh))
+         ========================================================================= */}
+      <div
+        className="hidden md:flex flex-col items-center justify-center relative w-full h-[100dvh] overflow-hidden select-none font-['Nunito']"
+        style={{
+          ['--u' as any]: 'min(calc(100vw / 1586), calc(100dvh / 992))',
+          backgroundColor: '#FDE776',
+        }}
+      >
+        {/* VIEWPORT FIXED DECORATIONS */}
+        <img
+          src="/countdown/deco-crescent-yellow-top-left-cropped.webp"
+          alt=""
+          className="fixed top-0 left-0 object-contain pointer-events-none select-none z-10"
+          style={{
+            width: 'calc(100 * var(--u))',
+            height: 'calc(140 * var(--u))',
+          }}
+          draggable={false}
+        />
+        <img
+          src="/countdown/deco-heart-pink-top-right-cropped.webp"
+          alt=""
+          className="fixed top-0 right-0 object-contain pointer-events-none select-none z-10"
+          style={{
+            width: 'calc(80 * var(--u))',
+            height: 'calc(150 * var(--u))',
+          }}
+          draggable={false}
+        />
+        <img
+          src="/countdown/deco-star-blue-bottom-left-cropped.webp"
+          alt=""
+          className="fixed object-contain pointer-events-none select-none z-10"
+          style={{
+            left: 'calc(12 * var(--u))',
+            bottom: 'calc(24 * var(--u))',
+            width: 'calc(105 * var(--u))',
+            height: 'calc(110 * var(--u))',
+          }}
+          draggable={false}
+        />
+        <img
+          src="/countdown/deco-cross-olive-bottom-right.webp"
+          alt=""
+          className="fixed object-contain pointer-events-none select-none z-10"
+          style={{
+            right: 'calc(25 * var(--u))',
+            bottom: 'calc(35 * var(--u))',
+            width: 'calc(80 * var(--u))',
+            height: 'calc(107 * var(--u))',
+          }}
+          draggable={false}
+        />
+
+        {/* 1586 x 992 DESIGN CANVAS */}
+        <div
+          className="relative flex-shrink-0"
+          style={{
+            width: 'calc(1586 * var(--u))',
+            height: 'calc(992 * var(--u))',
+          }}
+        >
+          {/* HEADER: Mode & Round indicator pill center top */}
+          <div
+            className="absolute rounded-full bg-[#191D21] flex items-center justify-center shadow-sm pointer-events-none z-20"
+            style={{
+              left: 'calc(793 * var(--u))',
+              top: 'calc(75 * var(--u))',
+              transform: 'translate(-50%, -50%)',
+              height: 'calc(54 * var(--u))',
+              paddingLeft: 'calc(28 * var(--u))',
+              paddingRight: 'calc(28 * var(--u))',
+              borderRadius: 'calc(27 * var(--u))',
+            }}
+          >
+            <span
+              className="text-white font-extrabold tracking-tight"
+              style={{ fontSize: 'calc(26 * var(--u))' }}
+            >
+              {mode} • Round 1 of {rounds}
+            </span>
+          </div>
+
+          {/* SINGLE CENTERED COLUMN */}
+          <p
+            className="absolute left-0 w-full text-center font-black text-[#1D1F23]/60 tracking-tight leading-none m-0 z-20"
+            style={{
+              top: 'calc(166 * var(--u))',
+              fontSize: 'calc(36 * var(--u))',
+            }}
+          >
+            Get ready to play!
+          </p>
+
+          {/* Central Countdown Box with Blob & Number */}
+          <div
+            className="absolute z-20 flex items-center justify-center"
+            style={{
+              left: '50%',
+              top: 'calc(400 * var(--u))',
+              transform: 'translate(-50%, -50%)',
+              width: 'calc(500 * var(--u))',
+              height: 'calc(500 * var(--u))',
+            }}
+          >
+            {/* Sparks behind number */}
+            <img
+              src="/countdown/deco-sparks-yellow-around-number.webp"
+              alt=""
+              className="absolute object-contain pointer-events-none select-none z-10"
+              style={{
+                width: 'calc(520 * var(--u))',
+                height: 'calc(260 * var(--u))',
+              }}
+              draggable={false}
+            />
+
+            {/* Pink Countdown Blob */}
+            <img
+              src="/countdown/countdown-blob-pink-behind-number.webp"
+              alt=""
+              className="absolute object-contain pointer-events-none select-none z-20 transition-transform duration-300 animate-pop"
+              style={{
+                width: 'calc(380 * var(--u))',
+                height: 'calc(400 * var(--u))',
+              }}
+              draggable={false}
+            />
+
+            {/* Big Countdown Number / GO! */}
+            <span
+              className="relative font-black text-[#1D1F23] tracking-tighter select-none pointer-events-none z-30"
+              style={{
+                fontSize: step === 3 ? 'calc(140 * var(--u))' : 'calc(180 * var(--u))',
+                lineHeight: 1,
+              }}
+            >
+              {step === 3 ? 'GO!' : 3 - step}
+            </span>
+          </div>
+
+          {/* Bottom Players Face-Off Card: 760w x 200h */}
+          <div
+            className="absolute shadow-sm overflow-hidden z-20 flex items-center justify-around"
+            style={{
+              left: '50%',
+              top: 'calc(750 * var(--u))',
+              transform: 'translateX(-50%)',
+              width: 'calc(760 * var(--u))',
+              height: 'calc(200 * var(--u))',
+              borderRadius: 'calc(40 * var(--u))',
+              backgroundColor: '#FAF4E3',
+              paddingLeft: 'calc(40 * var(--u))',
+              paddingRight: 'calc(40 * var(--u))',
+            }}
+          >
+            {/* Player Me */}
+            <div className="flex items-center gap-4" style={{ gap: 'calc(18 * var(--u))' }}>
+              <div
+                style={{
+                  width: 'calc(120 * var(--u))',
+                  height: 'calc(120 * var(--u))',
+                }}
+              >
+                {renderPlayerAvatar(me.avatarId, me.color, displayMeName)}
+              </div>
+              <div className="flex flex-col">
+                <span
+                  className="font-black text-[#1D1F23] tracking-tight leading-tight"
+                  style={{ fontSize: 'calc(32 * var(--u))' }}
+                >
+                  {displayMeName}
+                </span>
+                <span
+                  className="font-bold text-[#1D1F23]/60 leading-tight"
+                  style={{ fontSize: 'calc(22 * var(--u))' }}
+                >
+                  Player 1
+                </span>
+              </div>
+            </div>
+
+            {/* VS Badge */}
+            <div
+              className="flex items-center justify-center relative"
+              style={{
+                width: 'calc(90 * var(--u))',
+                height: 'calc(90 * var(--u))',
+              }}
+            >
+              <img
+                src="/countdown/badge-vs-starburst-yellow.webp"
+                alt=""
+                className="w-full h-full object-contain pointer-events-none select-none"
+                draggable={false}
+              />
+              <span
+                className="absolute font-black text-[#1D1F23] tracking-tighter"
+                style={{ fontSize: 'calc(34 * var(--u))' }}
+              >
+                VS
+              </span>
+            </div>
+
+            {/* Player Friend */}
+            <div className="flex items-center gap-4" style={{ gap: 'calc(18 * var(--u))' }}>
+              <div className="flex flex-col text-right">
+                <span
+                  className="font-black text-[#1D1F23] tracking-tight leading-tight"
+                  style={{ fontSize: 'calc(32 * var(--u))' }}
+                >
+                  {displayFriendName}
+                </span>
+                <span
+                  className="font-bold text-[#1D1F23]/60 leading-tight"
+                  style={{ fontSize: 'calc(22 * var(--u))' }}
+                >
+                  Player 2
+                </span>
+              </div>
+              <div
+                style={{
+                  width: 'calc(120 * var(--u))',
+                  height: 'calc(120 * var(--u))',
+                }}
+              >
+                {renderPlayerAvatar(friend.avatarId, friend.color, displayFriendName)}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

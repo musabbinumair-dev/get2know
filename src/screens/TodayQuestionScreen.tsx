@@ -160,7 +160,7 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
       `}</style>
 
       {/* 852 x 1846 Stage */}
-      <div className="today-stage flex-shrink-0">
+      <div className="today-stage flex-shrink-0 md:hidden">
         {/* =========================================================================
             DECORATIONS (WebP assets moved to /assets/today/, sizes on 390-wide stage)
            ========================================================================= */}
@@ -475,6 +475,331 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
         >
           {isLocked ? 'Answer locked! 🔒' : 'Lock in my answer'}
         </button>
+      </div>
+
+      {/* =========================================================================
+          TABLET & DESKTOP LAYOUT (768px and up: Responsive --u Scale min(vw, dvh))
+         ========================================================================= */}
+      <div
+        className="hidden md:flex flex-col items-center justify-center relative w-full h-[100dvh] overflow-hidden select-none font-['Nunito']"
+        style={{
+          ['--u' as any]: 'min(calc(100vw / 1586), calc(100dvh / 992))',
+          backgroundColor: '#FEE273',
+        }}
+      >
+        {/* VIEWPORT FIXED DECORATIONS */}
+        <img
+          src="/assets/today/deco-heart-pink-topleft.webp"
+          alt=""
+          className="fixed top-0 left-0 object-contain pointer-events-none select-none z-10"
+          style={{
+            width: 'calc(100 * var(--u))',
+            height: 'calc(140 * var(--u))',
+          }}
+          draggable={false}
+        />
+        <img
+          src="/assets/today/deco-star-blue-topright.webp"
+          alt=""
+          className="fixed top-0 right-0 object-contain pointer-events-none select-none z-10"
+          style={{
+            width: 'calc(80 * var(--u))',
+            height: 'calc(150 * var(--u))',
+          }}
+          draggable={false}
+        />
+        <img
+          src="/assets/today/deco-heart-pink-bottomleft.webp"
+          alt=""
+          className="fixed object-contain pointer-events-none select-none z-10"
+          style={{
+            left: 'calc(12 * var(--u))',
+            bottom: 'calc(24 * var(--u))',
+            width: 'calc(105 * var(--u))',
+            height: 'calc(110 * var(--u))',
+          }}
+          draggable={false}
+        />
+        <img
+          src="/assets/today/deco-star-blue-bottomright.webp"
+          alt=""
+          className="fixed object-contain pointer-events-none select-none z-10"
+          style={{
+            right: 'calc(25 * var(--u))',
+            bottom: 'calc(35 * var(--u))',
+            width: 'calc(80 * var(--u))',
+            height: 'calc(107 * var(--u))',
+          }}
+          draggable={false}
+        />
+
+        {/* 1586 x 992 DESIGN CANVAS */}
+        <div
+          className="relative flex-shrink-0"
+          style={{
+            width: 'calc(1586 * var(--u))',
+            height: 'calc(992 * var(--u))',
+          }}
+        >
+          {/* HEADER: Back / Settings at left x=112, center y=75 */}
+          <button
+            type="button"
+            onClick={isInGame ? gameSession.exitGame : onOpenSettings}
+            aria-label="Exit"
+            className="btn-press absolute rounded-full flex items-center justify-center bg-transparent hover:bg-[#17181B]/5 transition-colors cursor-pointer focus:outline-none z-20"
+            style={{
+              left: 'calc(112 * var(--u))',
+              top: 'calc(75 * var(--u))',
+              transform: 'translate(-50%, -50%)',
+              width: 'calc(78 * var(--u))',
+              height: 'calc(78 * var(--u))',
+              border: 'calc(3.5 * var(--u)) dashed #17181B',
+            }}
+          >
+            <svg
+              style={{ width: 'calc(34 * var(--u))', height: 'calc(34 * var(--u))' }}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#17181B"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          {/* Center Round / Question Pill */}
+          <div
+            className="absolute rounded-full bg-[#191D21] flex items-center justify-center shadow-sm pointer-events-none z-20"
+            style={{
+              left: 'calc(793 * var(--u))',
+              top: 'calc(75 * var(--u))',
+              transform: 'translate(-50%, -50%)',
+              height: 'calc(54 * var(--u))',
+              paddingLeft: 'calc(28 * var(--u))',
+              paddingRight: 'calc(28 * var(--u))',
+              borderRadius: 'calc(27 * var(--u))',
+            }}
+          >
+            <span
+              className="text-white font-extrabold tracking-tight"
+              style={{ fontSize: 'calc(26 * var(--u))' }}
+            >
+              {isInGame ? `Round ${gameSession.currentRound} of ${gameSession.totalRounds}` : getModeLabel()}
+            </span>
+          </div>
+
+          {/* Settings icon right */}
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            aria-label="Settings"
+            className="btn-press absolute rounded-full flex items-center justify-center bg-transparent hover:bg-[#17181B]/5 transition-colors cursor-pointer focus:outline-none z-20"
+            style={{
+              left: 'calc(1426 * var(--u))',
+              top: 'calc(75 * var(--u))',
+              transform: 'translate(-50%, -50%)',
+              width: 'calc(78 * var(--u))',
+              height: 'calc(78 * var(--u))',
+              border: 'calc(3.5 * var(--u)) dashed #17181B',
+            }}
+          >
+            <img
+              src="/icon-gear-settings.webp"
+              alt=""
+              style={{ width: 'calc(36 * var(--u))', height: 'calc(36 * var(--u))' }}
+              className="object-contain"
+            />
+          </button>
+
+          {/* LEFT COLUMN: x=112 to 770 (658w) */}
+          <p
+            className="absolute font-bold text-[#5C5A47] tracking-tight leading-none m-0 z-20"
+            style={{
+              left: 'calc(112 * var(--u))',
+              top: 'calc(166 * var(--u))',
+              fontSize: 'calc(34 * var(--u))',
+            }}
+          >
+            {getModeLabel()}
+          </p>
+
+          <h1
+            className="absolute font-black text-[#17181B] tracking-[-0.03em] leading-[1.12] m-0 z-20 break-words"
+            style={{
+              left: 'calc(112 * var(--u))',
+              top: 'calc(212 * var(--u))',
+              width: 'calc(658 * var(--u))',
+              fontSize: 'calc(80 * var(--u))',
+            }}
+          >
+            {currentQuestionText}
+          </h1>
+
+          <p
+            className="absolute font-bold text-[#17181B]/60 leading-relaxed m-0 z-20"
+            style={{
+              left: 'calc(112 * var(--u))',
+              top: 'calc(540 * var(--u))',
+              width: 'calc(658 * var(--u))',
+              fontSize: 'calc(30 * var(--u))',
+            }}
+          >
+            Write what comes to mind first. Your friend will answer the exact same question before results are revealed!
+          </p>
+
+          {/* RIGHT COLUMN: x=825 to 1500 (675w, 55 gap) */}
+          <h2
+            className="absolute font-black text-[#17181B] tracking-tight pointer-events-none select-none m-0 z-20"
+            style={{
+              left: 'calc(825 * var(--u))',
+              top: 'calc(212 * var(--u))',
+              fontSize: 'calc(54 * var(--u))',
+              lineHeight: 1,
+            }}
+          >
+            Your secret answer
+          </h2>
+
+          {/* Answer Card */}
+          <div
+            className="absolute shadow-sm overflow-hidden z-20"
+            style={{
+              left: 'calc(825 * var(--u))',
+              top: 'calc(280 * var(--u))',
+              width: 'calc(675 * var(--u))',
+              height: 'calc(280 * var(--u))',
+              borderRadius: 'calc(40 * var(--u))',
+              backgroundColor: '#FAF4E3',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
+            }}
+          >
+            <textarea
+              value={answer}
+              onChange={handleTextChange}
+              disabled={isLocked}
+              placeholder="Type your answer…"
+              rows={4}
+              className="w-full h-full bg-transparent resize-none border-none outline-none font-medium text-[#17181B] placeholder:text-[#17181B]/35 leading-normal"
+              style={{
+                fontSize: 'calc(32 * var(--u))',
+                padding: 'calc(36 * var(--u))',
+                fontFamily: "'Nunito', sans-serif",
+              }}
+              autoFocus={!isLocked}
+            />
+
+            {/* Counter bottom-right inside card */}
+            <div
+              className="absolute font-bold select-none pointer-events-none"
+              style={{
+                right: 'calc(32 * var(--u))',
+                bottom: 'calc(24 * var(--u))',
+                fontSize: 'calc(24 * var(--u))',
+                color: '#8C8A7B',
+              }}
+            >
+              {answer.length} / {maxChars}
+            </div>
+          </div>
+
+          {/* Lock Row */}
+          <div
+            className="absolute z-20 flex items-center"
+            style={{
+              left: 'calc(825 * var(--u))',
+              top: 'calc(590 * var(--u))',
+              width: 'calc(675 * var(--u))',
+              height: 'calc(130 * var(--u))',
+            }}
+          >
+            {/* Dynamic User Avatar Blob */}
+            <div
+              className="relative inline-flex items-center justify-center flex-shrink-0"
+              style={{
+                width: 'calc(120 * var(--u))',
+                height: 'calc(120 * var(--u))',
+              }}
+            >
+              <img
+                src={userBlobSrc}
+                alt=""
+                className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
+                draggable={false}
+              />
+              <div
+                className="relative z-10 flex items-center justify-center pointer-events-none select-none"
+                style={{
+                  width: `${userBlobConfig.avatarScale * 100}%`,
+                  height: `${userBlobConfig.avatarScale * 100}%`,
+                  transform: `translate(${userBlobConfig.offsetX}px, ${userBlobConfig.offsetY}px)`,
+                }}
+              >
+                <img
+                  src={userFaceSrc}
+                  alt=""
+                  className="w-full h-full object-contain pointer-events-none select-none"
+                  draggable={false}
+                />
+              </div>
+
+              {/* Lock badge at corner */}
+              <img
+                src="/assets/today/lock-badge.webp"
+                alt=""
+                draggable={false}
+                className="absolute pointer-events-none select-none z-20 object-contain"
+                style={{
+                  width: 'calc(36 * var(--u))',
+                  height: 'calc(36 * var(--u))',
+                  right: 'calc(-4 * var(--u))',
+                  bottom: 'calc(-4 * var(--u))',
+                }}
+              />
+            </div>
+
+            {/* Privacy text */}
+            <div
+              className="font-bold select-none"
+              style={{
+                marginLeft: 'calc(28 * var(--u))',
+                fontSize: 'calc(28 * var(--u))',
+                lineHeight: 1.3,
+                color: '#5C5A47',
+              }}
+            >
+              They can’t see it until
+              <br />
+              you both answer.
+            </div>
+          </div>
+
+          {/* Lock in answer Button: Black pill button, 675w x 80h, font 38, radius 40 */}
+          <button
+            type="button"
+            onClick={handleLockIn}
+            disabled={!answer.trim() && !isInGame}
+            className={`btn-press absolute flex items-center justify-center text-center font-black text-white transition-all outline-none z-30 shadow-sm ${
+              isLocked
+                ? 'opacity-90 cursor-default'
+                : answer.trim() || isInGame
+                ? 'cursor-pointer hover:bg-[#252830] active:scale-[0.98]'
+                : 'opacity-50 cursor-not-allowed'
+            }`}
+            style={{
+              left: 'calc(825 * var(--u))',
+              top: 'calc(750 * var(--u))',
+              width: 'calc(675 * var(--u))',
+              height: 'calc(80 * var(--u))',
+              borderRadius: 'calc(40 * var(--u))',
+              backgroundColor: '#17181B',
+              fontSize: 'calc(38 * var(--u))',
+            }}
+          >
+            {isLocked ? 'Answer locked! 🔒' : 'Lock in my answer'}
+          </button>
+        </div>
       </div>
     </div>
   );
