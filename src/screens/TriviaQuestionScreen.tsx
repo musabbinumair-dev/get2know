@@ -219,6 +219,88 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
   return (
     <div className="relative w-full min-h-[100dvh] overflow-hidden bg-[#B3BF8A] font-['Nunito',sans-serif] select-none">
       {/* =========================================================================
+          FIX 2: SINGLE FIXED DECORATION LAYER AT PAGE ROOT (outside content wrappers)
+          position fixed, inset 0, overflow hidden, pointer-events none, z-index 0
+         ========================================================================= */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        {/* TALL LAYOUT DECORATIONS (mockup 841 wide) */}
+        <div className="trivia-tall-decorations absolute inset-0 pointer-events-none">
+          <img
+            src="/assets/heart-pink-top-left.webp"
+            alt=""
+            className="absolute object-contain pointer-events-none select-none"
+            style={{ left: 0, top: 0, width: '12.5vw', height: 'auto' }}
+            draggable={false}
+          />
+          <img
+            src="/assets/star-blue-top-right.webp"
+            alt=""
+            className="absolute object-contain pointer-events-none select-none"
+            style={{ right: 0, top: 0, width: '13.2vw', height: 'auto' }}
+            draggable={false}
+          />
+          <img
+            src="/assets/moon-yellow-bottom-left.webp"
+            alt=""
+            className="trivia-bottom-deco absolute object-contain pointer-events-none select-none"
+            style={{ left: 0, bottom: '1.4vw', width: '14.5vw', height: 'auto' }}
+            draggable={false}
+          />
+          <img
+            src="/assets/heart-pink-bottom-right.webp"
+            alt=""
+            className="trivia-bottom-deco absolute object-contain pointer-events-none select-none"
+            style={{ right: 0, bottom: 0, width: '16.8vw', height: 'auto' }}
+            draggable={false}
+          />
+        </div>
+
+        {/* COMPACT LAYOUT DECORATIONS (mockup 940 wide) */}
+        <div className="trivia-compact-decorations absolute inset-0 pointer-events-none">
+          <img
+            src="/assets/heart-pink-top-left.webp"
+            alt=""
+            className="absolute object-contain pointer-events-none select-none"
+            style={{ left: 0, top: 0, width: '6.6vw', height: 'auto' }}
+            draggable={false}
+          />
+          <img
+            src="/assets/star-blue-top-right.webp"
+            alt=""
+            className="absolute object-contain pointer-events-none select-none"
+            style={{ right: 0, top: 0, width: '8.5vw', height: 'auto' }}
+            draggable={false}
+          />
+          <img
+            src="/assets/moon-yellow-bottom-left.webp"
+            alt=""
+            className="trivia-bottom-deco absolute object-contain pointer-events-none select-none"
+            style={{ left: '1.3vw', bottom: '1.3vw', width: '9.4vw', height: 'auto' }}
+            draggable={false}
+          />
+          <img
+            src="/assets/cross-green.webp"
+            alt=""
+            className="trivia-bottom-deco absolute object-contain pointer-events-none select-none"
+            style={{ left: '13.3vw', bottom: 0, width: '7.1vw', height: 'auto' }}
+            draggable={false}
+          />
+          <img
+            src="/assets/heart-pink-bottom-right.webp"
+            alt=""
+            className="trivia-bottom-deco absolute object-contain pointer-events-none select-none"
+            style={{ right: '1.6vw', bottom: '1.3vw', width: '9.6vw', height: 'auto' }}
+            draggable={false}
+          />
+        </div>
+      </div>
+
+      {/* =========================================================================
+          CONTENT LAYER (z-index 1, above decorations)
+         ========================================================================= */}
+      <div className="relative z-[1] w-full min-h-[100dvh]">
+
+      {/* =========================================================================
           TALL / NORMAL VIEWPORT LAYOUT (841 x 1870)
           Active for mobile aspect ratio >= 1.9 & height >= 760px, tablet, desktop
          ========================================================================= */}
@@ -228,79 +310,19 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
           ['--u' as any]: 'min(calc(100vw / 841), calc(100dvh / 1870))',
         }}
       >
-        {/* Exact 841 x 1870 Stage Canvas */}
+        {/* Stage Container: 100% width on mobile, centered */}
         <div
-          className="relative overflow-hidden flex-shrink-0"
+          className="relative overflow-hidden w-full h-[100dvh] flex-shrink-0"
           style={{
-            width: 'calc(841 * var(--u))',
             height: 'calc(1870 * var(--u))',
-            backgroundColor: '#B3BF8A',
+            maxHeight: '100dvh',
           }}
         >
         {/* =========================================================================
-            8. CORNER DECORATIONS (behind content, never overlapping text)
-           ========================================================================= */}
-        {/* Top-Left Heart: x=0 to 105, y=0 to 140 */}
-        <img
-          src="/assets/heart-pink-top-left.webp"
-          alt=""
-          className="absolute pointer-events-none select-none z-0 object-contain"
-          style={{
-            left: 0,
-            top: 0,
-            width: 'calc(105 * var(--u))',
-            height: 'calc(140 * var(--u))',
-          }}
-          draggable={false}
-        />
-
-        {/* Top-Right Star: x=730 to 841, y=0 to 125 */}
-        <img
-          src="/assets/star-blue-top-right.webp"
-          alt=""
-          className="absolute pointer-events-none select-none z-0 object-contain"
-          style={{
-            left: 'calc(730 * var(--u))',
-            top: 0,
-            width: 'calc(111 * var(--u))',
-            height: 'calc(125 * var(--u))',
-          }}
-          draggable={false}
-        />
-
-        {/* Bottom-Left Moon: x=0 to 122, y=1710 to 1858 */}
-        <img
-          src="/assets/moon-yellow-bottom-left.webp"
-          alt=""
-          className="absolute pointer-events-none select-none z-0 object-contain"
-          style={{
-            left: 0,
-            top: 'calc(1710 * var(--u))',
-            width: 'calc(122 * var(--u))',
-            height: 'calc(148 * var(--u))',
-          }}
-          draggable={false}
-        />
-
-        {/* Bottom-Right Heart: x=700 to 841, y=1718 to 1870 */}
-        <img
-          src="/assets/heart-pink-bottom-right.webp"
-          alt=""
-          className="absolute pointer-events-none select-none z-0 object-contain"
-          style={{
-            left: 'calc(700 * var(--u))',
-            top: 'calc(1718 * var(--u))',
-            width: 'calc(141 * var(--u))',
-            height: 'calc(152 * var(--u))',
-          }}
-          draggable={false}
-        />
-
-        {/* =========================================================================
             1. TOP ROW, center y=165:
-               - Back button: dashed circle, 92 diameter, left x=68
-               - Pill "QUESTION 3 / 10": x=262 to 578 (316w), 70h, near-black #1A1B22
-               - Timer: circle 116 diameter at right x=660 to 776, cream, dashed dark ring
+               - Back button: dashed circle, 92 diameter, left 8.3vw
+               - Pill "QUESTION 3 / 10": centered, near-black #1A1B22
+               - Timer: circle 116 diameter, right 8.3vw, cream, dashed dark ring
            ========================================================================= */}
         {/* Back Button */}
         <button
@@ -309,7 +331,7 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
           aria-label="Back"
           className="absolute flex items-center justify-center cursor-pointer transition-transform active:scale-90 z-20 p-0 focus:outline-none"
           style={{
-            left: 'calc(68 * var(--u))',
+            left: '8.3vw',
             top: 'calc(119 * var(--u))',
             width: 'calc(92 * var(--u))',
             height: 'calc(92 * var(--u))',
@@ -334,11 +356,12 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
           </svg>
         </button>
 
-        {/* Question Counter Pill */}
+        {/* Question Counter Pill (Centered) */}
         <div
           className="absolute flex items-center justify-center z-20 select-none"
           style={{
-            left: 'calc(262 * var(--u))',
+            left: '50%',
+            transform: 'translateX(-50%)',
             top: 'calc(130 * var(--u))',
             width: 'calc(316 * var(--u))',
             height: 'calc(70 * var(--u))',
@@ -359,7 +382,7 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
         <div
           className="absolute flex items-center justify-center z-20 select-none"
           style={{
-            left: 'calc(660 * var(--u))',
+            right: '8.3vw',
             top: 'calc(107 * var(--u))',
             width: 'calc(116 * var(--u))',
             height: 'calc(116 * var(--u))',
@@ -377,23 +400,21 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
 
         {/* =========================================================================
             2. SCORE PILLS, y=258 to 386 (128h), two pills:
-               - Left x=70 to 405, right x=437 to 771 (each ~335w), cream #F8F3E6
-               - Avatar blob 110 diameter at left inside, name font 30 weight 800 near-black,
-                 score below font 36 weight 800 gray #6B6B6B
+               - Span between 8.3vw on left and 8.3vw on right
            ========================================================================= */}
         {/* Left Pill (Me / Player 1) */}
         <div
-          className="absolute flex items-center z-20 select-none"
+          className="absolute flex items-center z-20 select-none overflow-hidden"
           style={{
-            left: 'calc(70 * var(--u))',
+            left: '8.3vw',
             top: 'calc(258 * var(--u))',
-            width: 'calc(335 * var(--u))',
+            width: 'calc((100vw - 16.6vw - 31 * var(--u)) / 2)',
             height: 'calc(128 * var(--u))',
             borderRadius: 'calc(9999px)',
             backgroundColor: '#F8F3E6',
-            paddingLeft: 'calc(10 * var(--u))',
-            paddingRight: 'calc(20 * var(--u))',
-            gap: 'calc(18 * var(--u))',
+            paddingLeft: 'calc(8 * var(--u))',
+            paddingRight: 'calc(14 * var(--u))',
+            gap: 'calc(12 * var(--u))',
           }}
         >
           {/* Dynamic Avatar Blob */}
@@ -457,17 +478,17 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
 
         {/* Right Pill (Partner / Player 2) */}
         <div
-          className="absolute flex items-center z-20 select-none"
+          className="absolute flex items-center z-20 select-none overflow-hidden"
           style={{
-            left: 'calc(437 * var(--u))',
+            right: '8.3vw',
             top: 'calc(258 * var(--u))',
-            width: 'calc(334 * var(--u))',
+            width: 'calc((100vw - 16.6vw - 31 * var(--u)) / 2)',
             height: 'calc(128 * var(--u))',
             borderRadius: 'calc(9999px)',
             backgroundColor: '#F8F3E6',
-            paddingLeft: 'calc(10 * var(--u))',
-            paddingRight: 'calc(20 * var(--u))',
-            gap: 'calc(18 * var(--u))',
+            paddingLeft: 'calc(8 * var(--u))',
+            paddingRight: 'calc(14 * var(--u))',
+            gap: 'calc(12 * var(--u))',
           }}
         >
           {/* Dynamic Avatar Blob */}
@@ -530,12 +551,13 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
         </div>
 
         {/* =========================================================================
-            3. TAG "Trivia · Food": x=295 to 545 (250w), y=428 to 498 (70h), yellow #FDD84B
+            3. TAG "Trivia · Food": centered, yellow #FDD84B
            ========================================================================= */}
         <div
           className="absolute flex items-center justify-center z-20 select-none"
           style={{
-            left: 'calc(295 * var(--u))',
+            left: '50%',
+            transform: 'translateX(-50%)',
             top: 'calc(428 * var(--u))',
             width: 'calc(250 * var(--u))',
             height: 'calc(70 * var(--u))',
@@ -563,7 +585,7 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
           alt=""
           className="absolute pointer-events-none select-none z-10 object-contain"
           style={{
-            left: 'calc(32 * var(--u))',
+            left: 'calc(8.3vw - 36 * var(--u))',
             top: 'calc(625 * var(--u))',
             width: 'calc(68 * var(--u))',
             height: 'calc(185 * var(--u))',
@@ -577,7 +599,7 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
           alt=""
           className="absolute pointer-events-none select-none z-10 object-contain"
           style={{
-            left: 'calc(752 * var(--u))',
+            right: 'calc(8.3vw - 36 * var(--u))',
             top: 'calc(580 * var(--u))',
             width: 'calc(70 * var(--u))',
             height: 'calc(215 * var(--u))',
@@ -591,7 +613,7 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
           alt=""
           className="absolute pointer-events-none select-none z-30 object-contain"
           style={{
-            left: 'calc(100 * var(--u))',
+            left: 'calc(8.3vw - 6 * var(--u))',
             top: 'calc(497 * var(--u))',
             width: 'calc(122 * var(--u))',
             height: 'calc(113 * var(--u))',
@@ -599,13 +621,13 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
           draggable={false}
         />
 
-        {/* Question Card Container */}
+        {/* Question Card Container (spans width between 8.3vw paddings) */}
         <div
           className="absolute z-20 flex items-center justify-center"
           style={{
-            left: 'calc(105 * var(--u))',
+            left: '8.3vw',
+            width: 'calc(100vw - 16.6vw)',
             top: 'calc(538 * var(--u))',
-            width: 'calc(660 * var(--u))',
             height: 'calc(322 * var(--u))',
           }}
         >
@@ -645,13 +667,7 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
         </div>
 
         {/* =========================================================================
-            5. ANSWER PILLS (4, stacked), each x=70 to 770 (700w), full pill radius:
-               - A pink #FD99C9: y=907 to 1031 (124h), SELECTED: 6 black outline #1A1B22, check badge
-               - B blue #8CBEFD: y=1057 to 1180 (123h)
-               - C yellow #FDD75A: y=1206 to 1331 (125h)
-               - D cream #F8F3E6: y=1357 to 1482 (125h)
-               - Letter badge on left: circle 88 diameter, left padding 38
-               - Answer text starts at x=236, font 46, weight 800, near-black
+            5. ANSWER PILLS (4, stacked): spans width between 8.3vw paddings
            ========================================================================= */}
         {answerPills.map((pill) => {
           const isSelected = selectedOptionId === pill.id;
@@ -663,9 +679,9 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
               onClick={() => setSelectedOptionId(pill.id)}
               className="absolute flex items-center cursor-pointer transition-transform duration-100 active:scale-[0.98] select-none p-0 focus:outline-none z-20"
               style={{
-                left: 'calc(70 * var(--u))',
+                left: '8.3vw',
+                width: 'calc(100vw - 16.6vw)',
                 top: `calc(${pill.y} * var(--u))`,
-                width: 'calc(700 * var(--u))',
                 height: `calc(${pill.h} * var(--u))`,
                 borderRadius: 'calc(9999px)',
                 backgroundColor: pill.colorBg,
@@ -696,12 +712,12 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
                 </span>
               </div>
 
-              {/* Answer Text (Starts at design x=236 -> inside pill left: 236 - 70 = 166) */}
+              {/* Answer Text */}
               <span
                 className="absolute truncate"
                 style={{
-                  left: 'calc(166 * var(--u))',
-                  maxWidth: isSelected ? 'calc(430 * var(--u))' : 'calc(490 * var(--u))',
+                  left: 'calc(150 * var(--u))',
+                  maxWidth: isSelected ? 'calc(100% - 240 * var(--u))' : 'calc(100% - 180 * var(--u))',
                   fontFamily: "'Nunito', sans-serif",
                   fontSize: 'calc(46 * var(--u))',
                   fontWeight: 800,
@@ -762,17 +778,16 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
         </div>
 
         {/* =========================================================================
-            7. BUTTON "Lock in answer": x=75 to 766 (691w), y=1615 to 1715 (100h)
-               - full pill, near-black #1A1B22, text white font 36, weight 800, centered
+            7. BUTTON "Lock in answer": spans width between 8.3vw paddings
            ========================================================================= */}
         <button
           type="button"
           onClick={handleLockIn}
           className="absolute flex items-center justify-center cursor-pointer transition-transform active:scale-[0.98] select-none p-0 focus:outline-none z-20"
           style={{
-            left: 'calc(75 * var(--u))',
+            left: '8.3vw',
+            width: 'calc(100vw - 16.6vw)',
             top: 'calc(1615 * var(--u))',
-            width: 'calc(691 * var(--u))',
             height: 'calc(100 * var(--u))',
             borderRadius: 'calc(9999px)',
             backgroundColor: '#1A1B22',
@@ -797,93 +812,19 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
         ['--u' as any]: 'min(calc(100vw / 940), calc(100dvh / 1672))',
       }}
     >
-      {/* Exact 940 x 1672 Stage Canvas */}
+      {/* Stage Container: 100% width on mobile, centered */}
       <div
-        className="relative overflow-hidden flex-shrink-0"
+        className="relative overflow-hidden w-full h-[100dvh] flex-shrink-0"
         style={{
-          width: 'calc(940 * var(--u))',
           height: 'calc(1672 * var(--u))',
-          backgroundColor: '#B3BF8A',
+          maxHeight: '100dvh',
         }}
       >
         {/* =========================================================================
-            8. CORNER DECORATIONS (behind content, never overlapping text)
-           ========================================================================= */}
-        {/* Top-Left Heart: x=0 to 105, y=0 to 140 */}
-        <img
-          src="/assets/heart-pink-top-left.webp"
-          alt=""
-          className="absolute pointer-events-none select-none z-0 object-contain"
-          style={{
-            left: 0,
-            top: 0,
-            width: 'calc(105 * var(--u))',
-            height: 'calc(140 * var(--u))',
-          }}
-          draggable={false}
-        />
-
-        {/* Top-Right Star: x=825 to 940, y=0 to 125 */}
-        <img
-          src="/assets/star-blue-top-right.webp"
-          alt=""
-          className="absolute pointer-events-none select-none z-0 object-contain"
-          style={{
-            left: 'calc(825 * var(--u))',
-            top: 0,
-            width: 'calc(115 * var(--u))',
-            height: 'calc(125 * var(--u))',
-          }}
-          draggable={false}
-        />
-
-        {/* Bottom-Left Green Cross: x=40, y=1545 */}
-        <img
-          src="/assets/cross-green.webp"
-          alt=""
-          className="absolute pointer-events-none select-none z-0 object-contain"
-          style={{
-            left: 'calc(40 * var(--u))',
-            top: 'calc(1545 * var(--u))',
-            width: 'calc(85 * var(--u))',
-            height: 'calc(82 * var(--u))',
-          }}
-          draggable={false}
-        />
-
-        {/* Bottom-Left Moon: x=0 to 110, y=1545 to 1672 */}
-        <img
-          src="/assets/moon-yellow-bottom-left.webp"
-          alt=""
-          className="absolute pointer-events-none select-none z-0 object-contain"
-          style={{
-            left: 0,
-            top: 'calc(1545 * var(--u))',
-            width: 'calc(110 * var(--u))',
-            height: 'calc(127 * var(--u))',
-          }}
-          draggable={false}
-        />
-
-        {/* Bottom-Right Heart: x=795 to 940, y=1525 to 1672 */}
-        <img
-          src="/assets/heart-pink-bottom-right.webp"
-          alt=""
-          className="absolute pointer-events-none select-none z-0 object-contain"
-          style={{
-            left: 'calc(795 * var(--u))',
-            top: 'calc(1525 * var(--u))',
-            width: 'calc(145 * var(--u))',
-            height: 'calc(147 * var(--u))',
-          }}
-          draggable={false}
-        />
-
-        {/* =========================================================================
             1. TOP ROW, center y=155:
-               - Back button: dashed circle, 88 diameter, x=92 to 180, arrow icon
-               - Pill "QUESTION 3 / 10": x=322 to 617 (295w), y=122 to 186 (64h), near-black #1A1B22
-               - Timer: circle 100 diameter, x=752 to 852, y=108 to 208, cream, dashed dark ring
+               - Back button: dashed circle, 88 diameter, left 9.6vw
+               - Pill "QUESTION 3 / 10": centered, near-black #1A1B22
+               - Timer: circle 100 diameter, right 9.6vw, cream, dashed dark ring
            ========================================================================= */}
         {/* Back Button */}
         <button
@@ -892,7 +833,7 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
           aria-label="Back"
           className="absolute flex items-center justify-center cursor-pointer transition-transform active:scale-90 z-20 p-0 focus:outline-none"
           style={{
-            left: 'calc(92 * var(--u))',
+            left: '9.6vw',
             top: 'calc(111 * var(--u))',
             width: 'calc(88 * var(--u))',
             height: 'calc(88 * var(--u))',
@@ -917,11 +858,12 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
           </svg>
         </button>
 
-        {/* Question Counter Pill */}
+        {/* Question Counter Pill (Centered) */}
         <div
           className="absolute flex items-center justify-center z-20 select-none"
           style={{
-            left: 'calc(322 * var(--u))',
+            left: '50%',
+            transform: 'translateX(-50%)',
             top: 'calc(122 * var(--u))',
             width: 'calc(295 * var(--u))',
             height: 'calc(64 * var(--u))',
@@ -942,7 +884,7 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
         <div
           className="absolute flex items-center justify-center z-20 select-none"
           style={{
-            left: 'calc(752 * var(--u))',
+            right: '9.6vw',
             top: 'calc(108 * var(--u))',
             width: 'calc(100 * var(--u))',
             height: 'calc(100 * var(--u))',
@@ -969,9 +911,9 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
         <div
           className="absolute flex items-center z-20 select-none"
           style={{
-            left: 'calc(88 * var(--u))',
+            left: '9.6vw',
             top: 'calc(246 * var(--u))',
-            width: 'calc(370 * var(--u))',
+            width: 'calc((100vw - 19.2vw - 24 * var(--u)) / 2)',
             height: 'calc(137 * var(--u))',
             borderRadius: 'calc(9999px)',
             backgroundColor: '#F6F0E2',
@@ -1047,9 +989,9 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
         <div
           className="absolute flex items-center z-20 select-none"
           style={{
-            left: 'calc(482 * var(--u))',
+            right: '9.6vw',
             top: 'calc(246 * var(--u))',
-            width: 'calc(371 * var(--u))',
+            width: 'calc((100vw - 19.2vw - 24 * var(--u)) / 2)',
             height: 'calc(137 * var(--u))',
             borderRadius: 'calc(9999px)',
             backgroundColor: '#F6F0E2',
@@ -1155,7 +1097,7 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
           alt=""
           className="absolute pointer-events-none select-none z-10 object-contain"
           style={{
-            left: 'calc(88 * var(--u))',
+            left: 'calc(9.6vw - 36 * var(--u))',
             top: 'calc(612 * var(--u))',
             width: 'calc(54 * var(--u))',
             height: 'calc(133 * var(--u))',
@@ -1169,7 +1111,7 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
           alt=""
           className="absolute pointer-events-none select-none z-10 object-contain"
           style={{
-            left: 'calc(818 * var(--u))',
+            right: 'calc(9.6vw - 36 * var(--u))',
             top: 'calc(598 * var(--u))',
             width: 'calc(50 * var(--u))',
             height: 'calc(129 * var(--u))',
@@ -1183,7 +1125,7 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
           alt=""
           className="absolute pointer-events-none select-none z-30 object-contain"
           style={{
-            left: 'calc(133 * var(--u))',
+            left: 'calc(9.6vw - 6 * var(--u))',
             top: 'calc(495 * var(--u))',
             width: 'calc(97 * var(--u))',
             height: 'calc(88 * var(--u))',
@@ -1195,9 +1137,9 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
         <div
           className="absolute z-20 flex items-center justify-center"
           style={{
-            left: 'calc(145 * var(--u))',
+            left: '9.6vw',
+            width: 'calc(100vw - 19.2vw)',
             top: 'calc(535 * var(--u))',
-            width: 'calc(665 * var(--u))',
             height: 'calc(247 * var(--u))',
           }}
         >
@@ -1256,10 +1198,11 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
               onClick={() => setSelectedOptionId(pill.id)}
               className="absolute flex items-center cursor-pointer transition-transform duration-100 active:scale-[0.98] select-none p-0 focus:outline-none z-20"
               style={{
-                left: `calc(${pill.x} * var(--u))`,
+                left: '9.6vw',
+                width: 'calc(100vw - 19.2vw)',
                 top: `calc(${pill.y} * var(--u))`,
-                width: `calc(${pill.w} * var(--u))`,
                 height: `calc(${pill.h} * var(--u))`,
+                minHeight: '44px',
                 borderRadius: 'calc(9999px)',
                 backgroundColor: pill.colorBg,
                 boxShadow: isSelected ? '0 0 0 calc(6 * var(--u)) #1A1B22' : 'none',
@@ -1289,12 +1232,12 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
                 </span>
               </div>
 
-              {/* Answer Text (Starts at design x=252 => inside pill: 252 - pill.x) */}
+              {/* Answer Text (Starts at design x=252 => inside pill with 90 left margin: 252 - 90 = 162) */}
               <span
                 className="absolute truncate"
                 style={{
-                  left: `calc(${(252 - pill.x)} * var(--u))`,
-                  maxWidth: isSelected ? 'calc(470 * var(--u))' : 'calc(520 * var(--u))',
+                  left: 'calc(162 * var(--u))',
+                  maxWidth: isSelected ? 'calc(100% - 240 * var(--u))' : 'calc(100% - 180 * var(--u))',
                   fontFamily: "'Nunito', sans-serif",
                   fontSize: 'calc(42 * var(--u))',
                   fontWeight: 800,
@@ -1339,14 +1282,14 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
         })}
 
         {/* =========================================================================
-            6. HINT "Pick one. Be quick!": centered, y=1384, font 26, weight 700, gray #6E7058
+            6. HINT "Pick one. Be quick!": centered x=470, y=1392, font 25, weight 700, gray #6E7058
            ========================================================================= */}
         <div
           className="absolute w-full flex items-center justify-center z-20 select-none text-center"
           style={{
-            top: 'calc(1384 * var(--u))',
+            top: 'calc(1392 * var(--u))',
             fontFamily: "'Nunito', sans-serif",
-            fontSize: 'calc(26 * var(--u))',
+            fontSize: 'calc(25 * var(--u))',
             fontWeight: 700,
             color: '#6E7058',
           }}
@@ -1355,22 +1298,23 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
         </div>
 
         {/* =========================================================================
-            7. BUTTON "Lock in answer": x=90 to 850 (760w), y=1440 to 1538 (98h)
-               - full pill, near-black, text white font 34, weight 800, centered
+            7. BUTTON "Lock in answer": spans width between 9.6vw paddings, y=1451 to 1548 (97h)
+               - full pill, near-black, text white font 33, weight 800
            ========================================================================= */}
         <button
           type="button"
           onClick={handleLockIn}
           className="absolute flex items-center justify-center cursor-pointer transition-transform active:scale-[0.98] select-none p-0 focus:outline-none z-20"
           style={{
-            left: 'calc(90 * var(--u))',
-            top: 'calc(1440 * var(--u))',
-            width: 'calc(760 * var(--u))',
-            height: 'calc(98 * var(--u))',
+            left: '9.6vw',
+            width: 'calc(100vw - 19.2vw)',
+            top: 'calc(1451 * var(--u))',
+            height: 'calc(97 * var(--u))',
+            minHeight: '44px',
             borderRadius: 'calc(9999px)',
             backgroundColor: '#1A1B22',
             fontFamily: "'Nunito', sans-serif",
-            fontSize: 'calc(34 * var(--u))',
+            fontSize: 'calc(33 * var(--u))',
             fontWeight: 800,
             color: '#FFFFFF',
           }}
@@ -1380,5 +1324,6 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
       </div>
     </div>
   </div>
+</div>
   );
 };
