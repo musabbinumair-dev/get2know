@@ -307,3 +307,33 @@ p, span, input, textarea, label, button, .font-body {
   }
 }
 
+/* ── TRIVIA QUESTION SCREEN: TALL VS COMPACT RESPONSIVE SWITCH ── */
+.trivia-tall-stage {
+  display: flex;
+}
+.trivia-compact-stage {
+  display: none;
+}
+
+/* Mobile only (width below 768px):
+   Compact layout: viewport aspect ratio (height / width) below 1.9, OR viewport height below 760px.
+   Tall layout: aspect 1.9 and above, and height 760px or more.
+*/
+@media (max-width: 767.98px) and (max-height: 759.98px) {
+  .trivia-tall-stage {
+    display: none !important;
+  }
+  .trivia-compact-stage {
+    display: flex !important;
+  }
+}
+
+@media (max-width: 767.98px) and (min-aspect-ratio: 10/19) {
+  .trivia-tall-stage {
+    display: none !important;
+  }
+  .trivia-compact-stage {
+    display: flex !important;
+  }
+}
+

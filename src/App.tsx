@@ -16,7 +16,7 @@ import { JoinCodeScreen } from './screens/JoinCodeScreen';
 import { TodayQuestionScreen } from './screens/TodayQuestionScreen';
 import { AnswerLockedScreen } from './screens/AnswerLockedScreen';
 import { RevealScreen } from './screens/RevealScreen';
-import { GuessScreen } from './screens/GuessScreen';
+import { TriviaQuestionScreen } from './screens/TriviaQuestionScreen';
 import { FinalResultScreen } from './screens/FinalResultScreen';
 import { ScoresScreen } from './screens/ScoresScreen';
 import { MemoryWallScreen, INITIAL_CARDS } from './screens/MemoryWallScreen';
@@ -110,13 +110,11 @@ function AppContent() {
     startGuestSession,
     signInWithGoogle,
     saveProfile,
-    updateHistory,
     signOut,
     leaveDuo,
     welcomeBackToast,
     dismissWelcomeBackToast,
     guestHistoryToast,
-    triggerFirstGameFinished,
     dismissGuestHistoryToast,
   } = useSession();
 
@@ -391,30 +389,22 @@ function AppContent() {
           element={<FinalResultScreen />}
         />
 
-        {/* Guess */}
+        {/* Trivia Question Screen */}
         <Route
           path="/guess"
           element={
-            <GuessScreen
-              questionData={activeQuestion}
-              realAnswer={player2Answer}
-              streak={history.stats.streak}
+            <TriviaQuestionScreen
               onBack={() => navigateWithLoader('/home')}
-              onLockGuess={(_guess, isCorrect) => {
-                updateHistory((prev) => ({
-                  ...prev,
-                  stats: {
-                    ...prev.stats,
-                    syncScore: isCorrect ? Math.min(100, prev.stats.syncScore + 15) : prev.stats.syncScore,
-                    guessWins: isCorrect ? prev.stats.guessWins + 1 : prev.stats.guessWins,
-                    streak: isCorrect ? prev.stats.streak + 1 : prev.stats.streak,
-                    matches: isMatched ? prev.stats.matches + 1 : prev.stats.matches,
-                  },
-                }));
-                triggerFirstGameFinished();
-                navigateWithLoader('/reveal');
-              }}
-              onNavigateTab={handleTabNavigate}
+              onLockAnswer={() => navigateWithLoader('/reveal')}
+            />
+          }
+        />
+        <Route
+          path="/trivia-question"
+          element={
+            <TriviaQuestionScreen
+              onBack={() => navigateWithLoader('/home')}
+              onLockAnswer={() => navigateWithLoader('/reveal')}
             />
           }
         />
