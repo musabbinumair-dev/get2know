@@ -79,9 +79,9 @@
           var p = (window.location.pathname || '/').toLowerCase().replace(/\/+$/, '') || '/';
           var b = '#F8F1E1';
           var d1 = '#F9A6D2', d2 = '#9DBDFD', d3 = '#FEDF6B';
-          if (p === '/create-profile' || p === '/invite' || p === '/join' || p === '/join-code' || p === '/guess' || p === '/countdown') {
+          if (p === '/create-profile' || p === '/invite' || p === '/join' || p === '/join-code' || p === '/countdown') {
             b = '#FEE36F'; d3 = '#F6EFDD';
-          } else if (p === '/lobby' || p === '/locked' || p === '/answer-locked') {
+          } else if (p === '/lobby' || p === '/locked' || p === '/answer-locked' || p === '/guess') {
             b = '#96B9FC'; d2 = '#F6EFDD';
           } else if (p === '/today-question') {
             b = '#F7C8E2'; d1 = '#F6EFDD';

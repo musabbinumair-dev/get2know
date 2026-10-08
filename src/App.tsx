@@ -8,7 +8,7 @@ import {
   useLocation,
 } from 'react-router-dom';
 import { SessionProvider, useSession, UserProfile } from './services/sessionContext';
-import { GameSessionProvider } from './services/gameSessionContext';
+import { GameSessionProvider, useGameSession } from './services/gameSessionContext';
 import { WelcomeScreen } from './screens/WelcomeScreen';
 import { CreateProfileScreen } from './screens/CreateProfileScreen';
 import { InviteFriendScreen, generateInviteCode } from './screens/InviteFriendScreen';
@@ -17,6 +17,7 @@ import { TodayQuestionScreen } from './screens/TodayQuestionScreen';
 import { AnswerLockedScreen } from './screens/AnswerLockedScreen';
 import { RevealScreen } from './screens/RevealScreen';
 import { TriviaQuestionScreen } from './screens/TriviaQuestionScreen';
+import { KnowMeGuessScreen } from './screens/KnowMeGuessScreen';
 import { FinalResultScreen } from './screens/FinalResultScreen';
 import { ScoresScreen } from './screens/ScoresScreen';
 import { MemoryWallScreen, INITIAL_CARDS } from './screens/MemoryWallScreen';
@@ -101,6 +102,7 @@ function EntryGuard({ children }: { children: React.ReactNode }) {
 // ── MAIN APP ROUTER COMPONENT ──
 function AppContent() {
   const { navigateWithLoader } = useAppLoader();
+  const gameSession = useGameSession();
   const {
     sessionType,
     user,
@@ -389,11 +391,27 @@ function AppContent() {
           element={<FinalResultScreen />}
         />
 
-        {/* Trivia Question Screen */}
+        {/* Guess Screen (Know Me mode, or Trivia if round is trivia) */}
         <Route
           path="/guess"
           element={
-            <TriviaQuestionScreen
+            gameSession.isActive && gameSession.currentRoundType === 'trivia' ? (
+              <TriviaQuestionScreen
+                onBack={() => navigateWithLoader('/home')}
+                onLockAnswer={() => navigateWithLoader('/locked')}
+              />
+            ) : (
+              <KnowMeGuessScreen
+                onBack={() => navigateWithLoader('/home')}
+                onLockAnswer={() => navigateWithLoader('/reveal')}
+              />
+            )
+          }
+        />
+        <Route
+          path="/guess-know-me"
+          element={
+            <KnowMeGuessScreen
               onBack={() => navigateWithLoader('/home')}
               onLockAnswer={() => navigateWithLoader('/reveal')}
             />
@@ -404,7 +422,7 @@ function AppContent() {
           element={
             <TriviaQuestionScreen
               onBack={() => navigateWithLoader('/home')}
-              onLockAnswer={() => navigateWithLoader('/reveal')}
+              onLockAnswer={() => navigateWithLoader('/locked')}
             />
           }
         />
@@ -446,11 +464,31 @@ function AppContent() {
               friendAvatarId={partnerProfile.avatarId || 2}
               friendBlobId={partnerProfile.color || 'teal'}
               streak={history.stats.streak || 12}
-              onEditAnswer={() => navigateWithLoader('/home')}
+              onEditAnswer={() => {
+                const isTrivia =
+                  (gameSession.isActive && gameSession.currentRoundType === 'trivia') ||
+                  sessionStorage.getItem('gty_last_mode') === 'trivia' ||
+                  localStorage.getItem('gty_last_mode') === 'trivia';
+                if (isTrivia) {
+                  navigateWithLoader('/trivia-question');
+                } else {
+                  navigateWithLoader('/today-question');
+                }
+              }}
               onOpenSettings={() => navigateWithLoader('/profile')}
               onOpenFriendProfile={() => navigateWithLoader('/friend')}
               onNavigateTab={handleTabNavigate}
-              onPlayer2Answered={() => navigateWithLoader('/guess')}
+              onPlayer2Answered={() => {
+                const isTrivia =
+                  (gameSession.isActive && gameSession.currentRoundType === 'trivia') ||
+                  sessionStorage.getItem('gty_last_mode') === 'trivia' ||
+                  localStorage.getItem('gty_last_mode') === 'trivia';
+                if (isTrivia) {
+                  navigateWithLoader('/reveal');
+                } else {
+                  navigateWithLoader('/guess');
+                }
+              }}
             />
           }
         />

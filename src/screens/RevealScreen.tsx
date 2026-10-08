@@ -7,6 +7,7 @@ import { useSession } from '../services/sessionContext';
 import { TriviaQuestion } from '../data/gameQuestions';
 import { TopBar } from '../components/TopBar';
 import { triggerHaptic } from '../utils/haptics';
+import { playCorrectSound, playTapSound } from '../lib/soundEffects';
 
 export interface RevealScreenProps {
   player1Name?: string;
@@ -214,6 +215,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
     (e: React.PointerEvent<HTMLButtonElement>, emojiId: string) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
 
+      playTapSound();
       setInternalReaction(emojiId);
       if (typeof window !== 'undefined') {
         localStorage.setItem('reveal_selected_reaction', emojiId);
@@ -280,6 +282,14 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
       stopHold();
     };
   }, [stopHold]);
+
+  // Reveal victory sound
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      playCorrectSound();
+    }, 280);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Inspect full answer modal
   const [inspectingPlayer, setInspectingPlayer] = useState<{
@@ -376,12 +386,20 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
       (o) => o.id === (gameSession.currentQuestion as TriviaQuestion).correctOptionId
     )?.text || 'Japan';
 
+  const getCorrectAnswerFontSizeMobile = (text: string) => {
+    const len = text.length;
+    if (len > 30) return 'text-[15px] sm:text-[17px]';
+    if (len > 20) return 'text-[18px] sm:text-[21px]';
+    if (len > 12) return 'text-[22px] sm:text-[25px]';
+    if (len > 7) return 'text-[27px] sm:text-[31px]';
+    return 'text-[32px] sm:text-[36px]';
+  };
+
   // Player answers for Trivia
   const p1TriviaAnswer = isInGame
     ? gameSession.myGuess || 'Japan'
-    : player1Answer !== 'Anchovies on pizza.'
-    ? player1Answer
-    : 'Japan';
+    : (typeof window !== 'undefined' && localStorage.getItem('trivia_player1_guess')) ||
+      (player1Answer !== 'Anchovies on pizza.' ? player1Answer : 'Japan');
 
   const p2TriviaAnswer = isInGame
     ? gameSession.friendAnswer || 'China'
@@ -571,8 +589,8 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
             </h2>
           </div>
 
-          {/* 4. CORRECT ANSWER BLOCK: Green Blob + Sparkles, Check Badge, "Correct answer", "Japan" */}
-          <div className="relative w-[286px] sm:w-[310px] aspect-[548/326] mx-auto mb-5 flex items-center justify-center z-10">
+          {/* 4. CORRECT ANSWER BLOCK: Green Blob + Sparkles, Check Badge, "Correct answer", responsive text */}
+          <div className="relative w-[286px] sm:w-[316px] aspect-[548/326] mx-auto mb-5 flex items-center justify-center z-10">
             {/* Green blob with sparkles image */}
             <img
               src="/assets/correct-answer-blob-sparkles.webp"
@@ -581,10 +599,19 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
               draggable={false}
             />
 
-            {/* Content overlay */}
-            <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 pointer-events-none pt-0.5">
+            {/* Content overlay centered directly over the green blob */}
+            <div
+              className="relative z-10 flex flex-col items-center justify-center text-center pointer-events-none w-[72%] max-w-[225px] h-full overflow-hidden"
+              style={{
+                paddingTop: '6px',
+                paddingBottom: '6px',
+                paddingLeft: '8px',
+                paddingRight: '8px',
+                boxSizing: 'border-box',
+              }}
+            >
               {/* White Circular Badge with Green Checkmark */}
-              <div className="w-[34px] h-[34px] rounded-full bg-white flex items-center justify-center shadow-xs mb-1.5 flex-shrink-0">
+              <div className="w-[32px] h-[32px] rounded-full bg-white flex items-center justify-center shadow-xs mb-1 flex-shrink-0">
                 <svg
                   width="18"
                   height="18"
@@ -600,12 +627,23 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
               </div>
 
               {/* Small "Correct answer" text */}
-              <span className="text-[14.5px] font-extrabold text-[#1B1D20]/80 tracking-tight leading-none mb-1">
+              <span className="text-[13px] sm:text-[14px] font-extrabold text-[#1B1D20]/80 tracking-tight leading-none mb-1 flex-shrink-0">
                 Correct answer
               </span>
 
-              {/* Huge Bold Answer Text */}
-              <span className="text-[34px] sm:text-[38px] font-black text-[#1B1D20] tracking-[-0.03em] leading-none">
+              {/* Responsive Bold Answer Text fitting safely within the blob */}
+              <span
+                className={`font-black text-[#1B1D20] tracking-[-0.03em] leading-[1.12] text-center break-words w-full select-none ${getCorrectAnswerFontSizeMobile(correctTriviaAnswer)}`}
+                style={{
+                  wordBreak: 'break-word',
+                  overflowWrap: 'break-word',
+                  maxHeight: '74px',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}
+              >
                 {correctTriviaAnswer}
               </span>
             </div>
@@ -1224,19 +1262,30 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
                     draggable={false}
                   />
 
-                  <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 pointer-events-none">
+                  <div
+                    className="relative z-10 flex flex-col items-center justify-center text-center pointer-events-none h-full overflow-hidden"
+                    style={{
+                      width: '72%',
+                      maxWidth: 'calc(316 * var(--u))',
+                      paddingLeft: 'calc(max(16 * var(--u), 8px))',
+                      paddingRight: 'calc(max(16 * var(--u), 8px))',
+                      paddingTop: 'calc(max(10 * var(--u), 6px))',
+                      paddingBottom: 'calc(max(10 * var(--u), 6px))',
+                      boxSizing: 'border-box',
+                    }}
+                  >
                     <div
                       className="rounded-full bg-white flex items-center justify-center shadow-xs flex-shrink-0"
                       style={{
-                        width: 'calc(50 * var(--u))',
-                        height: 'calc(50 * var(--u))',
-                        marginBottom: 'calc(8 * var(--u))',
+                        width: 'calc(46 * var(--u))',
+                        height: 'calc(46 * var(--u))',
+                        marginBottom: 'calc(6 * var(--u))',
                       }}
                     >
                       <svg
                         style={{
-                          width: 'calc(26 * var(--u))',
-                          height: 'calc(26 * var(--u))',
+                          width: 'calc(24 * var(--u))',
+                          height: 'calc(24 * var(--u))',
                         }}
                         viewBox="0 0 24 24"
                         fill="none"
@@ -1250,9 +1299,9 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
                     </div>
 
                     <span
-                      className="font-extrabold text-[#1B1D20]/80 tracking-tight leading-none"
+                      className="font-extrabold text-[#1B1D20]/80 tracking-tight leading-none flex-shrink-0"
                       style={{
-                        fontSize: 'calc(20 * var(--u))',
+                        fontSize: 'calc(18 * var(--u))',
                         marginBottom: 'calc(4 * var(--u))',
                       }}
                     >
@@ -1260,8 +1309,25 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
                     </span>
 
                     <span
-                      className="font-black text-[#1B1D20] tracking-[-0.03em] leading-none"
-                      style={{ fontSize: 'calc(52 * var(--u))' }}
+                      className="font-black text-[#1B1D20] tracking-[-0.03em] leading-[1.12] text-center break-words w-full"
+                      style={{
+                        fontSize: correctTriviaAnswer.length > 30
+                          ? 'calc(24 * var(--u))'
+                          : correctTriviaAnswer.length > 20
+                          ? 'calc(28 * var(--u))'
+                          : correctTriviaAnswer.length > 12
+                          ? 'calc(36 * var(--u))'
+                          : correctTriviaAnswer.length > 7
+                          ? 'calc(42 * var(--u))'
+                          : 'calc(50 * var(--u))',
+                        wordBreak: 'break-word',
+                        overflowWrap: 'break-word',
+                        maxHeight: 'calc(110 * var(--u))',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}
                     >
                       {correctTriviaAnswer}
                     </span>

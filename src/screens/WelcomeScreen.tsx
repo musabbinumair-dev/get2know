@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { DesktopLanding } from '../components/DesktopLanding';
+import { playReadySound, playTapSound } from '../lib/soundEffects';
 
 interface WelcomeScreenProps {
   onGetStarted?: () => void;
@@ -479,6 +480,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             disabled={isSigningIn}
             onClick={async () => {
               if (isSigningIn) return;
+              playReadySound();
               setIsSigningIn(true);
               setSignInError(null);
               try {
@@ -607,7 +609,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             <span>Already have a code?&nbsp;</span>
             <button
               type="button"
-              onClick={onJoinCode}
+              onClick={() => {
+                playTapSound();
+                onJoinCode?.();
+              }}
               style={{
                 fontFamily: "'Nunito', -apple-system, BlinkMacSystemFont, sans-serif",
                 fontWeight: 600,

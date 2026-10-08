@@ -28,20 +28,21 @@ export const TopBar: React.FC<TopBarProps> = ({
 
   return (
     <div
-      className={`relative w-full max-w-[390px] mx-auto h-[68px] select-none z-20 flex-shrink-0 ${className}`}
+      className={`relative w-full max-w-[390px] mx-auto h-[44px] px-6 flex items-center justify-between select-none z-20 flex-shrink-0 ${className}`}
     >
       {/* Left: Duo Logo Asset (tappable -> Friend Profile) */}
       <button
         type="button"
         onClick={handleFriendProfile}
         aria-label="Friend Profile"
-        className="btn-press absolute top-[34px] left-[19.7px] w-[58.1px] h-[22.9px] cursor-pointer flex items-center justify-center p-0 z-20 outline-none transition-transform active:scale-95"
+        className="btn-press cursor-pointer flex items-center justify-start p-0 outline-none transition-transform active:scale-95"
+        style={{ width: '64px', height: '28px' }}
       >
         <img
           id="logo-duo"
           src="/logo-duo-sparks.webp"
           alt="Duo"
-          className="w-full h-full object-contain pointer-events-none select-none"
+          className="w-full h-full object-contain object-left pointer-events-none select-none"
           draggable={false}
         />
       </button>
@@ -50,7 +51,7 @@ export const TopBar: React.FC<TopBarProps> = ({
       {mode === 'rounds' ? (
         <div
           id="box-rounds-pill"
-          className="absolute top-[29px] left-1/2 -translate-x-1/2 h-[33.3px] px-3.5 rounded-full bg-[#191D21] flex items-center justify-center gap-1.5 z-20 shadow-sm pointer-events-none whitespace-nowrap"
+          className="h-[34px] px-3.5 rounded-full bg-[#191D21] flex items-center justify-center gap-1.5 shadow-sm pointer-events-none whitespace-nowrap"
         >
           <span className="font-bold text-white/60 text-[13px] uppercase tracking-wider">
             Round
@@ -64,29 +65,27 @@ export const TopBar: React.FC<TopBarProps> = ({
       ) : (
         <div
           id="box-streak-pill"
-          className="absolute top-[29px] left-1/2 -translate-x-1/2 w-[70.8px] h-[33.3px] rounded-full bg-[#191D21] flex items-center justify-center z-20 shadow-sm pointer-events-none"
+          className="h-[34px] px-3.5 rounded-full bg-[#191D21] flex items-center justify-center gap-1.5 shadow-sm pointer-events-none"
         >
-          <div className="flex items-center gap-1.5 pl-0.5">
-            <img
-              src="/icon-flame.webp"
-              alt=""
-              className="w-[18.3px] h-[21.9px] object-contain pointer-events-none select-none"
-              draggable={false}
-            />
-            <span className="text-white font-black text-[19px] leading-none tracking-tight">
-              {streak}
-            </span>
-          </div>
+          <img
+            src="/icon-flame.webp"
+            alt=""
+            className="w-[18px] h-[22px] object-contain pointer-events-none select-none"
+            draggable={false}
+          />
+          <span className="text-white font-black text-[19px] leading-none tracking-tight">
+            {streak}
+          </span>
         </div>
       )}
 
-      {/* Right: Settings Gear Button (Pristine 8-tooth gear SVG) */}
+      {/* Right: Settings Gear Button (Pristine 8-tooth gear SVG matching Scores & Memory Wall) */}
       <button
         type="button"
         id="box-settings-btn"
         onClick={handleSettings}
         aria-label="Settings"
-        className="btn-press absolute top-[28.5px] right-[19.7px] w-[38px] h-[38px] rounded-full border-[1.8px] border-dashed border-[#17181B] flex items-center justify-center bg-transparent hover:bg-[#17181B]/5 transition-colors cursor-pointer focus:outline-none z-20"
+        className="btn-press w-[38px] h-[38px] sm:w-[42px] sm:h-[42px] rounded-full border-[1.8px] border-dashed border-[#17181B] flex items-center justify-center bg-transparent hover:bg-[#17181B]/5 transition-colors cursor-pointer focus:outline-none"
       >
         <svg
           width="19"

@@ -5,6 +5,7 @@ import { useSession } from '../services/sessionContext';
 import { TriviaQuestion } from '../data/gameQuestions';
 import { getBlobConfig } from '../lib/blobs';
 import { getAvatarFaceImageSrc, getBlobImageSrc } from '../components/ProfileAvatar';
+import { playLockInSound, playTapSound } from '../lib/soundEffects';
 
 export interface TriviaQuestionScreenProps {
   onBack?: () => void;
@@ -206,13 +207,20 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
   };
 
   const handleLockIn = () => {
+    playLockInSound();
     const chosenPill = answerPills.find((p) => p.id === selectedOptionId) || answerPills[0];
-    if (onLockAnswer) {
-      onLockAnswer(chosenPill.id, chosenPill.text);
-    } else if (isInGame) {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('gty_last_mode', 'trivia');
+      localStorage.setItem('gty_last_mode', 'trivia');
+      localStorage.setItem('trivia_player1_guess', chosenPill.text);
+      localStorage.setItem('trivia_player1_option_id', chosenPill.id);
+    }
+    if (isInGame) {
       gameSession.submitGuess(chosenPill.id as any, chosenPill.text);
+    } else if (onLockAnswer) {
+      onLockAnswer(chosenPill.id, chosenPill.text);
     } else {
-      navigate('/reveal');
+      navigate('/locked');
     }
   };
 
@@ -613,22 +621,27 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
           alt=""
           className="absolute pointer-events-none select-none z-30 object-contain"
           style={{
-            left: 'calc(8.3vw - 6 * var(--u))',
-            top: 'calc(497 * var(--u))',
-            width: 'calc(122 * var(--u))',
-            height: 'calc(113 * var(--u))',
+            left: 'calc(8.3vw - 22 * var(--u))',
+            top: 'calc(478 * var(--u))',
+            width: 'calc(138 * var(--u))',
+            height: 'calc(128 * var(--u))',
           }}
           draggable={false}
         />
 
         {/* Question Card Container (spans width between 8.3vw paddings) */}
         <div
-          className="absolute z-20 flex items-center justify-center"
+          className="absolute z-20 flex items-center justify-center overflow-hidden"
           style={{
             left: '8.3vw',
             width: 'calc(100vw - 16.6vw)',
             top: 'calc(538 * var(--u))',
-            height: 'calc(322 * var(--u))',
+            height: rawQuestion.length > 75
+              ? 'calc(355 * var(--u))'
+              : rawQuestion.length > 55
+              ? 'calc(340 * var(--u))'
+              : 'calc(322 * var(--u))',
+            maxHeight: 'calc(360 * var(--u))',
           }}
         >
           {/* Card Blob Background */}
@@ -641,25 +654,38 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
 
           {/* Live Question Text */}
           <div
-            className="relative z-10 flex items-center justify-center text-center w-full"
+            className="relative z-10 flex items-center justify-center text-center w-full h-full overflow-hidden"
             style={{
-              paddingLeft: 'calc(45 * var(--u))',
-              paddingRight: 'calc(45 * var(--u))',
+              paddingTop: 'calc(max(24 * var(--u), 8px))',
+              paddingBottom: 'calc(max(24 * var(--u), 8px))',
+              paddingLeft: 'calc(max(48 * var(--u), 12px))',
+              paddingRight: 'calc(max(48 * var(--u), 12px))',
+              boxSizing: 'border-box',
             }}
           >
             <h1
-              className="m-0 text-center select-none"
+              className="m-0 text-center select-none overflow-hidden"
               style={{
                 fontFamily: "'Nunito', sans-serif",
-                fontSize: rawQuestion.length > 50 ? 'calc(62 * var(--u))' : 'calc(80 * var(--u))',
+                fontSize: rawQuestion.length > 75
+                  ? 'calc(42 * var(--u))'
+                  : rawQuestion.length > 55
+                  ? 'calc(50 * var(--u))'
+                  : rawQuestion.length > 35
+                  ? 'calc(62 * var(--u))'
+                  : 'calc(78 * var(--u))',
                 fontWeight: 900,
                 color: '#1A1B22',
-                lineHeight: 1.08,
+                lineHeight: 1.15,
                 letterSpacing: '-0.025em',
-                whiteSpace: 'pre-line',
+                wordBreak: 'break-word',
+                overflowWrap: 'break-word',
+                whiteSpace: rawQuestion.length <= 40 && questionLines.length >= 2
+                  ? 'pre-line'
+                  : 'normal',
               }}
             >
-              {rawQuestion.length <= 50 && questionLines.length >= 2
+              {rawQuestion.length <= 40 && questionLines.length >= 2
                 ? questionLines.join('\n')
                 : rawQuestion}
             </h1>
@@ -676,7 +702,10 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
             <button
               key={pill.id}
               type="button"
-              onClick={() => setSelectedOptionId(pill.id)}
+              onClick={() => {
+                playTapSound();
+                setSelectedOptionId(pill.id);
+              }}
               className="absolute flex items-center cursor-pointer transition-transform duration-100 active:scale-[0.98] select-none p-0 focus:outline-none z-20"
               style={{
                 left: '8.3vw',
@@ -1125,22 +1154,27 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
           alt=""
           className="absolute pointer-events-none select-none z-30 object-contain"
           style={{
-            left: 'calc(9.6vw - 6 * var(--u))',
-            top: 'calc(495 * var(--u))',
-            width: 'calc(97 * var(--u))',
-            height: 'calc(88 * var(--u))',
+            left: 'calc(9.6vw - 20 * var(--u))',
+            top: 'calc(475 * var(--u))',
+            width: 'calc(112 * var(--u))',
+            height: 'calc(102 * var(--u))',
           }}
           draggable={false}
         />
 
         {/* Question Card Container */}
         <div
-          className="absolute z-20 flex items-center justify-center"
+          className="absolute z-20 flex items-center justify-center overflow-hidden"
           style={{
             left: '9.6vw',
             width: 'calc(100vw - 19.2vw)',
             top: 'calc(535 * var(--u))',
-            height: 'calc(247 * var(--u))',
+            height: rawQuestion.length > 75
+              ? 'calc(280 * var(--u))'
+              : rawQuestion.length > 55
+              ? 'calc(265 * var(--u))'
+              : 'calc(247 * var(--u))',
+            maxHeight: 'calc(290 * var(--u))',
           }}
         >
           {/* Card Blob Background */}
@@ -1153,25 +1187,38 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
 
           {/* Live Question Text */}
           <div
-            className="relative z-10 flex items-center justify-center text-center w-full"
+            className="relative z-10 flex items-center justify-center text-center w-full h-full overflow-hidden"
             style={{
-              paddingLeft: 'calc(40 * var(--u))',
-              paddingRight: 'calc(40 * var(--u))',
+              paddingTop: 'calc(max(18 * var(--u), 8px))',
+              paddingBottom: 'calc(max(18 * var(--u), 8px))',
+              paddingLeft: 'calc(max(40 * var(--u), 12px))',
+              paddingRight: 'calc(max(40 * var(--u), 12px))',
+              boxSizing: 'border-box',
             }}
           >
             <h1
-              className="m-0 text-center select-none"
+              className="m-0 text-center select-none overflow-hidden"
               style={{
                 fontFamily: "'Nunito', sans-serif",
-                fontSize: rawQuestion.length > 50 ? 'calc(56 * var(--u))' : 'calc(72 * var(--u))',
+                fontSize: rawQuestion.length > 75
+                  ? 'calc(34 * var(--u))'
+                  : rawQuestion.length > 55
+                  ? 'calc(42 * var(--u))'
+                  : rawQuestion.length > 35
+                  ? 'calc(52 * var(--u))'
+                  : 'calc(68 * var(--u))',
                 fontWeight: 900,
                 color: '#1A1B22',
-                lineHeight: 1.08,
+                lineHeight: 1.15,
                 letterSpacing: '-0.025em',
-                whiteSpace: 'pre-line',
+                wordBreak: 'break-word',
+                overflowWrap: 'break-word',
+                whiteSpace: rawQuestion.length <= 40 && questionLines.length >= 2
+                  ? 'pre-line'
+                  : 'normal',
               }}
             >
-              {rawQuestion.length <= 50 && questionLines.length >= 2
+              {rawQuestion.length <= 40 && questionLines.length >= 2
                 ? questionLines.join('\n')
                 : rawQuestion}
             </h1>
@@ -1195,7 +1242,10 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
             <button
               key={`compact-${pill.id}`}
               type="button"
-              onClick={() => setSelectedOptionId(pill.id)}
+              onClick={() => {
+                playTapSound();
+                setSelectedOptionId(pill.id);
+              }}
               className="absolute flex items-center cursor-pointer transition-transform duration-100 active:scale-[0.98] select-none p-0 focus:outline-none z-20"
               style={{
                 left: '9.6vw',

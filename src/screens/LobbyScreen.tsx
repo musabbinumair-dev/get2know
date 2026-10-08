@@ -4,6 +4,7 @@ import { useSession } from '../services/sessionContext';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { GameSettingsModal } from '../components/GameSettingsModal';
 import { triggerHaptic } from '../utils/haptics';
+import { playReadySound, playTapSound, playNudgeSound } from '../lib/soundEffects';
 
 export interface GameSettingsState {
   mode: 'know-me' | 'trivia' | 'mixed';
@@ -125,6 +126,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   // Handle Nudge (only active while friend is NOT ready)
   const handleNudge = () => {
     if (isNudgeDisabled || isFriendReady) return;
+    playNudgeSound();
     setIsNudgeDisabled(true);
     showToast('Nudged!');
 
@@ -146,6 +148,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   const handleMainButtonClick = () => {
     if (isUserReady && isFriendReady) {
       // Both ready -> Start game
+      playReadySound();
       if (onStartGame) {
         onStartGame();
       } else {
@@ -156,11 +159,13 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
 
     if (isUserReady && !isFriendReady) {
       // I'm ready, friend not -> Cancel ready
+      playTapSound();
       setIsUserReady(false);
       return;
     }
 
     // Neither ready OR Friend ready, I'm not -> I'm ready
+    playReadySound();
     setIsUserReady(true);
   };
 

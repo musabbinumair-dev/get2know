@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { PillButton } from '../components/PillButton';
+import { playReadySound } from '../lib/soundEffects';
 
 interface JoinCodeScreenProps {
   validCode?: string;
@@ -136,6 +137,7 @@ export const JoinCodeScreen: React.FC<JoinCodeScreenProps> = ({
 
     const normalizedTarget = validCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
     if (code === normalizedTarget || code === 'K7X92P') {
+      playReadySound();
       setErrorMessage('');
       onJoinSuccess?.(code);
     } else {

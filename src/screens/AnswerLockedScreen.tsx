@@ -5,6 +5,7 @@ import { TopBar } from '../components/TopBar';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { NavTab } from '../components/BottomNav';
 import { mockData } from '../mockData';
+import { playPartnerAnsweredSound, playNudgeSound, playTapSound } from '../lib/soundEffects';
 
 interface AnswerLockedScreenProps {
   friendName?: string;
@@ -87,11 +88,18 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
     };
   }, []);
 
+  const isTrivia =
+    (isInGame && gameSession.currentRoundType === 'trivia') ||
+    (typeof window !== 'undefined' &&
+      (sessionStorage.getItem('gty_last_mode') === 'trivia' ||
+        localStorage.getItem('gty_last_mode') === 'trivia'));
+
   // Avatar click handler: triggers state change from lightened/grayscale to full vibrant normal state and advances
   const handleAvatarClick = () => {
     if (isAnswerLocked) return;
     setIsAnswerLocked(true);
     setFriendStatus('Answer locked in! 🎉');
+    playPartnerAnsweredSound();
 
     // Transition to the guess/next screen
     const t2 = setTimeout(() => {
@@ -99,12 +107,25 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
         gameSession.advanceFromWaiting();
       } else if (onPlayer2Answered) {
         onPlayer2Answered();
+      } else if (isTrivia) {
+        navigate('/reveal');
       } else {
         navigate('/guess');
       }
     }, 1200);
     simulationTimers.current.push(t2);
   };
+
+  // Auto-progress simulation: if partner has not answered, answer after 4 seconds
+  useEffect(() => {
+    const autoTimer = setTimeout(() => {
+      if (!isAnswerLocked) {
+        handleAvatarClick();
+      }
+    }, 4000);
+    simulationTimers.current.push(autoTimer);
+    return () => clearTimeout(autoTimer);
+  }, [isAnswerLocked]);
 
   // Cooldown countdown effect for Nudge button
   useEffect(() => {
@@ -117,21 +138,36 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
 
   const handleNudge = () => {
     if (nudgeCooldown > 0) return;
+    playNudgeSound();
     setToastMessage('Nudge sent 👋');
     setNudgeCooldown(30);
     setTimeout(() => {
       setToastMessage('');
     }, 2500);
+
+    const nudgeTimer = setTimeout(() => {
+      if (!isAnswerLocked) {
+        handleAvatarClick();
+      }
+    }, 1500);
+    simulationTimers.current.push(nudgeTimer);
   };
 
   const handleEditClick = () => {
+    playTapSound();
     if (typeof window !== 'undefined') {
       localStorage.setItem('today_answer_locked', 'false');
     }
-    if (isInGame) {
-      navigate('/today-question');
-    } else if (onEditAnswer) {
+    if (onEditAnswer) {
       onEditAnswer();
+    } else if (isInGame) {
+      if (gameSession.currentRoundType === 'trivia') {
+        navigate('/trivia-question');
+      } else {
+        navigate('/today-question');
+      }
+    } else if (isTrivia) {
+      navigate('/trivia-question');
     } else {
       navigate('/today-question');
     }

@@ -117,63 +117,64 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
          ========================================================================= */}
       <div className="home-stage relative z-20 w-full h-full max-w-[390px] mx-auto select-none pointer-events-auto md:hidden">
         
-        {/* 1. TOP BAR (Moved downwards for generous breathing room from top) */}
-        {/* Duo Logo (tappable -> Friend Profile) */}
-        <button
-          type="button"
-          onClick={onOpenFriendProfile}
-          className="btn-press absolute top-[34px] left-[19.7px] w-[58.1px] h-[22.9px] cursor-pointer flex items-center justify-center p-0 z-20 outline-none transition-transform active:scale-95"
-          aria-label="Friend Profile"
-        >
-          <img
-            id="logo-duo"
-            src="/logo-duo-sparks.webp"
-            alt="Duo"
-            className="w-full h-full object-contain pointer-events-none select-none"
-            draggable={false}
-          />
-        </button>
+        {/* 1. TOP BAR (Matches Scores & Memory Wall topbar: h-[44px], top-[28px], px-6) */}
+        <div className="absolute top-[28px] sm:top-[36px] left-0 right-0 w-full max-w-[390px] mx-auto h-[44px] px-6 flex items-center justify-between select-none z-20">
+          {/* Duo Logo (tappable -> Friend Profile) */}
+          <button
+            type="button"
+            onClick={onOpenFriendProfile}
+            className="btn-press cursor-pointer flex items-center justify-start p-0 outline-none transition-transform active:scale-95"
+            style={{ width: '64px', height: '28px' }}
+            aria-label="Friend Profile"
+          >
+            <img
+              id="logo-duo"
+              src="/logo-duo-sparks.webp"
+              alt="Duo"
+              className="w-full h-full object-contain object-left pointer-events-none select-none"
+              draggable={false}
+            />
+          </button>
 
-        {/* Center Streak Pill */}
-        <div
-          id="box-streak-pill"
-          className="absolute top-[29px] left-[159.6px] w-[70.8px] h-[33.3px] rounded-full bg-[#191D21] flex items-center justify-center z-20 shadow-sm pointer-events-none"
-        >
-          <div className="flex items-center gap-1.5 pl-0.5">
+          {/* Center Streak Pill */}
+          <div
+            id="box-streak-pill"
+            className="h-[34px] px-3.5 rounded-full bg-[#191D21] flex items-center justify-center gap-1.5 shadow-sm pointer-events-none"
+          >
             <img
               src="/icon-flame.webp"
               alt=""
-              className="w-[18.3px] h-[21.9px] object-contain pointer-events-none select-none"
+              className="w-[18px] h-[22px] object-contain pointer-events-none select-none"
               draggable={false}
             />
             <span className="text-white font-black text-[19px] leading-none tracking-tight">
               {mockData.streak}
             </span>
           </div>
-        </div>
 
-        {/* Settings Button: Exact vector SVG gear from Scores page */}
-        <button
-          type="button"
-          id="box-settings-btn"
-          onClick={onOpenSettings}
-          aria-label="Settings"
-          className="btn-press absolute top-[28.5px] right-[19.7px] w-[38px] h-[38px] rounded-full border-[1.8px] border-dashed border-[#17181B] flex items-center justify-center bg-transparent hover:bg-[#17181B]/5 transition-colors cursor-pointer focus:outline-none z-20"
-        >
-          <svg
-            width="19"
-            height="19"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#17181B"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+          {/* Settings Button: Exact vector SVG gear from Scores page */}
+          <button
+            type="button"
+            id="box-settings-btn"
+            onClick={onOpenSettings}
+            aria-label="Settings"
+            className="btn-press w-[38px] h-[38px] sm:w-[42px] sm:h-[42px] rounded-full border-[1.8px] border-dashed border-[#17181B] flex items-center justify-center bg-transparent hover:bg-[#17181B]/5 transition-colors cursor-pointer focus:outline-none"
           >
-            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-        </button>
+            <svg
+              width="19"
+              height="19"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#17181B"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </button>
+        </div>
 
         {/* 2. GREETING HEADER (Shifted a little above) */}
         <p className="absolute top-[106px] left-[34px] text-[16.5px] font-bold text-[#191D21]/60 tracking-tight leading-none z-10 m-0">

@@ -8,6 +8,7 @@ import { getBlobConfig } from '../lib/blobs';
 import { getAvatarFaceImageSrc } from '../components/ProfileAvatar';
 import { NavTab } from '../components/BottomNav';
 import { useSession } from '../services/sessionContext';
+import { playLockInSound } from '../lib/soundEffects';
 
 interface TodayQuestionScreenProps {
   userProfile?: UserProfile;
@@ -98,8 +99,13 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
   };
 
   const handleLockIn = () => {
+    playLockInSound();
     const finalAnswer = answer.trim() || 'My secret answer';
     setIsLocked(true);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('gty_last_mode', 'know-me');
+      localStorage.setItem('gty_last_mode', 'know-me');
+    }
 
     if (isInGame) {
       setTimeout(() => {

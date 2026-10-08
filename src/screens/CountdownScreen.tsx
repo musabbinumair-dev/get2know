@@ -4,6 +4,7 @@ import { useSession } from '../services/sessionContext';
 import { useGameSession } from '../services/gameSessionContext';
 import { usePageVisible } from '../context/PageVisibilityContext';
 import { AVATAR_OPTIONS } from '../screens/CreateProfileScreen';
+import { playCountdownTick, playCountdownGo } from '../lib/soundEffects';
 
 interface SpecItem {
   key: string;
@@ -530,6 +531,16 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
       return () => clearTimeout(finishTimer);
     }
   }, [step, isPaused, isPageVisible, countdownStarted, handleCountdownDone]);
+
+  // Sound effects on countdown steps (3, 2, 1, Go!)
+  useEffect(() => {
+    if (!countdownStarted || isPaused || !isPageVisible) return;
+    if (step < 3) {
+      playCountdownTick(step);
+    } else if (step === 3) {
+      playCountdownGo();
+    }
+  }, [step, countdownStarted, isPaused, isPageVisible]);
 
   // Restart countdown
   const handleRestart = useCallback(() => {
