@@ -5,12 +5,6 @@ import { ProfileAvatar } from '../components/ProfileAvatar';
 import { GameSettingsModal } from '../components/GameSettingsModal';
 import { triggerHaptic } from '../utils/haptics';
 import { playReadySound, playTapSound, playNudgeSound } from '../lib/soundEffects';
-import {
-  setPlayerReady,
-  sendRoomNudge,
-  startRoomGame,
-  updateRoomSettings,
-} from '../services/roomService';
 
 export interface GameSettingsState {
   mode: 'know-me' | 'trivia' | 'mixed';
@@ -66,27 +60,11 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   initialSettings,
 }) => {
   const navigate = useNavigate();
-  const { user, room, roomCode, isHost, profile, partnerProfile: sessionPartner, leaveDuo } = useSession();
-
-  // Partner UID in room
-  const partnerUid = useMemo(() => {
-    return room?.playerUids?.find((id) => id !== user?.uid);
-  }, [room?.playerUids, user?.uid]);
+  const { profile } = useSession();
 
   // Saved or initial game settings from GameSettings page
   const [gameSettings, setGameSettings] = useState<GameSettingsState>(() => {
     if (initialSettings) return initialSettings;
-    if (room?.settings) {
-      return {
-        mode: room.settings.mode || 'trivia',
-        categories: room.settings.categories || ['Food', 'Movies', 'Music'],
-        difficulty: room.settings.difficulty || 'Medium',
-        timer: room.settings.timer || '20s',
-        rounds: (room.settings.rounds as 5 | 10 | 15) || 10,
-        speedBonus: room.settings.speedBonus ?? true,
-        soundEffects: room.settings.soundEffects ?? true,
-      };
-    }
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('gty_game_settings');
       if (saved) {
@@ -106,24 +84,8 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
     };
   });
 
-  // Sync if room settings change live
-  useEffect(() => {
-    if (room?.settings) {
-      setGameSettings({
-        mode: room.settings.mode || 'trivia',
-        categories: room.settings.categories || ['Food', 'Movies', 'Music'],
-        difficulty: room.settings.difficulty || 'Medium',
-        timer: room.settings.timer || '20s',
-        rounds: (room.settings.rounds as 5 | 10 | 15) || 10,
-        speedBonus: room.settings.speedBonus ?? true,
-        soundEffects: room.settings.soundEffects ?? true,
-      });
-    }
-  }, [room?.settings]);
-
-  // Partner Profile state from session or storage
+  // Partner Profile state from storage
   const [partnerProfile, setPartnerProfile] = useState(() => {
-    if (sessionPartner) return sessionPartner;
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('partner_profile') || localStorage.getItem('gty_partner_profile');
       if (saved) {
@@ -134,153 +96,80 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
     }
     return {
       avatarId: 2,
-      name: 'Your friend',
+      name: 'Sam',
       color: 'teal',
     };
   });
 
-  useEffect(() => {
-    if (sessionPartner) {
-      setPartnerProfile(sessionPartner);
-    }
-  }, [sessionPartner]);
-
-  // Dynamic user data from profile
+  // Dynamic user data from profile (updates immediately when profile changes)
   const currentUser = useMemo(() => {
     return {
-      name: profile?.name || 'You',
+      name: profile?.name || 'Alex',
       avatarId: profile?.avatarId ?? 1,
       color: profile?.color || 'salmon',
     };
   }, [profile]);
 
-  const friendName = partnerProfile.name || 'Your friend';
+  const friendName = partnerProfile.name || 'Sam';
 
-  // Live ready state from Firestore room
-  const [localUserReady, setLocalUserReady] = useState<boolean>(false);
-  const [localFriendReady, setLocalFriendReady] = useState<boolean>(false);
-
-  const isUserReady = room && user
-    ? Boolean(room?.players?.[user.uid]?.isReady)
-    : localUserReady;
-  const isFriendReady = room && partnerUid
-    ? Boolean(room?.players?.[partnerUid]?.isReady)
-    : localFriendReady;
-
-  const toggleUserReady = async () => {
-    playReadySound();
-    if (roomCode) {
-      await setPlayerReady(roomCode, !isUserReady);
-    } else {
-      setLocalUserReady((prev) => !prev);
-    }
-  };
-
-  const toggleFriendReady = async () => {
-    if (roomCode && partnerUid) {
-      await setPlayerReady(roomCode, !isFriendReady, partnerUid);
-    } else {
-      setLocalFriendReady((prev) => !prev);
-    }
-  };
-
-  const [nudgeCooldown, setNudgeCooldown] = useState<number>(0);
-  const isNudgeDisabled = nudgeCooldown > 0;
+  // 1. DEFAULT STATE: BOTH READY
+  const [isUserReady, setIsUserReady] = useState<boolean>(true);
+  const [isFriendReady, setIsFriendReady] = useState<boolean>(true);
+  const [isNudgeDisabled, setIsNudgeDisabled] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showLeaveModal, setShowLeaveModal] = useState<boolean>(false);
   const [showAllSettingsModal, setShowAllSettingsModal] = useState<boolean>(false);
-  const [isChipsExpanded, setIsChipsExpanded] = useState<boolean>(false);
 
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const nudgeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Auto-advance to countdown if game started in room
-  useEffect(() => {
-    if (room?.gameState?.status === 'countdown') {
-      if (onStartGame) {
-        onStartGame();
-      } else {
-        navigate('/countdown');
-      }
-    }
-  }, [room?.gameState?.status, onStartGame, navigate]);
-
-  // Cooldown timer for Nudge (rate limit: 1 per 30s)
-  useEffect(() => {
-    if (nudgeCooldown <= 0) return;
-    const timer = setInterval(() => {
-      setNudgeCooldown((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [nudgeCooldown]);
-
-  // Handle Nudge (only active while friend is NOT ready, rate limited 30s)
-  const handleNudge = async () => {
-    if (nudgeCooldown > 0 || isFriendReady) return;
+  // Handle Nudge (only active while friend is NOT ready)
+  const handleNudge = () => {
+    if (isNudgeDisabled || isFriendReady) return;
     playNudgeSound();
-    setNudgeCooldown(30);
-    showToast(`Nudge sent to ${friendName}! 👋`);
-    if (roomCode && partnerUid) {
-      await sendRoomNudge(roomCode, partnerUid);
-    }
-  };
+    setIsNudgeDisabled(true);
+    showToast('Nudged!');
 
-  // Incoming nudge toast & haptic
-  const lastNudgeTimeRef = useRef<number>(0);
-  useEffect(() => {
-    if (!room?.nudge || !user) return;
-    if (room.nudge.toUid === user.uid && room.nudge.timestamp > lastNudgeTimeRef.current) {
-      lastNudgeTimeRef.current = room.nudge.timestamp;
-      if (Date.now() - room.nudge.timestamp < 10000) {
-        triggerHaptic(30);
-        playNudgeSound();
-        showToast(`${friendName} nudged you to ready up! 👋`);
-      }
-    }
-  }, [room?.nudge, user, friendName]);
+    if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
+    nudgeTimerRef.current = setTimeout(() => {
+      setIsNudgeDisabled(false);
+    }, 5000);
+  };
 
   const showToast = (msg: string) => {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     setToastMessage(msg);
     toastTimeoutRef.current = setTimeout(() => {
       setToastMessage(null);
-    }, 2500);
+    }, 2200);
   };
 
-  // Main Button Action logic
-  const handleMainButtonClick = async () => {
+  // 2. Button Action logic for all 4 states
+  const handleMainButtonClick = () => {
     if (isUserReady && isFriendReady) {
-      if (!isHost) return;
+      // Both ready -> Start game
       playReadySound();
-      if (roomCode) {
-        await startRoomGame(roomCode, gameSettings);
-      }
       if (onStartGame) {
         onStartGame();
       } else {
-        navigate('/countdown');
+        navigate('/guess');
       }
       return;
     }
 
     if (isUserReady && !isFriendReady) {
-      // Cancel ready
+      // I'm ready, friend not -> Cancel ready
       playTapSound();
-      if (roomCode) {
-        await setPlayerReady(roomCode, false);
-      } else {
-        setLocalUserReady(false);
-      }
+      setIsUserReady(false);
       return;
     }
 
-    // Ready up
+    // Neither ready OR Friend ready, I'm not -> I'm ready
     playReadySound();
-    if (roomCode) {
-      await setPlayerReady(roomCode, true);
-    } else {
-      setLocalUserReady(true);
-    }
+    setIsUserReady(true);
   };
+
+  // Simulation control removed
 
   const handleBackClick = () => {
     if (onBack) {
@@ -291,18 +180,13 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   };
 
   const handleChangeSettingsClick = () => {
-    if (!isHost) {
-      showToast('Only the host can change game settings.');
-      return;
-    }
     triggerHaptic(10);
     setShowAllSettingsModal(true);
     onChangeSettings?.();
   };
 
-  const handleConfirmLeave = async () => {
+  const handleConfirmLeave = () => {
     setShowLeaveModal(false);
-    await leaveDuo();
     if (onLeave) {
       onLeave();
     } else {
@@ -359,8 +243,8 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   }, [blackChips, creamChips]);
 
   const shouldTruncate = allChips.length > 5;
-  const displayedChips = (!isChipsExpanded && shouldTruncate) ? allChips.slice(0, 4) : allChips;
-  const hiddenCount = allChips.length - 4;
+  const displayedChips = shouldTruncate ? allChips.slice(0, 4) : allChips;
+  const hiddenCount = allChips.length - displayedChips.length;
 
   // Dynamic Measurement of Game Chips container height
   const chipsRef = useRef<HTMLDivElement | null>(null);
@@ -529,7 +413,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   // Subtitle text based on exact 4 states
   const subtitleText = useMemo(() => {
     if (isUserReady && isFriendReady) {
-      return isHost ? "Both ready. Tap Start game!" : `Both ready. Waiting for host to start...`;
+      return "Both ready. Let's go!";
     }
     if (isUserReady && !isFriendReady) {
       return `Waiting for ${friendName} to get ready.`;
@@ -538,18 +422,18 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
       return `${friendName} is ready. Your turn!`;
     }
     return `Waiting for you and ${friendName} to get ready.`;
-  }, [isUserReady, isFriendReady, friendName, isHost]);
+  }, [isUserReady, isFriendReady, friendName]);
 
   // Main button text based on exact 4 states
   const mainButtonText = useMemo(() => {
     if (isUserReady && isFriendReady) {
-      return isHost ? 'Start game' : 'Waiting for host...';
+      return 'Start game';
     }
     if (isUserReady && !isFriendReady) {
       return 'Cancel ready';
     }
     return "I'm ready";
-  }, [isUserReady, isFriendReady, isHost]);
+  }, [isUserReady, isFriendReady]);
 
   // Presets for debug bar
   const PRESETS = [
@@ -1153,11 +1037,11 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
               )
             )}
 
-            {shouldTruncate && !isChipsExpanded && (
+            {shouldTruncate && (
               <div
                 onClick={() => {
                   triggerHaptic(10);
-                  setIsChipsExpanded(true);
+                  setShowAllSettingsModal(true);
                 }}
                 style={{
                   height: '34.3px',
@@ -1179,35 +1063,6 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
                 className="active:scale-95 transition-transform hover:bg-[#DCD0B8]"
               >
                 {`+${hiddenCount} more...`}
-              </div>
-            )}
-
-            {shouldTruncate && isChipsExpanded && (
-              <div
-                onClick={() => {
-                  triggerHaptic(10);
-                  setIsChipsExpanded(false);
-                }}
-                style={{
-                  height: '34.3px',
-                  borderRadius: '34.3px',
-                  backgroundColor: '#EAE1CE',
-                  color: '#17181B',
-                  padding: '0 16px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontFamily: "'Nunito', sans-serif",
-                  fontWeight: 800,
-                  fontSize: '13px',
-                  lineHeight: '1',
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0,
-                  cursor: 'pointer',
-                }}
-                className="active:scale-95 transition-transform hover:bg-[#DCD0B8]"
-              >
-                Show less
               </div>
             )}
           </div>
@@ -1706,7 +1561,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
               <div className="flex flex-col items-center">
                 <div
                   className="relative cursor-pointer transition-transform hover:scale-105 active:scale-95"
-                  onClick={toggleFriendReady}
+                  onClick={() => setIsFriendReady((r) => !r)}
                   style={{
                     width: 'calc(170 * var(--u))',
                     height: 'calc(170 * var(--u))',
@@ -1844,12 +1699,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
         isOpen={showAllSettingsModal}
         onClose={() => setShowAllSettingsModal(false)}
         settings={gameSettings}
-        onUpdateSettings={async (newSettings) => {
-          setGameSettings(newSettings);
-          if (roomCode) {
-            await updateRoomSettings(roomCode, newSettings);
-          }
-        }}
+        onUpdateSettings={setGameSettings}
       />
 
       {/* ---------------- LEAVE MODAL ---------------- */}
@@ -1954,16 +1804,16 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
             </span>
             <div className="flex gap-2">
               <button
-                onClick={toggleUserReady}
+                onClick={() => setIsUserReady((r) => !r)}
                 className="px-2 py-0.5 rounded bg-blue-600 text-white font-sans text-[10px]"
               >
-                Toggle {currentUser.name} ({isUserReady ? 'Ready' : 'Not ready'})
+                Toggle Alex ({isUserReady ? 'Ready' : 'Not ready'})
               </button>
               <button
-                onClick={toggleFriendReady}
+                onClick={() => setIsFriendReady((r) => !r)}
                 className="px-2 py-0.5 rounded bg-green-600 text-white font-sans text-[10px]"
               >
-                Toggle {friendName} ({isFriendReady ? 'Ready' : 'Waiting'})
+                Toggle Sam ({isFriendReady ? 'Ready' : 'Waiting'})
               </button>
             </div>
           </div>

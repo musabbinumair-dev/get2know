@@ -3,7 +3,7 @@ import { DesktopLanding } from '../components/DesktopLanding';
 import { playReadySound, playTapSound } from '../lib/soundEffects';
 
 interface WelcomeScreenProps {
-  onGetStarted?: () => void | Promise<void>;
+  onGetStarted?: () => void;
   onContinueWithGoogle?: () => Promise<void>;
   onJoinCode?: () => void;
 }
@@ -14,7 +14,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onJoinCode,
 }) => {
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const [isStarting, setIsStarting] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [signInError, setSignInError] = useState<string | null>(null);
 
@@ -447,21 +446,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           {/* ── 12. "GET STARTED" BUTTON: 304x48 pill at (43, buttonTopY), solid deep black #191B20 ── */}
           <button
             type="button"
-            disabled={isStarting || isSigningIn}
-            onClick={async () => {
-              if (isStarting || isSigningIn) return;
-              playReadySound();
-              setIsStarting(true);
-              try {
-                if (onGetStarted) {
-                  await Promise.resolve(onGetStarted());
-                }
-              } catch (err) {
-                console.warn('Get started error:', err);
-              } finally {
-                setIsStarting(false);
-              }
-            }}
+            onClick={onGetStarted}
             className="btn-press cursor-pointer hover:bg-[#282a30] transition-colors focus:outline-none select-none"
             style={{
               position: 'absolute',

@@ -1,10 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Screen } from '../components/Screen';
 import { PillButton } from '../components/PillButton';
 import { useGameSession } from '../services/gameSessionContext';
 import { useSession } from '../services/sessionContext';
 import { getAvatarFromProfile } from './CountdownScreen';
-import { addRoomMemory, MemoryEntry } from '../services/roomService';
 
 export const FinalResultScreen: React.FC = () => {
   const {
@@ -13,31 +12,34 @@ export const FinalResultScreen: React.FC = () => {
     totalRounds,
     matchesCount,
     history,
-    rematchVotes,
     restartGame,
     exitGame,
   } = useGameSession();
 
-  const { profile, partnerProfile, user, room, roomCode } = useSession();
+  const { profile } = useSession();
   const [toastMessage, setToastMessage] = useState<string>('');
 
-  const partnerUid = useMemo(() => {
-    return room?.playerUids?.find((id) => id !== user?.uid);
-  }, [room?.playerUids, user?.uid]);
-
-  const hasIVoted = Boolean(user && rematchVotes?.[user.uid]);
-  const hasFriendVoted = Boolean(partnerUid && rematchVotes?.[partnerUid]);
-
   // Get player profiles
-  const myName = profile?.name?.trim() || 'You';
+  const myName = profile?.name && profile.name !== 'Player 1' ? profile.name : 'Alex';
   const myAvatarId = profile?.avatarId ?? 1;
   const myColor = profile?.color || 'salmon';
 
-  const friendData = partnerProfile || {
-    name: 'Your friend',
-    avatarId: 2,
-    color: 'teal',
-  };
+  const friendData = (() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('partner_profile');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          return {
+            name: parsed.name && parsed.name !== 'Alex' ? parsed.name : 'Sam',
+            avatarId: parsed.avatarId ?? 2,
+            color: parsed.color || 'teal',
+          };
+        } catch {}
+      }
+    }
+    return { name: 'Sam', avatarId: 2, color: 'teal' };
+  })();
 
   const myAvatar = getAvatarFromProfile(myAvatarId, myColor);
   const friendAvatar = getAvatarFromProfile(friendData.avatarId, friendData.color);
@@ -52,35 +54,23 @@ export const FinalResultScreen: React.FC = () => {
     Math.min(100, Math.max(50, ((matchesCount * 2 + (myScore > 0 ? 3 : 0)) / (totalRounds * 2)) * 100))
   );
 
-  const handleSaveHighlights = async () => {
-    const memoryItem: MemoryEntry = {
-      id: `hl-${Date.now()}`,
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      category: 'Game Highlights',
-      color: 'yellow',
-      cardBg: '#FAF3DF',
-      question: `Completed ${totalRounds} rounds of Duo Play!`,
-      p1Answer: `${myScore} pts`,
-      p2Answer: `${friendScore} pts`,
-      p1Name: myName,
-      p2Name: friendData.name,
-      p1AvatarId: myAvatarId,
-      p2AvatarId: friendData.avatarId,
-      p1Color: myColor,
-      p2Color: friendData.color,
-      isMatched: isTie || isMeWinner,
-      createdAt: new Date().toISOString(),
-    };
-
-    if (roomCode) {
-      await addRoomMemory(roomCode, memoryItem);
-    }
-
+  const handleSaveHighlights = () => {
+    // Save to memory cards in localStorage
     if (typeof window !== 'undefined') {
       try {
         const savedCards = localStorage.getItem('game_memory_cards');
         const cards = savedCards ? JSON.parse(savedCards) : [];
-        localStorage.setItem('game_memory_cards', JSON.stringify([memoryItem, ...cards]));
+        const newHighlight = {
+          id: `hl-${Date.now()}`,
+          date: 'TODAY',
+          category: 'Game Highlights',
+          question: `Completed ${totalRounds} rounds of Duo Play!`,
+          player1Answer: `${myScore} pts`,
+          player2Answer: `${friendScore} pts`,
+          isMatch: true,
+          syncScore: `${syncPercentage}%`,
+        };
+        localStorage.setItem('game_memory_cards', JSON.stringify([newHighlight, ...cards]));
       } catch {}
     }
 
@@ -273,14 +263,9 @@ export const FinalResultScreen: React.FC = () => {
           <PillButton
             onClick={restartGame}
             variant="black"
-            className="w-full h-[50px] text-[16.5px] font-black tracking-tight shadow-md active:scale-98 disabled:opacity-80"
-            disabled={hasIVoted}
+            className="w-full h-[50px] text-[16.5px] font-black tracking-tight shadow-md active:scale-98"
           >
-            {hasIVoted
-              ? `Waiting for ${friendData.name}… (1/2)`
-              : hasFriendVoted
-              ? `${friendData.name} wants rematch! Accept 🔄`
-              : 'Rematch 🔄'}
+            Rematch 🔄
           </PillButton>
 
           {/* Save Highlights Button */}

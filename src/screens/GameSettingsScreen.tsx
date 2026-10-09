@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSession } from '../services/sessionContext';
-import { updateRoomSettings } from '../services/roomService';
 
 interface GameSettingsScreenProps {
   onBack: () => void;
@@ -24,8 +22,6 @@ interface DebugItem {
 }
 
 export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack, onCreateGame }) => {
-  const { partnerProfile, room, roomCode } = useSession();
-  const friendName = partnerProfile?.name?.trim() || 'Your partner';
   // 1) Viewport tracking
   const [viewport, setViewport] = useState({
     w: typeof window !== 'undefined' ? window.innerWidth : 390,
@@ -85,46 +81,15 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack, 
     new URLSearchParams(window.location.search).get('debug') === '1';
 
   // State
-  const [selectedMode, setSelectedMode] = useState<'know-me' | 'trivia' | 'mixed'>(() => {
-    return (room?.settings?.mode as 'know-me' | 'trivia' | 'mixed') || 'trivia';
-  });
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(() => {
-    return room?.settings?.categories && room.settings.categories.length > 0
-      ? room.settings.categories
-      : ['Food', 'Movies', 'Music'];
-  });
-  const [difficulty, setDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>(() => {
-    return room?.settings?.difficulty || 'Medium';
-  });
-  const [timer, setTimer] = useState<'10s' | '20s' | '30s' | 'Off'>(() => {
-    return room?.settings?.timer || '20s';
-  });
-  const [rounds, setRounds] = useState<5 | 10 | 15>(() => {
-    return (room?.settings?.rounds as 5 | 10 | 15) || 10;
-  });
-  const [speedBonus, setSpeedBonus] = useState(() => {
-    return room?.settings?.speedBonus ?? true;
-  });
-  const [soundEffects, setSoundEffects] = useState(() => {
-    return room?.settings?.soundEffects ?? true;
-  });
+  const [selectedMode, setSelectedMode] = useState<'know-me' | 'trivia' | 'mixed'>('trivia');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(['Food', 'Movies', 'Music']);
+  const [difficulty, setDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
+  const [timer, setTimer] = useState<'10s' | '20s' | '30s' | 'Off'>('20s');
+  const [rounds, setRounds] = useState<5 | 10 | 15>(10);
+  const [speedBonus, setSpeedBonus] = useState(true);
+  const [soundEffects, setSoundEffects] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Sync if room settings update from server
-  useEffect(() => {
-    if (room?.settings) {
-      if (room.settings.mode) setSelectedMode(room.settings.mode);
-      if (room.settings.categories && room.settings.categories.length > 0) {
-        setSelectedCategories(room.settings.categories);
-      }
-      if (room.settings.difficulty) setDifficulty(room.settings.difficulty);
-      if (room.settings.timer) setTimer(room.settings.timer);
-      if (room.settings.rounds) setRounds(room.settings.rounds as 5 | 10 | 15);
-      if (typeof room.settings.speedBonus === 'boolean') setSpeedBonus(room.settings.speedBonus);
-      if (typeof room.settings.soundEffects === 'boolean') setSoundEffects(room.settings.soundEffects);
-    }
-  }, [room?.settings]);
 
   // Category chip animation
   const [animatingChip, setAnimatingChip] = useState<string | null>(null);
@@ -139,17 +104,7 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack, 
     );
   };
 
-  const handleCreateGame = async () => {
-    // Rule: At least 1 category must be selected
-    if (selectedCategories.length === 0) {
-      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-      setToastMessage('Please select at least 1 category');
-      toastTimeoutRef.current = setTimeout(() => {
-        setToastMessage(null);
-      }, 2500);
-      return;
-    }
-
+  const handleCreateGame = () => {
     const settings = {
       mode: selectedMode,
       categories: selectedCategories,
@@ -159,24 +114,17 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack, 
       speedBonus,
       soundEffects,
     };
-
     if (typeof window !== 'undefined') {
       localStorage.setItem('gty_game_settings', JSON.stringify(settings));
     }
-
-    // Host updates settings in Firestore room
-    if (roomCode) {
-      await updateRoomSettings(roomCode, settings);
-    }
-
     if (onCreateGame) {
       onCreateGame(settings);
     } else {
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-      setToastMessage('Settings saved');
+      setToastMessage('Lobby coming soon');
       toastTimeoutRef.current = setTimeout(() => {
         setToastMessage(null);
-      }, 2000);
+      }, 2500);
     }
   };
 
@@ -538,7 +486,7 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack, 
           s={s}
           k={k}
         >
-          {`You're the host. ${friendName} sees this in the lobby.`}
+          You're the host. Sam sees this in the lobby.
         </FitText>
 
         {/* =========================================================================

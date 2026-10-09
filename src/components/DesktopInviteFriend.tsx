@@ -3,9 +3,7 @@ import { UserProfile } from '../screens/CreateProfileScreen';
 
 interface DesktopInviteFriendProps {
   userProfile: UserProfile;
-  partnerProfile?: UserProfile | null;
-  code?: string;
-  inviteCode?: string;
+  code: string;
   onBack: () => void;
   onFriendJoined?: () => void;
   onEnterGame?: () => void;
@@ -15,19 +13,16 @@ interface DesktopInviteFriendProps {
 
 export const DesktopInviteFriend: React.FC<DesktopInviteFriendProps> = ({
   userProfile,
-  partnerProfile,
-  code: propCode,
-  inviteCode,
+  code,
   onBack,
   onFriendJoined,
   onEnterGame,
   forcedWidth,
   forcedHeight,
 }) => {
-  const code = inviteCode || propCode || 'ABC-123';
   const [copiedCode, setCopiedCode] = useState(false);
   const [sharedLink, setSharedLink] = useState(false);
-  const friendJoined = Boolean(partnerProfile);
+  const [friendJoined, setFriendJoined] = useState(false);
 
   // Viewport tracking
   const [rawViewport, setRawViewport] = useState({
@@ -860,7 +855,7 @@ export const DesktopInviteFriend: React.FC<DesktopInviteFriendProps> = ({
                       letterSpacing: '-0.01em',
                     }}
                   >
-                    {friendJoined && partnerProfile?.name ? partnerProfile.name : 'Your friend'}
+                    {friendJoined ? 'Maya' : 'Your friend'}
                   </span>
                 </div>
               </div>
@@ -915,6 +910,40 @@ export const DesktopInviteFriend: React.FC<DesktopInviteFriendProps> = ({
                 </button>
               )}
             </div>
+          </div>
+
+          {/* ── FOOTER SIMULATION PILL: Centered at bottom ── */}
+          <div
+            style={{
+              position: 'absolute',
+              left: '720px',
+              bottom: '50px',
+              transform: 'translateX(-50%)',
+              zIndex: 30,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setFriendJoined((prev) => !prev)}
+              className="cursor-pointer hover:bg-white/50 active:scale-95 transition-all focus:outline-none"
+              style={{
+                fontFamily: "'Nunito', sans-serif",
+                fontWeight: 700,
+                fontSize: '17px',
+                color: '#24324F',
+                backgroundColor: 'rgba(255, 255, 255, 0.35)',
+                border: 'none',
+                padding: '12px 28px',
+                borderRadius: '9999px',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              <span>⚡</span>
+              <span>{friendJoined ? 'Reset simulation' : 'Simulate friend joined'}</span>
+            </button>
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useSession } from '../services/sessionContext';
+import { useGameSession } from '../services/gameSessionContext';
 import { usePageVisible } from '../context/PageVisibilityContext';
 import { AVATAR_OPTIONS } from '../screens/CreateProfileScreen';
 import { playCountdownTick, playCountdownGo } from '../lib/soundEffects';
@@ -331,9 +332,7 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
   initialRounds,
 }) => {
   const location = useLocation();
-  const { profile, partnerProfile, room } = useSession();
-  const serverStartTime = room?.gameState?.countdownStartTime;
-  const localStartRef = useRef<number>(Date.now());
+  const { profile } = useSession();
 
   // ── URL PARAMETERS FOR DEBUG MODE: ONLY SHOW DEV BAR IF ?debug=1 ──
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
@@ -344,7 +343,7 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
   const [me, setMe] = useState(() => {
     if (initialMe) return initialMe;
     return {
-      name: profile?.name?.trim() || 'You',
+      name: profile?.name && profile.name !== 'Player 1' ? profile.name : 'Alex',
       avatarId: profile?.avatarId ?? 1,
       color: profile?.color || 'salmon',
     };
@@ -352,19 +351,12 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
 
   const [friend, setFriend] = useState(() => {
     if (initialFriend) return initialFriend;
-    if (partnerProfile) {
-      return {
-        name: partnerProfile.name,
-        avatarId: partnerProfile.avatarId ?? 2,
-        color: partnerProfile.color || 'teal',
-      };
-    }
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('partner_profile');
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          if (parsed.name) {
+          if (parsed.name && parsed.name !== 'Alex') {
             return {
               name: parsed.name,
               avatarId: parsed.avatarId ?? 2,
@@ -374,21 +366,11 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
         } catch {}
       }
     }
-    return { name: 'Your friend', avatarId: 2, color: 'teal' };
+    return { name: 'Sam', avatarId: 2, color: 'teal' };
   });
 
   const [mode, setMode] = useState<'Trivia' | 'Know Me' | 'Mixed'>(() => {
     if (initialMode) return initialMode;
-    if (room?.gameState?.mode) {
-      if (room.gameState.mode === 'know-me') return 'Know Me';
-      if (room.gameState.mode === 'mixed') return 'Mixed';
-      return 'Trivia';
-    }
-    if (room?.settings?.mode) {
-      if (room.settings.mode === 'know-me') return 'Know Me';
-      if (room.settings.mode === 'mixed') return 'Mixed';
-      return 'Trivia';
-    }
     if (typeof window !== 'undefined') {
       const savedSettings = localStorage.getItem('gty_game_settings');
       if (savedSettings) {
@@ -405,8 +387,6 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
 
   const [rounds, setRounds] = useState<number>(() => {
     if (initialRounds) return initialRounds;
-    if (room?.gameState?.totalRounds) return room.gameState.totalRounds;
-    if (room?.settings?.rounds) return room.settings.rounds;
     if (typeof window !== 'undefined') {
       const savedSettings = localStorage.getItem('gty_game_settings');
       if (savedSettings) {
@@ -513,20 +493,15 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
     return false;
   });
 
-  const navigate = useNavigate();
+  const { startNewGame } = useGameSession();
 
   const handleCountdownDone = useCallback(() => {
     if (onCountdownComplete) {
       onCountdownComplete();
-      return;
-    }
-    const rType = room?.gameState?.roundType || (mode === 'Know Me' ? 'know-me' : 'trivia');
-    if (rType === 'know-me') {
-      navigate('/today-question');
     } else {
-      navigate('/trivia-question');
+      startNewGame(mode, rounds);
     }
-  }, [onCountdownComplete, room?.gameState?.roundType, mode, navigate]);
+  }, [onCountdownComplete, startNewGame, mode, rounds]);
 
   const isPageVisible = usePageVisible();
   const [countdownStarted, setCountdownStarted] = useState<boolean>(false);
@@ -536,30 +511,26 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
     if (isPageVisible && !countdownStarted) {
       setStep(0);
       setCountdownStarted(true);
-      localStartRef.current = Date.now();
     }
   }, [isPageVisible, countdownStarted]);
 
-  // Synchronized step advancement timer (0.8s per step) using serverStartTime if present
+  // Step advancement timer (0.8s per step) - strictly starts ONLY when page is visible and loader is completely hidden
   useEffect(() => {
     if (isPaused || !isPageVisible || !countdownStarted) return;
 
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const startTime = serverStartTime || localStartRef.current;
-      const elapsed = Math.max(0, now - startTime);
-      const calculatedStep = Math.min(3, Math.floor(elapsed / 800));
-
-      setStep(calculatedStep);
-
-      if (elapsed >= 3200) {
-        clearInterval(interval);
+    if (step < 3) {
+      const timer = setTimeout(() => {
+        setStep((prev) => prev + 1);
+      }, 800);
+      return () => clearTimeout(timer);
+    } else {
+      // Step 3 is "Go!"
+      const finishTimer = setTimeout(() => {
         handleCountdownDone();
-      }
-    }, 80);
-
-    return () => clearInterval(interval);
-  }, [serverStartTime, isPaused, isPageVisible, countdownStarted, handleCountdownDone]);
+      }, 800);
+      return () => clearTimeout(finishTimer);
+    }
+  }, [step, isPaused, isPageVisible, countdownStarted, handleCountdownDone]);
 
   // Sound effects on countdown steps (3, 2, 1, Go!)
   useEffect(() => {
@@ -586,8 +557,8 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
   const isDefaultPillText = mode === 'Trivia' && rounds === 10;
   const pillText = `${mode} · ${rounds} rounds`;
 
-  const isDefaultMeName = me.name === 'You';
-  const isDefaultFriendName = friend.name === 'Your friend';
+  const isDefaultMeName = me.name === 'Alex';
+  const isDefaultFriendName = friend.name === 'Sam';
   const displayMeName = me.name.length > 10 ? me.name.slice(0, 10) + '…' : me.name;
   const displayFriendName = friend.name.length > 10 ? friend.name.slice(0, 10) + '…' : friend.name;
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Screen } from '../components/Screen';
 import {
   MemoryCard,
@@ -9,7 +9,6 @@ import {
 } from '../components/MemoryCard';
 import { BottomNav, NavTab } from '../components/BottomNav';
 import { UserProfile } from './CreateProfileScreen';
-import { useSession } from '../services/sessionContext';
 
 export interface MemoryWallScreenProps {
   onNavigateTab?: (tab: NavTab) => void;
@@ -19,11 +18,101 @@ export interface MemoryWallScreenProps {
 
 export type FilterCategory = 'all' | 'funny' | 'deep' | 'matched';
 
-export const INITIAL_CARDS: MemoryCardProps[] = [];
+export const INITIAL_CARDS: MemoryCardProps[] = [
+  {
+    id: 1,
+    date: 'May 18',
+    color: 'pink',
+    question: 'Worst food you’ve tried?',
+    p1Answer: 'Fried crickets',
+    p2Answer: 'Anchovies',
+    matched: true,
+    reactions: 'laugh',
+    category: 'funny',
+  },
+  {
+    id: 2,
+    date: 'May 16',
+    color: 'blue',
+    question: 'A fear you’d never tell anyone?',
+    p1Answer: 'Deep water',
+    p2Answer: 'Being forgotten',
+    deco: 'moon',
+    reactions: 'heart',
+    category: 'deep',
+  },
+  {
+    id: 3,
+    date: 'May 14',
+    color: 'yellow',
+    question: 'Your dream city?',
+    p1Answer: 'Tokyo',
+    p2Answer: 'Lisbon',
+    deco: 'star',
+    reactions: 'smile',
+    category: 'other',
+  },
+  {
+    id: 4,
+    date: 'May 12',
+    color: 'pink',
+    question: 'What’s your biggest guilty pleasure?',
+    p1Answer: 'Anime marathons',
+    p2Answer: 'Late night snacks',
+    matched: true,
+    reactions: 'smirk',
+    category: 'funny',
+  },
+  {
+    id: 5,
+    date: 'May 10',
+    color: 'blue',
+    question: 'If you could have any superpower, what would it be?',
+    p1Answer: 'Teleportation',
+    p2Answer: 'Mind reading',
+    deco: 'cross',
+    reactions: 'surprised',
+    category: 'funny',
+  },
+  {
+    id: 6,
+    date: 'May 08',
+    color: 'yellow',
+    question: 'What’s your ideal weekend?',
+    p1Answer: 'Gaming + food',
+    p2Answer: 'Nature + chill',
+    deco: 'heart',
+    reactions: 'heart',
+    category: 'other',
+  },
+  {
+    id: 7,
+    date: 'May 06',
+    color: 'pink',
+    question: 'Which fictional character are you most like?',
+    p1Answer: 'Luffy',
+    p2Answer: 'Gojo',
+    deco: 'star',
+    decoOffset: { top: 13, w: 31 },
+    reactions: 'laugh',
+    category: 'funny',
+  },
+  {
+    id: 8,
+    date: 'May 04',
+    color: 'olive',
+    question: 'What’s something you think about more than you should?',
+    p1Answer: 'The future',
+    p2Answer: 'Past mistakes',
+    deco: 'moon',
+    reactions: 'cry',
+    category: 'deep',
+  },
+];
 
 export const MemoryWallScreen: React.FC<MemoryWallScreenProps> = ({
   onNavigateTab,
-  cards: propCards = [],
+  cards: propCards = INITIAL_CARDS,
   userProfile,
 }) => {
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('all');
@@ -61,37 +150,7 @@ export const MemoryWallScreen: React.FC<MemoryWallScreenProps> = ({
     }
   }, [propCards]);
 
-  const { room } = useSession();
-
-  const cards = useMemo(() => {
-    const list = [...localCards];
-    if (room?.memories && room.memories.length > 0) {
-      room.memories.forEach((mem) => {
-        if (!list.some((c) => String(c.id) === String(mem.id))) {
-          list.unshift({
-            id: mem.id,
-            category: mem.category,
-            color: mem.color as any,
-            cardBg: mem.cardBg,
-            date: mem.date,
-            question: mem.question,
-            p1Answer: mem.p1Answer,
-            p2Answer: mem.p2Answer,
-            p1Name: mem.p1Name,
-            p2Name: mem.p2Name,
-            p1AvatarId: mem.p1AvatarId,
-            p2AvatarId: mem.p2AvatarId,
-            p1Color: mem.p1Color,
-            p2Color: mem.p2Color,
-            matched: mem.isMatched,
-            isMatched: mem.isMatched,
-            reactions: mem.reactions,
-          });
-        }
-      });
-    }
-    return list;
-  }, [localCards, room?.memories]);
+  const cards = localCards;
 
   // Active user profile (from prop or localStorage)
   const [activeProfile, setActiveProfile] = useState<UserProfile>(() => {
@@ -280,7 +339,7 @@ export const MemoryWallScreen: React.FC<MemoryWallScreenProps> = ({
         {filteredCards.length === 0 ? (
           <div className="flex flex-col items-center justify-center pt-24 text-center">
             <span className="text-[15px] font-bold text-[#17181B]/55">
-              No memories yet
+              No memories here yet
             </span>
           </div>
         ) : (

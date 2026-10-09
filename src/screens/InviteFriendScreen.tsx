@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Screen } from '../components/Screen';
 import { UserProfile } from './CreateProfileScreen';
 import { DesktopInviteFriend } from '../components/DesktopInviteFriend';
-import { ProfileAvatar } from '../components/ProfileAvatar';
-import { useSession } from '../services/sessionContext';
 
-export interface InviteFriendScreenProps {
+interface InviteFriendScreenProps {
   userProfile: UserProfile;
   inviteCode?: string;
   onBack: () => void;
@@ -13,17 +11,25 @@ export interface InviteFriendScreenProps {
   onEnterGame?: () => void;
 }
 
+export function generateInviteCode(): string {
+  // Characters avoiding ambiguous ones: 0/O, 1/I/L
+  const chars = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+  let part1 = '';
+  let part2 = '';
+  for (let i = 0; i < 3; i++) {
+    part1 += chars.charAt(Math.floor(Math.random() * chars.length));
+    part2 += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `${part1}-${part2}`;
+}
+
 export const InviteFriendScreen: React.FC<InviteFriendScreenProps> = ({
   userProfile,
-  inviteCode: propInviteCode,
+  inviteCode: initialCode,
   onBack,
   onFriendJoined,
   onEnterGame,
 }) => {
-  const { roomCode, partnerProfile, friendJoined: sessionFriendJoined } = useSession();
-  const code = roomCode || propInviteCode || 'ABC-123';
-  const friendJoined = sessionFriendJoined || Boolean(partnerProfile);
-
   // Viewport tracking (using window.visualViewport if available)
   const [viewport, setViewport] = useState({
     width: typeof window !== 'undefined' ? (window.visualViewport?.width || window.innerWidth) : 390,
@@ -37,13 +43,18 @@ export const InviteFriendScreen: React.FC<InviteFriendScreenProps> = ({
       setViewport({ width: vw, height: vh });
     };
 
+    updateViewport();
     window.addEventListener('resize', updateViewport);
+    window.addEventListener('orientationchange', updateViewport);
+
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', updateViewport);
       window.visualViewport.addEventListener('scroll', updateViewport);
     }
+
     return () => {
       window.removeEventListener('resize', updateViewport);
+      window.removeEventListener('orientationchange', updateViewport);
       if (window.visualViewport) {
         window.visualViewport.removeEventListener('resize', updateViewport);
         window.visualViewport.removeEventListener('scroll', updateViewport);
@@ -51,7 +62,7 @@ export const InviteFriendScreen: React.FC<InviteFriendScreenProps> = ({
     };
   }, []);
 
-  // Check URL frame parameter e.g. ?frame=1440x900
+  // Frame parameter support e.g. ?frame=1440x900
   const frameParam =
     typeof window !== 'undefined'
       ? new URLSearchParams(window.location.search).get('frame')
@@ -69,8 +80,10 @@ export const InviteFriendScreen: React.FC<InviteFriendScreenProps> = ({
   const isDesktopLandscape =
     effectiveWidth >= 900 && effectiveWidth / effectiveHeight >= 1.15;
 
+  const [code] = useState<string>(() => initialCode || generateInviteCode());
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
   const [sharedLink, setSharedLink] = useState<boolean>(false);
+  const [friendJoined, setFriendJoined] = useState<boolean>(false);
 
   // Full-bleed periwinkle background on body & html
   useEffect(() => {
@@ -89,38 +102,35 @@ export const InviteFriendScreen: React.FC<InviteFriendScreenProps> = ({
     try {
       await navigator.clipboard.writeText(code);
       setCopiedCode(true);
-      setTimeout(() => setCopiedCode(false), 2000);
+      setTimeout(() => setCopiedCode(false), 1500);
     } catch {
       setCopiedCode(true);
-      setTimeout(() => setCopiedCode(false), 2000);
+      setTimeout(() => setCopiedCode(false), 1500);
     }
   };
 
-  // Share link handler with ?join=CODE
+  // Share link handler
   const handleShareLink = async () => {
-    const shareUrl = `${window.location.origin}/?join=${code}`;
     const shareData = {
-      title: 'Join my Duo on Get-to-Know-You',
+      title: 'Get-to-Know-You',
       text: `Join me on Get-to-Know-You! Code: ${code}`,
-      url: shareUrl,
+      url: window.location.href,
     };
 
     if (navigator.share) {
       try {
         await navigator.share(shareData);
-        setSharedLink(true);
-        setTimeout(() => setSharedLink(false), 2000);
       } catch {
         // User dismissed
       }
     } else {
       try {
-        await navigator.clipboard.writeText(shareUrl);
+        await navigator.clipboard.writeText(shareData.text);
       } catch {
         // Ignored
       }
       setSharedLink(true);
-      setTimeout(() => setSharedLink(false), 2000);
+      setTimeout(() => setSharedLink(false), 1500);
     }
   };
 
@@ -128,8 +138,7 @@ export const InviteFriendScreen: React.FC<InviteFriendScreenProps> = ({
     return (
       <DesktopInviteFriend
         userProfile={userProfile}
-        partnerProfile={partnerProfile}
-        inviteCode={code}
+        code={code}
         onBack={onBack}
         onFriendJoined={onFriendJoined}
         onEnterGame={onEnterGame}
@@ -141,126 +150,194 @@ export const InviteFriendScreen: React.FC<InviteFriendScreenProps> = ({
 
   return (
     <Screen bg="#99B0F7">
-      {/* ── TOP CORNER DECORATIONS (PERIWINKLE BACKGROUND) ── */}
-      {/* Top-Right: Yellow Sun/Spark */}
+      {/* ---------------- DECORATIVE BACKGROUND BLOBS (EXACT MATCH WITH REFERENCE IMAGE) ---------------- */}
+
+      {/* Top-Right: Yellow Starburst (cropped at top right corner) */}
       <div
         className="absolute -top-[16px] -right-[16px] pointer-events-none select-none z-0"
-        style={{ width: '84px', height: '84px' }}
+        style={{ width: '92px', height: '92px' }}
       >
         <img
-          src="/assets/welcome/starburst-yellow-right.png"
+          src="/assets/blobs/starburst-yellow-small.svg"
           alt=""
-          className="w-full h-full object-contain select-none pointer-events-none"
+          className="w-full h-full object-contain rotate-[16deg] select-none pointer-events-none"
           draggable={false}
         />
       </div>
 
-      {/* Top-Left: Pink Spark */}
+      {/* Bottom-Left: 8-Point Yellow Starburst (cropped at left edge) */}
       <div
-        className="absolute -top-[14px] -left-[14px] pointer-events-none select-none z-0"
-        style={{ width: '76px', height: '76px' }}
+        className="absolute bottom-[96px] -left-[28px] pointer-events-none select-none z-0"
+        style={{ width: '92px', height: '92px' }}
       >
         <img
-          src="/assets/welcome/starburst-pink-left.png"
+          src="/assets/blobs/starburst-yellow-small.svg"
           alt=""
-          className="w-full h-full object-contain select-none pointer-events-none"
+          className="w-full h-full object-contain rotate-[10deg] select-none pointer-events-none"
           draggable={false}
         />
       </div>
 
-      {/* ── BOTTOM CORNER DECORATIONS ── */}
-      {/* Bottom-Right: Soft Yellow Deco */}
+      {/* Bottom-Left: Olive 4-Leaf Cross (cropped at bottom left) */}
       <div
-        className="absolute -bottom-[20px] -right-[20px] pointer-events-none select-none z-0"
-        style={{ width: '88px', height: '88px' }}
+        className="absolute -bottom-[22px] left-[26px] pointer-events-none select-none z-0"
+        style={{ width: '84px', height: '88px' }}
       >
         <img
-          src="/assets/welcome/starburst-yellow-right.png"
+          src="/assets/blobs/cross-olive-decorative.svg"
           alt=""
-          className="w-full h-full object-contain select-none pointer-events-none opacity-80"
+          className="w-full h-full object-contain rotate-[-12deg] select-none pointer-events-none"
           draggable={false}
         />
       </div>
 
-      {/* Bottom-Left: Teal/Blue Deco */}
+      {/* Bottom-Right: Soft Pink Heart (cropped at bottom right) */}
       <div
-        className="absolute -bottom-[18px] -left-[18px] pointer-events-none select-none z-0"
-        style={{ width: '82px', height: '82px' }}
+        className="absolute -bottom-[20px] -right-[16px] pointer-events-none select-none z-0"
+        style={{ width: '106px', height: '106px' }}
       >
         <img
-          src="/assets/welcome/starburst-blue-left.png"
+          src="/assets/blobs/heart-pink-small.svg"
           alt=""
-          className="w-full h-full object-contain select-none pointer-events-none opacity-80"
+          className="w-full h-full object-contain rotate-[-8deg] select-none pointer-events-none"
           draggable={false}
         />
       </div>
 
-      {/* ── TOP BAR (Back Button) ── */}
-      <div className="relative z-10 w-full flex items-center justify-between pt-4 pb-1">
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label="Back"
-          className="btn-press w-[40px] h-[40px] flex items-center justify-center rounded-full bg-[#1A1C22]/10 hover:bg-[#1A1C22]/20 text-[#1A1C22] transition-colors cursor-pointer focus:outline-none"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-        </button>
-      </div>
-
-      {/* ── MAIN CONTENT ── */}
-      <div className="relative z-10 w-full flex-1 flex flex-col justify-between items-center py-2">
-        <div className="w-full flex flex-col items-center">
-          {/* Header Title: "Invite your person" */}
-          <h1 className="text-[34px] sm:text-[38px] font-black text-[#1A1C22] tracking-[-0.03em] leading-tight text-center mt-2">
-            Invite your person
-          </h1>
-
-          {/* Subtitle */}
-          <p className="mt-2 text-[16px] text-[#485375] font-semibold text-center max-w-[320px] leading-snug">
-            Share this code so they can join your Duo. It expires in 24 hours.
-          </p>
-
-          {/* Code Card / Pill */}
-          <div className="mt-6 w-full max-w-[342px] bg-[#FAF6EA] rounded-[24px] p-5 flex flex-col items-center shadow-sm border border-[#1A1C22]/10">
-            <span className="text-[12px] font-extrabold uppercase tracking-widest text-[#727D9A]">
-              Your Duo Code
-            </span>
-            <div className="mt-2 flex items-center justify-center font-mono font-black text-[38px] sm:text-[42px] tracking-[0.14em] text-[#1A1C22]">
-              {code}
-            </div>
-
-            {/* Action Buttons: Copy Code & Share Link */}
-            <div className="mt-4 grid grid-cols-2 gap-2.5 w-full">
-              <button
-                type="button"
-                onClick={handleCopyCode}
-                className="btn-press h-[46px] rounded-full font-bold text-[14.5px] bg-[#1A1C22] text-white flex items-center justify-center gap-1.5 cursor-pointer hover:bg-[#2C2F38] transition-all"
+      {/* ---------------- MAIN CONTENT ---------------- */}
+      <div className="relative z-10 flex flex-col justify-between h-full min-h-[100dvh] sm:min-h-0 sm:h-full px-7 pt-9 pb-8 sm:px-8 sm:pt-9 sm:pb-9 select-none">
+        <div>
+          {/* Top Navigation Row: Back Button & Step Dots */}
+          <div className="flex items-center justify-between w-full">
+            {/* Dashed Circular Back Button: 44x44 */}
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label="Back to profile"
+              className="btn-press w-[44px] h-[44px] rounded-full border-[1.8px] border-dashed border-[#1B1D20] flex items-center justify-center hover:bg-[#1B1D20]/5 transition-colors focus:outline-none cursor-pointer"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#1B1D20"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <span>{copiedCode ? '✓ Copied' : 'Copy code'}</span>
-              </button>
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+            </button>
 
-              <button
-                type="button"
-                onClick={handleShareLink}
-                className="btn-press h-[46px] rounded-full font-bold text-[14.5px] bg-[#EBE2CD] text-[#1A1C22] flex items-center justify-center gap-1.5 cursor-pointer hover:bg-[#DFD5BE] transition-all"
-              >
-                <span>{sharedLink ? '✓ Shared' : 'Share link'}</span>
-              </button>
+            {/* Step Dots: Step 1 dashed 14px, Step 2 filled black 14px, gap 9px */}
+            <div className="flex items-center gap-[9px] pr-1">
+              <div className="w-[14px] h-[14px] rounded-full border-[1.6px] border-dashed border-[#1B1D20] box-border" />
+              <div className="w-[14px] h-[14px] rounded-full bg-[#1B1D20]" />
             </div>
           </div>
 
-          {/* ── DUO STATUS SECTION: Both Avatars ── */}
-          <div className="mt-8 flex items-center justify-center gap-6 sm:gap-8">
-            {/* Left Column: You */}
+          {/* Heading Section: Nunito 900 Title + Subtitle */}
+          <div className="mt-5 sm:mt-6">
+            <h1 className="text-[38px] sm:text-[42px] font-black text-[#1A1C22] leading-[1.06] tracking-[-0.035em]">
+              Invite your person
+            </h1>
+            <p className="mt-2 text-[16.5px] sm:text-[17.5px] font-medium text-[#485375] tracking-[-0.01em]">
+              Share this code. Only they can join.
+            </p>
+          </div>
+
+          {/* Cream Code Card (rounded ~38px, Nunito 900 large code, dashed copy button in top right) */}
+          <div className="mt-6 relative w-full max-w-[342px] mx-auto bg-[#FAF6EB] rounded-[38px] px-6 py-8 flex flex-col items-center justify-center min-h-[148px]">
+            {/* Dashed circular copy icon at top-right */}
+            <button
+              type="button"
+              onClick={handleCopyCode}
+              aria-label="Copy invite code"
+              title="Copy code"
+              className="btn-press absolute top-4 right-4 w-[34px] h-[34px] rounded-full border-[1.6px] border-dashed border-[#1B1D20]/35 flex items-center justify-center hover:bg-[#1B1D20]/5 transition-colors focus:outline-none cursor-pointer"
+            >
+              {copiedCode ? (
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#1A1C22"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : (
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#1A1C22"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="9" y="9" width="12" height="12" rx="2" ry="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+              )}
+            </button>
+
+            {/* Large Bold Code Display (e.g. K7X-92P) */}
+            <span className="text-[50px] sm:text-[54px] font-black tracking-[0.015em] text-[#1A1C22] select-all leading-none mt-2">
+              {code}
+            </span>
+          </div>
+
+          {/* Action Pills Row: Copy code & Share link */}
+          <div className="mt-4 flex items-center gap-3.5 w-full max-w-[342px] mx-auto">
+            {/* Copy code button: Black with white text */}
+            <button
+              type="button"
+              onClick={handleCopyCode}
+              className="btn-press flex-1 h-[52px] sm:h-[54px] rounded-full font-bold text-[16.5px] sm:text-[17px] tracking-tight flex items-center justify-center bg-[#1A1C22] text-white hover:bg-[#2A2C34] transition-colors cursor-pointer"
+            >
+              {copiedCode ? 'Copied!' : 'Copy code'}
+            </button>
+
+            {/* Share link button: Cream with dark text */}
+            <button
+              type="button"
+              onClick={handleShareLink}
+              className="btn-press flex-1 h-[52px] sm:h-[54px] rounded-full font-bold text-[16.5px] sm:text-[17px] tracking-tight flex items-center justify-center bg-[#FAF6EB] text-[#1A1C22] hover:bg-[#F3EEDC] transition-colors cursor-pointer"
+            >
+              {sharedLink ? 'Link copied!' : 'Share link'}
+            </button>
+          </div>
+
+          {/* Avatar Section: You & Your Friend Side-by-Side */}
+          <div className="mt-8 sm:mt-10 flex items-start justify-center gap-8 sm:gap-12 w-full max-w-[342px] mx-auto">
+            {/* Left Column: Player's Avatar on Chosen Blob */}
             <div className="flex flex-col items-center">
               <div className="relative w-[118px] h-[118px] flex items-center justify-center">
-                <ProfileAvatar
-                  avatarId={userProfile.avatarId}
-                  blobId={userProfile.color}
-                  size={118}
-                  useNewBlob={true}
+                {/* User's exact chosen blob */}
+                <img
+                  src={
+                    userProfile.color === 'salmon'
+                      ? '/file_00000000199c8207ba1ef4dff8b5f719.png'
+                      : userProfile.color === 'teal'
+                      ? '/file_00000000872c821185f1f972a55e71f3.png'
+                      : `/assets/blobs/avatar-blob-${Math.min(6, Math.max(1, userProfile.avatarId || 1))}.png`
+                  }
+                  alt="Your blob"
+                  className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
+                  draggable={false}
+                />
+                {/* User's exact chosen character face */}
+                <img
+                  src={`/assets/avatars/avatar-${Math.min(6, Math.max(1, userProfile.avatarId || 1))}.png`}
+                  alt={userProfile.name || 'You'}
+                  className="relative z-10 w-[74%] h-[74%] object-contain pointer-events-none select-none"
+                  draggable={false}
                 />
               </div>
               <span className="mt-2.5 text-[16px] font-semibold text-[#485375] tracking-tight">
@@ -268,28 +345,47 @@ export const InviteFriendScreen: React.FC<InviteFriendScreenProps> = ({
               </span>
             </div>
 
-            {/* Right Column: Friend / Waiting Dashed Blob */}
+            {/* Right Column: Friend / Waiting Dashed Blob with 6 Sparks & Question Mark */}
             <div className="flex flex-col items-center">
-              {friendJoined && partnerProfile ? (
+              {friendJoined ? (
                 /* Friend Joined State */
                 <div className="relative w-[118px] h-[118px] flex items-center justify-center animate-pop">
-                  <ProfileAvatar
-                    avatarId={partnerProfile.avatarId}
-                    blobId={partnerProfile.color}
-                    size={118}
-                    useNewBlob={true}
+                  <img
+                    src={
+                      userProfile.color === 'salmon'
+                        ? '/file_00000000872c821185f1f972a55e71f3.png'
+                        : '/file_00000000199c8207ba1ef4dff8b5f719.png'
+                    }
+                    alt="Friend blob"
+                    className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
+                    draggable={false}
+                  />
+                  <img
+                    src={`/assets/avatars/avatar-${userProfile.avatarId === 2 ? 1 : 2}.png`}
+                    alt="Friend"
+                    className="relative z-10 w-[74%] h-[74%] object-contain pointer-events-none select-none"
+                    draggable={false}
                   />
                 </div>
               ) : (
                 /* Waiting State with Dashed Pear Blob, Question Mark & 6 Radiating Sparks */
                 <div className="relative w-[118px] h-[118px] flex items-center justify-center">
+                  {/* 6 Yellow Spark Capsules Radiating Outward */}
+                  {/* Top-Left spark */}
                   <div className="absolute -top-[2px] -left-[2px] w-[14px] h-[5px] bg-[#FED868] rounded-full rotate-[-45deg] pointer-events-none" />
+                  {/* Mid-Left spark */}
                   <div className="absolute top-[54px] -left-[14px] w-[15px] h-[5px] bg-[#FED868] rounded-full rotate-[0deg] pointer-events-none" />
+                  {/* Bottom-Left spark */}
                   <div className="absolute -bottom-[2px] -left-[1px] w-[14px] h-[5px] bg-[#FED868] rounded-full rotate-[45deg] pointer-events-none" />
+
+                  {/* Top-Right spark */}
                   <div className="absolute -top-[2px] -right-[2px] w-[14px] h-[5px] bg-[#FED868] rounded-full rotate-[45deg] pointer-events-none" />
+                  {/* Mid-Right spark */}
                   <div className="absolute top-[54px] -right-[14px] w-[15px] h-[5px] bg-[#FED868] rounded-full rotate-[0deg] pointer-events-none" />
+                  {/* Bottom-Right spark */}
                   <div className="absolute -bottom-[2px] -right-[1px] w-[14px] h-[5px] bg-[#FED868] rounded-full rotate-[-45deg] pointer-events-none" />
 
+                  {/* Dashed Pear / Teardrop Organic Blob Outline */}
                   <div className="w-[112px] h-[112px] flex items-center justify-center relative">
                     <svg
                       viewBox="0 0 200 200"
@@ -304,6 +400,8 @@ export const InviteFriendScreen: React.FC<InviteFriendScreenProps> = ({
                         strokeLinecap="round"
                       />
                     </svg>
+
+                    {/* Big Bold Centered Question Mark */}
                     <span className="absolute inset-0 flex items-center justify-center text-[44px] font-black text-[#1A1C22] select-none pointer-events-none leading-none">
                       ?
                     </span>
@@ -311,12 +409,12 @@ export const InviteFriendScreen: React.FC<InviteFriendScreenProps> = ({
                 </div>
               )}
               <span className="mt-2.5 text-[16px] font-semibold text-[#485375] tracking-tight">
-                {friendJoined && partnerProfile?.name ? partnerProfile.name : 'Your friend'}
+                {friendJoined ? 'Maya' : 'Your friend'}
               </span>
             </div>
           </div>
 
-          {/* Status Text: "Waiting for them to join..." or "They're in! 🎉" */}
+          {/* Status Text: "Waiting for them to join..." */}
           <div className="mt-6 text-center">
             <p className="text-[16.5px] font-medium text-[#485375] tracking-[-0.01em]">
               {friendJoined ? "They're in! 🎉" : 'Waiting for them to join...'}
@@ -324,18 +422,25 @@ export const InviteFriendScreen: React.FC<InviteFriendScreenProps> = ({
           </div>
         </div>
 
-        {/* Enter game button when friend joined */}
-        {friendJoined && (
-          <div className="mt-6 flex flex-col items-center gap-2 w-full">
+        {/* Footer / Simulation Control */}
+        <div className="mt-6 flex flex-col items-center gap-2 w-full">
+          {friendJoined && (onEnterGame || onFriendJoined) && (
             <button
               type="button"
               onClick={onEnterGame || onFriendJoined}
-              className="btn-press w-full max-w-[342px] h-[54px] rounded-full font-bold text-[17px] bg-[#1A1C22] text-white flex items-center justify-center cursor-pointer transition-all shadow-md"
+              className="btn-press w-full max-w-[342px] h-[54px] rounded-full font-bold text-[17px] bg-[#1A1C22] text-white flex items-center justify-center cursor-pointer transition-all"
             >
               Continue to Today’s Question →
             </button>
-          </div>
-        )}
+          )}
+          <button
+            type="button"
+            onClick={() => setFriendJoined((prev) => !prev)}
+            className="text-[12px] font-bold text-[#1A1C22]/50 hover:text-[#1A1C22] bg-[#FAF6EA]/30 hover:bg-[#FAF6EA]/60 px-3.5 py-1.5 rounded-full transition-all cursor-pointer"
+          >
+            {friendJoined ? 'Reset simulation' : '⚡ Simulate friend joined'}
+          </button>
+        </div>
       </div>
     </Screen>
   );

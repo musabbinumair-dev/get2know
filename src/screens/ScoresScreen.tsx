@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Screen } from '../components/Screen';
 import { BottomNav, NavTab } from '../components/BottomNav';
 import { UserProfile } from './CreateProfileScreen';
+import { INITIAL_CATEGORY_STATS } from '../data/gameData';
 
 export interface CategoryStat {
   name: string;
@@ -40,42 +41,16 @@ const WEBP_ASSETS = [
 ];
 
 export const ScoresScreen: React.FC<ScoresScreenProps> = ({
-  player1Profile,
-  player2Profile,
-  syncScore = 0,
-  streak = 0,
-  matches = 0,
-  guessWins = 0,
-  categories,
+  player1Profile = { avatarId: 1, name: 'Player 1', color: 'salmon' },
+  player2Profile = { avatarId: 2, name: 'Player 2', color: 'teal' },
+  syncScore = 74,
+  streak = 12,
+  matches = 38,
+  guessWins = 21,
+  categories = INITIAL_CATEGORY_STATS,
   onOpenSettings,
   onNavigateTab,
 }) => {
-  const p1Name = player1Profile?.name || 'You';
-  const p2Name = player2Profile?.name || 'Your friend';
-
-  const displayCategories = categories || [
-    {
-      name: 'Deep Talks',
-      pct: matches > 0 ? `${Math.min(100, Math.round((matches / Math.max(1, matches + 2)) * 100))}%` : '0%',
-      bg: '#D5E5FF',
-      iconSrc: '/assets/scores/icon-category-dreams-blue-moon.webp',
-      iconW: '32px',
-    },
-    {
-      name: 'Funny & Weird',
-      pct: matches > 0 ? `${Math.min(100, Math.round((matches / Math.max(1, matches + 3)) * 100))}%` : '0%',
-      bg: '#E0ECB5',
-      iconSrc: '/assets/scores/icon-category-fears-green-scream.webp',
-      iconW: '30px',
-    },
-    {
-      name: 'Daily & Food',
-      pct: matches > 0 ? `${Math.min(100, Math.round((matches / Math.max(1, matches + 4)) * 100))}%` : '0%',
-      bg: '#FFD3D3',
-      iconSrc: '/assets/scores/icon-category-food-pink-pizza.webp',
-      iconW: '28px',
-    },
-  ];
   // Preload all webp images
   useEffect(() => {
     WEBP_ASSETS.forEach((src) => {
@@ -319,11 +294,11 @@ export const ScoresScreen: React.FC<ScoresScreenProps> = ({
               <div className="flex items-center gap-2.5">
                 <div className="flex items-center gap-1">
                   <div className="w-2.5 h-2.5 rounded-full bg-[#FCA0D1]" />
-                  <span className="text-[11px] font-bold text-[#17181B]/70">{p1Name}</span>
+                  <span className="text-[11px] font-bold text-[#17181B]/70">{player1Profile.name || 'You'}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <div className="w-2.5 h-2.5 rounded-full bg-[#8EAFFD]" />
-                  <span className="text-[11px] font-bold text-[#17181B]/70">{p2Name}</span>
+                  <span className="text-[11px] font-bold text-[#17181B]/70">{player2Profile.name || 'Player 2'}</span>
                 </div>
               </div>
             </div>
@@ -359,7 +334,7 @@ export const ScoresScreen: React.FC<ScoresScreenProps> = ({
               Most in sync
             </h2>
 
-            {displayCategories.map((cat) => (
+            {categories.map((cat) => (
               <div
                 key={cat.name}
                 style={{ backgroundColor: cat.bg }}

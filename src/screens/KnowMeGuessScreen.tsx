@@ -105,13 +105,6 @@ export const KnowMeGuessScreen: React.FC<KnowMeGuessScreenProps> = ({
 
   // Map options from question data or default
   const tiles: GuessTileConfig[] = BASE_TILES.map((base) => {
-    if (isInGame && gameSession.currentKnowMeOptions) {
-      const opt = gameSession.currentKnowMeOptions.find((o) => o.id === base.id);
-      return {
-        ...base,
-        text: opt ? opt.text : base.text,
-      };
-    }
     const matched = currentKnowMeQ.guessOptions?.find((o) => o.id === base.id);
     return {
       ...base,
@@ -153,13 +146,6 @@ export const KnowMeGuessScreen: React.FC<KnowMeGuessScreenProps> = ({
       navigate('/reveal');
     }
   };
-
-  // Auto-lock when timer ends in Guess phase
-  useEffect(() => {
-    if (isInGame && gameSession.isTimerActive && gameSession.timer === 0 && !gameSession.isMyGuessLocked) {
-      handleLockGuess();
-    }
-  }, [isInGame, gameSession.isTimerActive, gameSession.timer, gameSession.isMyGuessLocked]);
 
   const isForceTall = searchParams.get('layout') === 'tall';
 

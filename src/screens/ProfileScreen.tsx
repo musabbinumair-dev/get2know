@@ -27,27 +27,33 @@ export interface ProfileScreenProps {
   onOpenFriendProfile?: () => void;
   onNavigateTab?: (tab: NavTab) => void;
   showDebugOverlay?: boolean;
+  sessionType?: 'NEW' | 'GUEST' | 'GOOGLE';
+  userEmail?: string | null;
+  onSignInWithGoogle?: () => void;
 }
 
 function formatDuoDate(timestamp?: number | string): string {
-  if (!timestamp) return 'Today';
+  if (!timestamp) return 'Sep 14';
   const date = new Date(timestamp);
-  if (isNaN(date.getTime())) return 'Today';
+  if (isNaN(date.getTime())) return 'Sep 14';
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return `${months[date.getMonth()]} ${date.getDate()}`;
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
-  userProfile = { avatarId: 1, name: 'You', color: 'salmon' },
-  partnerProfile,
-  duoCreatedAt,
-  inviteCode = '',
+  userProfile = { avatarId: 1, name: 'Player 1', color: 'salmon' },
+  partnerProfile = { avatarId: 2, name: 'Alex', color: 'teal' },
+  duoCreatedAt = '2024-09-14',
+  inviteCode = 'K7X-92P',
   dailyReminderEnabled = true,
   dailyReminderTime = '9:00 PM',
   friendAlertsEnabled = true,
   autoOpenSignOutModal = false,
   autoOpenTimePicker = false,
   autoOpenLeaveDuoModal = false,
+  sessionType = 'GUEST',
+  userEmail = null,
+  onSignInWithGoogle,
   onBack,
   onEditProfile,
   onSignOut,
@@ -157,64 +163,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   };
 
   // Toggle handlers
-  const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
-
-  const handleToggleReminder = async () => {
+  const handleToggleReminder = () => {
     const nextVal = !reminderOn;
-    if (nextVal) {
-      if (typeof window !== 'undefined' && 'Notification' in window) {
-        if (Notification.permission === 'granted') {
-          setReminderOn(true);
-          onToggleDailyReminder?.(true);
-          localStorage.setItem('daily_reminder_enabled', 'true');
-          localStorage.setItem('daily_reminder_time', reminderTime);
-          setNotificationMessage(`Daily reminder active for ${reminderTime} ⏰`);
-          setTimeout(() => setNotificationMessage(null), 3000);
-        } else if (Notification.permission === 'denied') {
-          setReminderOn(false);
-          onToggleDailyReminder?.(false);
-          localStorage.setItem('daily_reminder_enabled', 'false');
-          setNotificationMessage('Notifications blocked by browser. Please enable them in site settings.');
-          setTimeout(() => setNotificationMessage(null), 4500);
-        } else {
-          try {
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-              setReminderOn(true);
-              onToggleDailyReminder?.(true);
-              localStorage.setItem('daily_reminder_enabled', 'true');
-              localStorage.setItem('daily_reminder_time', reminderTime);
-              setNotificationMessage(`Daily reminder set for ${reminderTime} ⏰`);
-              setTimeout(() => setNotificationMessage(null), 3000);
-            } else {
-              setReminderOn(false);
-              onToggleDailyReminder?.(false);
-              localStorage.setItem('daily_reminder_enabled', 'false');
-              setNotificationMessage('Notification permission was not granted.');
-              setTimeout(() => setNotificationMessage(null), 4000);
-            }
-          } catch {
-            setReminderOn(false);
-            onToggleDailyReminder?.(false);
-            localStorage.setItem('daily_reminder_enabled', 'false');
-            setNotificationMessage('Unable to request notification permission.');
-            setTimeout(() => setNotificationMessage(null), 4000);
-          }
-        }
-      } else {
-        setReminderOn(false);
-        onToggleDailyReminder?.(false);
-        localStorage.setItem('daily_reminder_enabled', 'false');
-        setNotificationMessage('Notifications are not supported in this browser.');
-        setTimeout(() => setNotificationMessage(null), 4000);
-      }
-    } else {
-      setReminderOn(false);
-      onToggleDailyReminder?.(false);
-      localStorage.setItem('daily_reminder_enabled', 'false');
-      setNotificationMessage('Daily reminder turned off.');
-      setTimeout(() => setNotificationMessage(null), 2500);
-    }
+    setReminderOn(nextVal);
+    onToggleDailyReminder?.(nextVal);
   };
 
   const handleToggleAlerts = () => {
@@ -380,6 +332,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           >
             {getBlobColorName(userProfile.color, userProfile.avatarId)} player
           </div>
+
+          {/* User Google Email */}
+          {userEmail && (
+            <div className="mt-1 font-semibold text-[12px] text-[#17181B]/40 leading-none truncate max-w-[220px]">
+              {userEmail}
+            </div>
+          )}
         </div>
 
         {/* ---------------- DUO CARD ---------------- */}
@@ -410,8 +369,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Right Avatar (partner) */}
           <div className="relative flex-shrink-0">
             <ProfileAvatar
-              avatarId={partnerProfile?.avatarId ?? 2}
-              blobId={partnerProfile?.color ?? 'teal'}
+              avatarId={partnerProfile.avatarId}
+              blobId={partnerProfile.color}
               size={isCompact ? 48 : 55}
             />
           </div>
@@ -424,7 +383,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 isCompact ? 'text-[16px] max-w-[160px]' : 'text-[18px] max-w-[170px]'
               }`}
             >
-              You + {partnerProfile?.name || 'Your friend'}
+              You + {partnerProfile.name || 'Alex'}
             </div>
 
             {/* "Together since {date}" */}
@@ -671,18 +630,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           Edit profile
         </button>
 
-        {/* "Sign out": x 23 */}
+        {/* "Sign out" / "Sign in with Google to save your history": x 23 */}
         <button
           type="button"
           onClick={() => {
-            setShowSignOutModal(true);
+            if (sessionType === 'GUEST') {
+              onSignInWithGoogle?.();
+            } else {
+              setShowSignOutModal(true);
+            }
           }}
           className={`absolute left-[23px] w-[343px] rounded-full bg-[#17181B] text-white font-extrabold hover:bg-[#25272c] active:scale-[0.99] transition-all cursor-pointer z-10 focus:outline-none flex items-center justify-center px-4 ${
-            isCompact ? 'text-[15.5px]' : 'text-[17px]'
+            isCompact ? (sessionType === 'GUEST' ? 'text-[13px]' : 'text-[15.5px]') : (sessionType === 'GUEST' ? 'text-[14px]' : 'text-[17px]')
           }`}
           style={{ top: `${signOutTop}px`, height: `${btnH}px` }}
         >
-          Sign out
+          {sessionType === 'GUEST' ? 'Sign in with Google to save your history' : 'Sign out'}
         </button>
 
         {/* Link "Leave duo and delete my data": centered */}
@@ -724,25 +687,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           onSave={(newTime: string) => {
             setReminderTime(newTime);
             onChangeReminderTime?.(newTime);
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('daily_reminder_time', newTime);
-              localStorage.setItem('gty_reminder_time', newTime);
-            }
             setShowTimePicker(false);
-            setNotificationMessage(`Daily reminder time saved: ${newTime} ⏰`);
-            setTimeout(() => setNotificationMessage(null), 3000);
           }}
           onClose={() => setShowTimePicker(false)}
         />
-      )}
-
-      {/* ---------------- NOTIFICATION / PERMISSION TOAST ---------------- */}
-      {notificationMessage && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-pop pointer-events-none">
-          <div className="bg-[#17181B] text-white px-5 py-2.5 rounded-full font-extrabold text-[13.5px] shadow-2xl flex items-center gap-2 whitespace-nowrap">
-            <span>{notificationMessage}</span>
-          </div>
-        </div>
       )}
 
       {/* ---------------- CONFIRMATION BOTTOM SHEET: LEAVE DUO ---------------- */}
@@ -759,13 +707,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       {/* ---------------- CONFIRMATION DIALOG: SIGN OUT ---------------- */}
       {showSignOutModal && (
         <SignOutModal
-          onConfirmSignOut={async () => {
+          onConfirmSignOut={() => {
             setShowSignOutModal(false);
-            try {
-              await onSignOut();
-            } catch (err) {
-              console.error('Sign out error:', err);
-            }
+            onSignOut();
           }}
           onClose={() => setShowSignOutModal(false)}
         />

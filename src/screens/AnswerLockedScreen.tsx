@@ -4,9 +4,8 @@ import { useGameSession } from '../services/gameSessionContext';
 import { TopBar } from '../components/TopBar';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { NavTab } from '../components/BottomNav';
+import { mockData } from '../mockData';
 import { playPartnerAnsweredSound, playNudgeSound, playTapSound } from '../lib/soundEffects';
-import { useSession } from '../services/sessionContext';
-import { sendRoomNudge } from '../services/roomService';
 
 interface AnswerLockedScreenProps {
   friendName?: string;
@@ -47,7 +46,7 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
       }
     }
     return {
-      name: 'Your friend',
+      name: 'Sam',
       avatarId: 2,
       color: 'teal',
       blobId: 'teal',
@@ -55,24 +54,27 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
   }, []);
 
   const resolvedFriendName =
-    friendName && friendName !== 'Player 2' && friendName !== 'Sam'
+    friendName && friendName !== 'Player 2'
       ? friendName
-      : partnerProfile.name || 'Your friend';
+      : partnerProfile.name || mockData.friendName || 'Sam';
 
   const resolvedAvatarId = friendAvatarId || partnerProfile.avatarId || 2;
   const resolvedBlobId =
     friendBlobId || partnerProfile.blobId || partnerProfile.color || 'teal';
-  const resolvedStreak = streak ?? 0;
-
-  const { room, roomCode, user } = useSession();
-  const partnerUid = useMemo(() => {
-    return room?.playerUids?.find((id) => id !== user?.uid);
-  }, [room?.playerUids, user?.uid]);
+  const resolvedStreak = streak ?? mockData.streak ?? 12;
 
   const [toastMessage, setToastMessage] = useState<string>('');
   const [nudgeCooldown, setNudgeCooldown] = useState<number>(0);
   const [friendStatus, setFriendStatus] = useState<string>('Answering...');
   const [isAnswerLocked, setIsAnswerLocked] = useState<boolean>(false);
+  const simulationTimers = useRef<NodeJS.Timeout[]>([]);
+
+  // Cleanup simulation timers on unmount
+  useEffect(() => {
+    return () => {
+      simulationTimers.current.forEach((t) => clearTimeout(t));
+    };
+  }, []);
 
   // Set background color on mount
   useEffect(() => {
@@ -92,24 +94,38 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
       (sessionStorage.getItem('gty_last_mode') === 'trivia' ||
         localStorage.getItem('gty_last_mode') === 'trivia'));
 
-  // Live check if friend has locked their answer
-  const isFriendLocked = isInGame ? gameSession.isFriendAnswerLocked : isAnswerLocked;
-  const hasPartnerAnsweredSoundPlayed = useRef<boolean>(false);
+  // Avatar click handler: triggers state change from lightened/grayscale to full vibrant normal state and advances
+  const handleAvatarClick = () => {
+    if (isAnswerLocked) return;
+    setIsAnswerLocked(true);
+    setFriendStatus('Answer locked in! 🎉');
+    playPartnerAnsweredSound();
 
-  useEffect(() => {
-    if (isInGame && gameSession.isFriendAnswerLocked) {
-      if (!hasPartnerAnsweredSoundPlayed.current) {
-        hasPartnerAnsweredSoundPlayed.current = true;
-        playPartnerAnsweredSound();
-      }
-      setIsAnswerLocked(true);
-      setFriendStatus('Answer locked in! 🎉');
-      const timer = setTimeout(() => {
+    // Transition to the guess/next screen
+    const t2 = setTimeout(() => {
+      if (isInGame) {
         gameSession.advanceFromWaiting();
-      }, 1200);
-      return () => clearTimeout(timer);
-    }
-  }, [isInGame, gameSession.isFriendAnswerLocked, gameSession]);
+      } else if (onPlayer2Answered) {
+        onPlayer2Answered();
+      } else if (isTrivia) {
+        navigate('/reveal');
+      } else {
+        navigate('/guess');
+      }
+    }, 1200);
+    simulationTimers.current.push(t2);
+  };
+
+  // Auto-progress simulation: if partner has not answered, answer after 4 seconds
+  useEffect(() => {
+    const autoTimer = setTimeout(() => {
+      if (!isAnswerLocked) {
+        handleAvatarClick();
+      }
+    }, 4000);
+    simulationTimers.current.push(autoTimer);
+    return () => clearTimeout(autoTimer);
+  }, [isAnswerLocked]);
 
   // Cooldown countdown effect for Nudge button
   useEffect(() => {
@@ -120,8 +136,8 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
     return () => clearInterval(timer);
   }, [nudgeCooldown]);
 
-  const handleNudge = async () => {
-    if (nudgeCooldown > 0 || isFriendLocked) return;
+  const handleNudge = () => {
+    if (nudgeCooldown > 0) return;
     playNudgeSound();
     setToastMessage('Nudge sent 👋');
     setNudgeCooldown(30);
@@ -129,15 +145,12 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
       setToastMessage('');
     }, 2500);
 
-    if (roomCode && partnerUid) {
-      await sendRoomNudge(roomCode, partnerUid);
-    }
-  };
-
-  const handleAvatarClick = () => {
-    if (onPlayer2Answered) {
-      onPlayer2Answered();
-    }
+    const nudgeTimer = setTimeout(() => {
+      if (!isAnswerLocked) {
+        handleAvatarClick();
+      }
+    }, 1500);
+    simulationTimers.current.push(nudgeTimer);
   };
 
   const handleEditClick = () => {
@@ -309,34 +322,26 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
 
           {/* Action Buttons: Nudge, Edit Answer, Caption */}
           <div className="w-full max-w-[342px] flex flex-col items-center gap-2.5 mt-2 sm:mt-3 z-20">
-            {/* Disconnect notice */}
-            {gameSession.partnerDisconnected && (
-              <div className="w-full bg-[#FDE776] border border-[#1B1D20]/20 rounded-2xl p-2.5 text-center text-[13px] font-extrabold text-[#1B1D20] shadow-xs">
-                ⚠️ {resolvedFriendName} disconnected. You can wait or return home.
-              </div>
-            )}
-
             {/* Button 1: "Nudge them 👋" */}
             <button
               type="button"
               onClick={handleNudge}
-              disabled={nudgeCooldown > 0 || isFriendLocked}
+              disabled={nudgeCooldown > 0 || isAnswerLocked}
               className="btn-press w-full h-[54px] rounded-full bg-[#1B1D20] hover:bg-[#2B2E33] active:scale-[0.98] transition-all text-white font-black text-[18px] tracking-tight flex items-center justify-center gap-2 cursor-pointer shadow-sm focus:outline-none disabled:opacity-80 disabled:cursor-not-allowed"
             >
               <span>{nudgeCooldown > 0 ? `Nudged (${nudgeCooldown}s)` : 'Nudge them'}</span>
               <span className="text-[20px] leading-none">👋</span>
             </button>
 
-            {/* Button 2: "Edit answer" (keep Edit answer only while waiting if the friend hasn't answered) */}
-            {!isFriendLocked && (
-              <button
-                type="button"
-                onClick={handleEditClick}
-                className="btn-press w-full h-[54px] rounded-full bg-[#FAF3DF] hover:bg-[#F2E8CD] active:scale-[0.98] transition-all text-[#1B1D20] font-black text-[18px] tracking-tight flex items-center justify-center shadow-xs border border-[#1B1D20]/5 cursor-pointer focus:outline-none"
-              >
-                Edit answer
-              </button>
-            )}
+            {/* Button 2: "Edit answer" */}
+            <button
+              type="button"
+              onClick={handleEditClick}
+              disabled={isAnswerLocked}
+              className="btn-press w-full h-[54px] rounded-full bg-[#FAF3DF] hover:bg-[#F2E8CD] active:scale-[0.98] transition-all text-[#1B1D20] font-black text-[18px] tracking-tight flex items-center justify-center shadow-xs border border-[#1B1D20]/5 cursor-pointer focus:outline-none"
+            >
+              Edit answer
+            </button>
 
             {/* Footnote Caption */}
             <p className="mt-0.5 text-[13.5px] sm:text-[14px] font-bold text-[#1B1D20]/50 tracking-tight text-center m-0 select-none">
@@ -678,7 +683,7 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
               <button
                 type="button"
                 onClick={handleNudge}
-                disabled={nudgeCooldown > 0 || isFriendLocked}
+                disabled={nudgeCooldown > 0 || isAnswerLocked}
                 className="btn-press w-full rounded-full bg-[#1B1D20] hover:bg-[#2B2E33] active:scale-[0.98] transition-all text-white font-black tracking-tight flex items-center justify-center gap-3 cursor-pointer shadow-sm disabled:opacity-80 disabled:cursor-not-allowed"
                 style={{
                   height: 'calc(80 * var(--u))',
@@ -690,21 +695,20 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
                 <span>👋</span>
               </button>
 
-              {/* Cream Pill Button: Edit Answer (keep Edit answer only while waiting if the friend hasn't answered) */}
-              {!isFriendLocked && (
-                <button
-                  type="button"
-                  onClick={handleEditClick}
-                  className="btn-press w-full rounded-full bg-[#FAF3DF] hover:bg-[#F2E8CD] active:scale-[0.98] transition-all text-[#1B1D20] font-black tracking-tight flex items-center justify-center cursor-pointer shadow-xs border border-[#1B1D20]/5"
-                  style={{
-                    height: 'calc(76 * var(--u))',
-                    borderRadius: 'calc(38 * var(--u))',
-                    fontSize: 'calc(34 * var(--u))',
-                  }}
-                >
-                  Edit answer
-                </button>
-              )}
+              {/* Cream Pill Button: Edit Answer */}
+              <button
+                type="button"
+                onClick={handleEditClick}
+                disabled={isAnswerLocked}
+                className="btn-press w-full rounded-full bg-[#FAF3DF] hover:bg-[#F2E8CD] active:scale-[0.98] transition-all text-[#1B1D20] font-black tracking-tight flex items-center justify-center cursor-pointer shadow-xs border border-[#1B1D20]/5"
+                style={{
+                  height: 'calc(76 * var(--u))',
+                  borderRadius: 'calc(38 * var(--u))',
+                  fontSize: 'calc(34 * var(--u))',
+                }}
+              >
+                Edit answer
+              </button>
 
               {/* Footnote */}
               <p

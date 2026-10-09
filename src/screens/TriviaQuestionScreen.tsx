@@ -59,28 +59,52 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
   const category = activeTriviaQ?.category || 'Food';
 
   // Player profiles & dynamic avatars
-  const p1Name = session.profile?.name?.trim() || 'You';
+  const p1Name = session.profile?.name && session.profile.name !== 'Player 1'
+    ? session.profile.name
+    : 'Musab';
   const p1AvatarId = session.profile?.avatarId || 1;
-  const p1Color = session.profile?.color || 'salmon';
-  const p1Score = isInGame ? gameSession.myScore || 0 : 0;
+  const p1Color = session.profile?.color || 'pink';
+  const p1Score = isInGame ? gameSession.myScore || 45 : 45;
 
-  const p2Name = session.partnerProfile?.name?.trim() || 'Your friend';
-  const p2AvatarId = session.partnerProfile?.avatarId || 2;
-  const p2Color = session.partnerProfile?.color || 'teal';
-  const p2Score = isInGame ? gameSession.friendScore || 0 : 0;
+  const p2Name = (() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = JSON.parse(localStorage.getItem('partner_profile') || '{}');
+        if (saved.name) return saved.name;
+      } catch {}
+    }
+    return 'Alex';
+  })();
+  const p2AvatarId = (() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = JSON.parse(localStorage.getItem('partner_profile') || '{}');
+        if (saved.avatarId) return saved.avatarId;
+      } catch {}
+    }
+    return 2;
+  })();
+  const p2Color = (() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = JSON.parse(localStorage.getItem('partner_profile') || '{}');
+        if (saved.color) return saved.color;
+      } catch {}
+    }
+    return 'blue';
+  })();
+  const p2Score = isInGame ? gameSession.friendScore || 30 : 30;
 
   const p1BlobConfig = getBlobConfig(p1Color, p1AvatarId);
   const p2BlobConfig = getBlobConfig(p2Color, p2AvatarId);
 
   // Options configuration matching the 4 pills in mockup
-  const rawOptions = (isInGame && gameSession.currentTriviaOptions)
-    ? gameSession.currentTriviaOptions
-    : (activeTriviaQ?.options || [
-        { id: 'pink' as const, text: 'Japan' },
-        { id: 'yellow' as const, text: 'China' },
-        { id: 'cream' as const, text: 'Korea' },
-        { id: 'green' as const, text: 'Thailand' },
-      ]);
+  const rawOptions = activeTriviaQ?.options || [
+    { id: 'pink' as const, text: 'Japan' },
+    { id: 'yellow' as const, text: 'China' },
+    { id: 'cream' as const, text: 'Korea' },
+    { id: 'green' as const, text: 'Thailand' },
+  ];
 
   // Default selected is the first option ('pink') like in mockup
   const [selectedOptionId, setSelectedOptionId] = useState<string>('pink');
@@ -192,20 +216,13 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
       localStorage.setItem('trivia_player1_option_id', chosenPill.id);
     }
     if (isInGame) {
-      gameSession.submitAnswer(chosenPill.text, chosenPill.id);
+      gameSession.submitGuess(chosenPill.id as any, chosenPill.text);
     } else if (onLockAnswer) {
       onLockAnswer(chosenPill.id, chosenPill.text);
     } else {
       navigate('/locked');
     }
   };
-
-  // Auto-lock when timer ends in Trivia mode
-  useEffect(() => {
-    if (isInGame && gameSession.isTimerActive && gameSession.timer === 0 && !gameSession.isMyAnswerLocked) {
-      handleLockIn();
-    }
-  }, [isInGame, gameSession.isTimerActive, gameSession.timer, gameSession.isMyAnswerLocked]);
 
   return (
     <div className="relative w-full min-h-[100dvh] overflow-hidden bg-[#B3BF8A] font-['Nunito',sans-serif] select-none">

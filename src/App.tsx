@@ -11,7 +11,7 @@ import { SessionProvider, useSession, UserProfile } from './services/sessionCont
 import { GameSessionProvider, useGameSession } from './services/gameSessionContext';
 import { WelcomeScreen } from './screens/WelcomeScreen';
 import { CreateProfileScreen } from './screens/CreateProfileScreen';
-import { InviteFriendScreen } from './screens/InviteFriendScreen';
+import { InviteFriendScreen, generateInviteCode } from './screens/InviteFriendScreen';
 import { JoinCodeScreen } from './screens/JoinCodeScreen';
 import { TodayQuestionScreen } from './screens/TodayQuestionScreen';
 import { AnswerLockedScreen } from './screens/AnswerLockedScreen';
@@ -20,7 +20,7 @@ import { TriviaQuestionScreen } from './screens/TriviaQuestionScreen';
 import { KnowMeGuessScreen } from './screens/KnowMeGuessScreen';
 import { FinalResultScreen } from './screens/FinalResultScreen';
 import { ScoresScreen } from './screens/ScoresScreen';
-import { MemoryWallScreen } from './screens/MemoryWallScreen';
+import { MemoryWallScreen, INITIAL_CARDS } from './screens/MemoryWallScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { FriendProfileScreen } from './screens/FriendProfileScreen';
 import { HomeScreen } from './screens/HomeScreen';
@@ -34,8 +34,6 @@ import { AppLoader } from './components/AppLoader';
 import { PageGate } from './components/PageGate';
 import { DebugPreloadOverlay } from './components/DebugPreloadOverlay';
 import { LoaderProvider, useAppLoader } from './services/loaderContext';
-import { normalizeRoomCode, MemoryEntry } from './services/roomService';
-import { DebugPanel } from './components/DebugPanel';
 
 // ── ENTRY GUARD COMPONENT ──
 function EntryGuard({ children }: { children: React.ReactNode }) {
@@ -48,15 +46,11 @@ function EntryGuard({ children }: { children: React.ReactNode }) {
 
     const pathname = location.pathname.toLowerCase().replace(/\/+$/, '') || '/';
     const searchParams = new URLSearchParams(location.search);
-    const joinParam = searchParams.get('join') || searchParams.get('code');
+    const codeParam = searchParams.get('code');
 
-    // Requirement 5: Opening ?join=CODE jumps straight to the join screen with the code filled in.
-    if (joinParam) {
-      setPendingInviteCode(joinParam);
-      if (pathname !== '/join') {
-        navigate('/join', { replace: true });
-        return;
-      }
+    // Capture invite deep link code: /join?code=XXXXXX
+    if (pathname === '/join' && codeParam) {
+      setPendingInviteCode(codeParam);
     }
 
     // Save last pathname so refresh on game pages preserves location
@@ -110,40 +104,46 @@ function AppContent() {
   const { navigateWithLoader } = useAppLoader();
   const gameSession = useGameSession();
   const {
+    sessionType,
     user,
     profile,
-    partnerProfile: sessionPartnerProfile,
-    room,
-    roomCode,
     history,
-    memories,
-    saveMemory,
     pendingInviteCode,
     startGuestSession,
     signInWithGoogle,
     saveProfile,
-    createRoom,
-    joinRoom,
     signOut,
     leaveDuo,
     welcomeBackToast,
     dismissWelcomeBackToast,
-    errorBanner,
-    clearErrorBanner,
-    recordDebugError,
+    guestHistoryToast,
+    dismissGuestHistoryToast,
   } = useSession();
 
-  // Real partner profile dynamically from room members
-  const partnerProfile = sessionPartnerProfile;
-  const inviteCode = roomCode || room?.code || '';
+  // Partner Profile state
+  const [partnerProfile] = useState<UserProfile>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('partner_profile');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {}
+      }
+    }
+    return {
+      avatarId: 2,
+      name: 'Alex',
+      color: 'teal',
+    };
+  });
+
+  const [inviteCode] = useState<string>(() => generateInviteCode());
 
   // Settings & Duo state
   const [dailyReminderEnabled, setDailyReminderEnabled] = useState<boolean>(true);
   const [dailyReminderTime, setDailyReminderTime] = useState<string>('9:00 PM');
   const [friendAlertsEnabled, setFriendAlertsEnabled] = useState<boolean>(true);
-  const duoCreatedAt = room?.createdAt
-    ? new Date(room.createdAt).toISOString().split('T')[0]
-    : '';
+  const [duoCreatedAt] = useState<string>('2024-09-14');
 
   // Dynamic Questions Engine
   const [questionIndex, setQuestionIndex] = useState<number>(0);
@@ -155,25 +155,18 @@ function AppContent() {
   );
   const player2Answer = activeQuestion.player2Answer;
 
-  // Real Memory cards from shared room
-  const memoryCards: MemoryCardProps[] = (memories || []).map((m) => ({
-    id: m.id,
-    category: m.category,
-    color: m.color,
-    cardBg: m.cardBg,
-    date: m.date,
-    question: m.question,
-    p1Answer: m.p1Answer,
-    p2Answer: m.p2Answer,
-    p1Name: m.p1Name,
-    p2Name: m.p2Name,
-    p1AvatarId: m.p1AvatarId,
-    p2AvatarId: m.p2AvatarId,
-    p1Color: m.p1Color,
-    p2Color: m.p2Color,
-    isMatched: m.isMatched,
-    reactions: m.reactions,
-  }));
+  // Memory cards
+  const [memoryCards, setMemoryCards] = useState<MemoryCardProps[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('game_memory_cards');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {}
+      }
+    }
+    return INITIAL_CARDS;
+  });
 
   const [selectedReaction, setSelectedReaction] = useState<string | null>(null);
 
@@ -194,44 +187,20 @@ function AppContent() {
     }
   };
 
-  const handleGetStarted = async () => {
-    try {
-      await startGuestSession();
-      navigateWithLoader('/create-profile');
-    } catch (err: any) {
-      recordDebugError('Google sign-in', err);
-    }
+  const handleGetStarted = () => {
+    startGuestSession();
+    navigateWithLoader('/create-profile');
   };
 
   const handleContinueWithGoogle = async () => {
-    try {
-      await signInWithGoogle();
-    } catch (err: any) {
-      recordDebugError('Google sign-in', err);
-    }
+    await signInWithGoogle();
   };
 
   const handleContinueProfile = async (savedProfile: UserProfile) => {
-    try {
-      await saveProfile(savedProfile);
-    } catch (err: any) {
-      recordDebugError('Profile save', err);
-      return;
-    }
+    await saveProfile(savedProfile);
     if (pendingInviteCode) {
-      try {
-        const normalized = normalizeRoomCode(pendingInviteCode);
-        await joinRoom(normalized, savedProfile);
-        navigateWithLoader('/home');
-      } catch (err) {
-        navigateWithLoader('/join');
-      }
+      navigateWithLoader('/join');
     } else {
-      try {
-        await createRoom(savedProfile);
-      } catch (err) {
-        console.error('Error creating room:', err);
-      }
       navigateWithLoader('/invite');
     }
   };
@@ -244,22 +213,21 @@ function AppContent() {
     navigateWithLoader('/home');
   };
 
-  const handleSaveToMemoryWall = async () => {
-    const newMemory: MemoryEntry = {
+  const handleSaveToMemoryWall = () => {
+    const newCard: MemoryCardProps = {
       id: `card-${Date.now()}`,
       category: activeQuestion.category,
-      color: 'yellow',
       cardBg: isMatched ? '#E0ECB5' : '#F7E7CD',
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      date: 'TODAY',
       question: activeQuestion.question,
       isMatched: isMatched,
       p1Name: profile?.name || 'You',
       p1AvatarId: profile?.avatarId || 1,
-      p1Color: profile?.color || 'salmon',
+      p1Color: (profile?.color as any) || 'salmon',
       p1Answer: player1Answer,
-      p2Name: partnerProfile?.name || 'Your friend',
-      p2AvatarId: partnerProfile?.avatarId || 2,
-      p2Color: partnerProfile?.color || 'teal',
+      p2Name: partnerProfile.name || 'Alex',
+      p2AvatarId: partnerProfile.avatarId,
+      p2Color: partnerProfile.color,
       p2Answer: player2Answer,
       reactions: selectedReaction
         ? [
@@ -269,15 +237,20 @@ function AppContent() {
             },
           ]
         : undefined,
-      createdAt: new Date().toISOString(),
     };
 
-    await saveMemory(newMemory);
+    setMemoryCards((prev) => {
+      const updated = [newCard, ...prev];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('game_memory_cards', JSON.stringify(updated));
+      }
+      return updated;
+    });
   };
 
   const currentProfile: UserProfile = profile || {
     avatarId: 1,
-    name: user?.displayName || 'You',
+    name: user?.displayName || 'Player 1',
     color: 'salmon',
   };
 
@@ -312,12 +285,8 @@ function AppContent() {
                   : profile || undefined
               }
               onBack={async () => {
-                try {
-                  await signOut();
-                  navigateWithLoader('/welcome');
-                } catch (err: any) {
-                  recordDebugError('Sign out', err);
-                }
+                await signOut();
+                navigateWithLoader('/welcome');
               }}
               onContinue={handleContinueProfile}
             />
@@ -342,6 +311,7 @@ function AppContent() {
           path="/join"
           element={
             <JoinCodeScreen
+              validCode={pendingInviteCode || inviteCode}
               onBack={() => navigateWithLoader('/welcome')}
               onCreateDuo={handleGetStarted}
               onJoinSuccess={() => navigateWithLoader('/home')}
@@ -407,7 +377,7 @@ function AppContent() {
           element={
             <TodayQuestionScreen
               userProfile={currentProfile}
-              partnerProfile={partnerProfile || undefined}
+              partnerProfile={partnerProfile}
               onOpenSettings={() => navigateWithLoader('/profile')}
               onNavigateTab={handleTabNavigate}
               onLockInSuccess={() => navigateWithLoader('/locked')}
@@ -462,16 +432,16 @@ function AppContent() {
           path="/reveal"
           element={
             <RevealScreen
-              player1Name={currentProfile.name || 'You'}
+              player1Name={currentProfile.name || 'Player 1'}
               player1AvatarId={currentProfile.avatarId}
               player1Color={currentProfile.color}
-              player2Name={partnerProfile?.name || 'Your friend'}
-              player2AvatarId={partnerProfile?.avatarId || 2}
-              player2Color={partnerProfile?.color || 'teal'}
+              player2Name={partnerProfile.name || 'Alex'}
+              player2AvatarId={partnerProfile.avatarId}
+              player2Color={partnerProfile.color}
               questionData={activeQuestion}
               player1Answer={player1Answer}
               player2Answer={player2Answer}
-              syncScore={history.stats.syncScore || 0}
+              syncScore={history.stats.syncScore}
               isMatched={isMatched}
               selectedReaction={selectedReaction}
               onSelectReaction={(reactionId) => setSelectedReaction(reactionId)}
@@ -490,10 +460,10 @@ function AppContent() {
           path="/locked"
           element={
             <AnswerLockedScreen
-              friendName={partnerProfile?.name || 'Your friend'}
-              friendAvatarId={partnerProfile?.avatarId || 2}
-              friendBlobId={partnerProfile?.color || 'teal'}
-              streak={history.stats.streak || 0}
+              friendName={partnerProfile.name || 'Sam'}
+              friendAvatarId={partnerProfile.avatarId || 2}
+              friendBlobId={partnerProfile.color || 'teal'}
+              streak={history.stats.streak || 12}
               onEditAnswer={() => {
                 const isTrivia =
                   (gameSession.isActive && gameSession.currentRoundType === 'trivia') ||
@@ -529,11 +499,11 @@ function AppContent() {
           element={
             <ScoresScreen
               player1Profile={currentProfile}
-              player2Profile={partnerProfile || undefined}
-              syncScore={history.stats.syncScore || 0}
-              streak={history.stats.streak || 0}
-              matches={history.stats.matches || 0}
-              guessWins={history.stats.guessWins || 0}
+              player2Profile={partnerProfile}
+              syncScore={history.stats.syncScore}
+              streak={history.stats.streak}
+              matches={history.stats.matches}
+              guessWins={history.stats.guessWins}
               onOpenSettings={() => navigateWithLoader('/profile')}
               onNavigateTab={handleTabNavigate}
             />
@@ -558,21 +528,20 @@ function AppContent() {
           element={
             <ProfileScreen
               userProfile={currentProfile}
-              partnerProfile={partnerProfile || undefined}
+              partnerProfile={partnerProfile}
               duoCreatedAt={duoCreatedAt}
               inviteCode={inviteCode}
               dailyReminderEnabled={dailyReminderEnabled}
               dailyReminderTime={dailyReminderTime}
               friendAlertsEnabled={friendAlertsEnabled}
+              sessionType={sessionType}
+              userEmail={user?.email || null}
+              onSignInWithGoogle={signInWithGoogle}
               onBack={() => navigateWithLoader('/home')}
               onEditProfile={() => navigateWithLoader('/create-profile')}
               onSignOut={async () => {
-                try {
-                  await signOut();
-                  navigateWithLoader('/welcome');
-                } catch (err: any) {
-                  recordDebugError('Sign out', err);
-                }
+                await signOut();
+                navigateWithLoader('/welcome');
               }}
               onLeaveDuo={async () => {
                 await leaveDuo();
@@ -592,29 +561,14 @@ function AppContent() {
           path="/friend"
           element={
             <FriendProfileScreen
-              friendData={
-                partnerProfile
-                  ? {
-                      name: partnerProfile.name,
-                      subtitle: `${partnerProfile.color ? partnerProfile.color.charAt(0).toUpperCase() + partnerProfile.color.slice(1) : 'Duo'} player`,
-                      avatarId: partnerProfile.avatarId || 2,
-                      color: partnerProfile.color || 'teal',
-                      streakDays: history.stats.streak || 0,
-                      matchesCount: history.stats.matches || 0,
-                      guessWinsCount: history.stats.guessWins || 0,
-                      lastAnsweredTime: 'In your duo',
-                    }
-                  : {
-                      name: 'Your friend',
-                      subtitle: 'Waiting for them to join',
-                      avatarId: 2,
-                      color: 'teal',
-                      streakDays: 0,
-                      matchesCount: 0,
-                      guessWinsCount: 0,
-                      lastAnsweredTime: 'Not joined yet',
-                    }
-              }
+              friendData={{
+                name: partnerProfile.name || 'Sam',
+                subtitle: 'Teal player, joined Sep 12',
+                streakDays: history.stats.streak,
+                matchesCount: history.stats.matches,
+                guessWinsCount: history.stats.guessWins,
+                lastAnsweredTime: 'today, 8:42 PM',
+              }}
               onBack={() => navigateWithLoader('/profile')}
               onNavigateTab={handleTabNavigate}
             />
@@ -630,19 +584,6 @@ function AppContent() {
       {/* Interactive ?debug=1 Overlay */}
       <DebugPreloadOverlay />
 
-      {/* Error Banner */}
-      {errorBanner && (
-        <div className="fixed top-4 left-4 right-4 z-[99999] bg-red-600 text-white p-3 rounded-xl shadow-2xl flex items-center justify-between gap-3 text-[13px] font-bold font-['Nunito',sans-serif]">
-          <span>⚠️ {errorBanner}</span>
-          <button
-            onClick={clearErrorBanner}
-            className="bg-black/20 hover:bg-black/40 text-white rounded-full w-6 h-6 flex items-center justify-center shrink-0 cursor-pointer"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
       {/* Welcome Back Toast */}
       {welcomeBackToast && (
         <div
@@ -652,6 +593,47 @@ function AppContent() {
           <span>{welcomeBackToast}</span>
           <button
             type="button"
+            className="text-[#161B1E]/50 hover:text-[#161B1E] ml-1 text-sm font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* One-time cream toast after first finished game in GUEST session */}
+      {guestHistoryToast && (
+        <div
+          onClick={async () => {
+            dismissGuestHistoryToast();
+            await signInWithGoogle();
+          }}
+          className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-[#FCF7EB] border-[1.5px] border-[#161B1E] text-[#161B1E] font-extrabold text-[13.5px] px-5 py-2.5 rounded-full shadow-xl z-[9999] flex items-center gap-2.5 cursor-pointer active:scale-95 transition-all font-['Nunito',sans-serif]"
+        >
+          <svg width="15" height="15" viewBox="0 0 18 18">
+            <path
+              fill="#4285F4"
+              d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z"
+            />
+            <path
+              fill="#34A853"
+              d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.173 0 7.547 0 9s.347 2.827.957 4.039l3.007-2.332z"
+            />
+            <path
+              fill="#EA4335"
+              d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"
+            />
+          </svg>
+          <span>Sign in to keep your history</span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              dismissGuestHistoryToast();
+            }}
             className="text-[#161B1E]/50 hover:text-[#161B1E] ml-1 text-sm font-bold"
           >
             ✕
@@ -671,7 +653,6 @@ export function App() {
             <EntryGuard>
               <AppContent />
             </EntryGuard>
-            <DebugPanel />
           </GameSessionProvider>
         </SessionProvider>
       </LoaderProvider>
