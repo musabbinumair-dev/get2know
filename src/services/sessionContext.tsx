@@ -64,6 +64,13 @@ const EMPTY_HISTORY: GameHistory = {
   stats: EMPTY_STATS,
 };
 
+export interface DebugErrorInfo {
+  action: 'Google sign-in' | 'Sign out' | 'Profile save';
+  code: string;
+  message: string;
+  timestamp: string;
+}
+
 interface SessionContextValue {
   sessionType: SessionType;
   isLoading: boolean;
@@ -80,6 +87,9 @@ interface SessionContextValue {
   setPendingInviteCode: (code: string | null) => void;
   errorBanner: string | null;
   clearErrorBanner: () => void;
+  debugLastError: DebugErrorInfo | null;
+  clearDebugLastError: () => void;
+  recordDebugError: (action: 'Google sign-in' | 'Sign out' | 'Profile save', err: any) => void;
   startGuestSession: () => Promise<void>;
   signInWithGoogle: () => Promise<boolean>;
   saveProfile: (newProfile: UserProfile) => Promise<void>;
@@ -99,6 +109,33 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [user, setUser] = useState<AppUser | null>(null);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
   const clearErrorBanner = useCallback(() => setErrorBanner(null), []);
+
+  const [debugLastError, setDebugLastError] = useState<DebugErrorInfo | null>(null);
+  const clearDebugLastError = useCallback(() => setDebugLastError(null), []);
+
+  const recordDebugError = useCallback(
+    (action: 'Google sign-in' | 'Sign out' | 'Profile save' | string, err: any) => {
+      let code = err?.code || err?.name || 'UNKNOWN_ERROR';
+      let msg = err?.message || String(err);
+      if (typeof msg === 'string') {
+        try {
+          const parsed = JSON.parse(msg);
+          if (parsed.error) msg = parsed.error;
+        } catch {
+          // not json
+        }
+      }
+      console.error(`[DEBUG PANEL ERROR] ${action}: [${code}] ${msg}`, err);
+      setDebugLastError({
+        action: action as any,
+        code: String(code),
+        message: String(msg),
+        timestamp: new Date().toLocaleTimeString(),
+      });
+      setErrorBanner(`[${code}] ${msg}`);
+    },
+    []
+  );
 
   const [profile, setProfile] = useState<UserProfile | null>(() => {
     if (typeof window !== 'undefined') {
@@ -137,11 +174,9 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         }
       })
       .catch((err: any) => {
-        const code = err.code || 'REDIRECT_ERROR';
-        const msg = err.message || String(err);
-        setErrorBanner(`[${code}] ${msg}`);
+        recordDebugError('Google sign-in', err);
       });
-  }, []);
+  }, [recordDebugError]);
 
   // Invite code from URL e.g. ?join=ABC-123 or ?code=ABC-123
   const [pendingInviteCode, setPendingInviteCodeState] = useState<string | null>(() => {
@@ -275,7 +310,7 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
     return room?.memories || [];
   }, [room]);
 
-  const startGuestSession = useCallback(async () => {
+  const startGuestSession = useCallback(async (): Promise<void> => {
     clearErrorBanner();
     try {
       const anonUser = await ensureAuthUser();
@@ -286,11 +321,10 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
       });
       setSessionType('GUEST');
     } catch (err: any) {
-      const code = err.code || 'GUEST_SESSION_ERROR';
-      const msg = err.message || String(err);
-      setErrorBanner(`[${code}] ${msg}`);
+      recordDebugError('Google sign-in', err);
+      throw err;
     }
-  }, [clearErrorBanner]);
+  }, [clearErrorBanner, recordDebugError]);
 
   const signInWithGoogle = useCallback(async (): Promise<boolean> => {
     clearErrorBanner();
@@ -307,8 +341,8 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
       setSessionType('GOOGLE');
       return true;
     } catch (err: any) {
-      const code = err.code || 'POPUP_ERROR';
-      const msg = err.message || String(err);
+      const code = err?.code || 'POPUP_ERROR';
+      const msg = err?.message || String(err);
       if (
         code === 'auth/popup-blocked' ||
         code === 'auth/popup-closed-by-user' ||
@@ -320,17 +354,15 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
           await signInWithRedirect(auth, provider);
           return true;
         } catch (redirectErr: any) {
-          const rCode = redirectErr.code || 'REDIRECT_ERROR';
-          const rMsg = redirectErr.message || String(redirectErr);
-          setErrorBanner(`[${rCode}] ${rMsg}`);
+          recordDebugError('Google sign-in', redirectErr);
           return false;
         }
       } else {
-        setErrorBanner(`[${code}] ${msg}`);
+        recordDebugError('Google sign-in', err);
         return false;
       }
     }
-  }, [clearErrorBanner]);
+  }, [clearErrorBanner, recordDebugError]);
 
   const saveProfile = useCallback(
     async (newProfile: UserProfile) => {
@@ -341,13 +373,11 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         localStorage.setItem('user_profile', JSON.stringify(newProfile));
         await apiSaveUserProfile(newProfile, roomCode);
       } catch (err: any) {
-        const code = err.code || 'PROFILE_SAVE_ERROR';
-        const msg = err.message || String(err);
-        setErrorBanner(`[${code}] ${msg}`);
+        recordDebugError('Profile save', err);
         throw err;
       }
     },
-    [roomCode, clearErrorBanner]
+    [roomCode, clearErrorBanner, recordDebugError]
   );
 
   const createRoom = useCallback(
@@ -425,11 +455,9 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         sessionStorage.clear();
       }
     } catch (err: any) {
-      const code = err.code || 'SIGNOUT_ERROR';
-      const msg = err.message || String(err);
-      setErrorBanner(`[${code}] ${msg}`);
+      recordDebugError('Sign out', err);
     }
-  }, [leaveDuo, clearErrorBanner]);
+  }, [leaveDuo, clearErrorBanner, recordDebugError]);
 
   return (
     <SessionContext.Provider
@@ -449,6 +477,9 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         setPendingInviteCode,
         errorBanner,
         clearErrorBanner,
+        debugLastError,
+        clearDebugLastError,
+        recordDebugError,
         startGuestSession,
         signInWithGoogle,
         saveProfile,

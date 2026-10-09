@@ -20,8 +20,9 @@ service cloud.firestore {
     // Two-player game rooms:
     // Only the 2 members of a room can read/write that room, plus joining validation
     match /rooms/{code} {
-      // Read allowed if user is already a member, OR room is waiting to be joined
+      // Read allowed if document doesn't exist yet (for uniqueness checks), OR user is already a member, OR room is waiting to be joined
       allow get: if request.auth != null && (
+        resource == null ||
         (resource.data.playerUids != null && request.auth.uid in resource.data.playerUids) ||
         (resource.data.status == 'waiting' && resource.data.playerUids.size() < 2)
       );

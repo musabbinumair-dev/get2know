@@ -1,10 +1,10 @@
 {
   "apiKey": "AIzaSyA89YAodjZhSBJMVcs_xB7_QyTrDV_kPBY",
-  "authDomain": "get2know-pi.vercel.app",
+  "authDomain": "get2knowgame.firebaseapp.com",
   "projectId": "get2knowgame",
   "storageBucket": "get2knowgame.firebasestorage.app",
   "messagingSenderId": "909063366875",
   "appId": "1:909063366875:web:b150eeaa8d52bc84c484fe",
   "measurementId": "G-QWPS6XSCT1",
-  "firestoreDatabaseId": "ai-studio-get2know-c8309b8a-9ad4-4c03-bc9b-850a67d0d668"
+  "firestoreDatabaseId": "(default)"
 }

@@ -35,7 +35,7 @@ import { PageGate } from './components/PageGate';
 import { DebugPreloadOverlay } from './components/DebugPreloadOverlay';
 import { LoaderProvider, useAppLoader } from './services/loaderContext';
 import { normalizeRoomCode, MemoryEntry } from './services/roomService';
-import { firestoreDatabaseId, authDomain } from './lib/firebase';
+import { DebugPanel } from './components/DebugPanel';
 
 // ── ENTRY GUARD COMPONENT ──
 function EntryGuard({ children }: { children: React.ReactNode }) {
@@ -110,7 +110,6 @@ function AppContent() {
   const { navigateWithLoader } = useAppLoader();
   const gameSession = useGameSession();
   const {
-    sessionType,
     user,
     profile,
     partnerProfile: sessionPartnerProfile,
@@ -131,6 +130,7 @@ function AppContent() {
     dismissWelcomeBackToast,
     errorBanner,
     clearErrorBanner,
+    recordDebugError,
   } = useSession();
 
   // Real partner profile dynamically from room members
@@ -194,17 +194,30 @@ function AppContent() {
     }
   };
 
-  const handleGetStarted = () => {
-    startGuestSession();
-    navigateWithLoader('/create-profile');
+  const handleGetStarted = async () => {
+    try {
+      await startGuestSession();
+      navigateWithLoader('/create-profile');
+    } catch (err: any) {
+      recordDebugError('Google sign-in', err);
+    }
   };
 
   const handleContinueWithGoogle = async () => {
-    await signInWithGoogle();
+    try {
+      await signInWithGoogle();
+    } catch (err: any) {
+      recordDebugError('Google sign-in', err);
+    }
   };
 
   const handleContinueProfile = async (savedProfile: UserProfile) => {
-    await saveProfile(savedProfile);
+    try {
+      await saveProfile(savedProfile);
+    } catch (err: any) {
+      recordDebugError('Profile save', err);
+      return;
+    }
     if (pendingInviteCode) {
       try {
         const normalized = normalizeRoomCode(pendingInviteCode);
@@ -299,8 +312,12 @@ function AppContent() {
                   : profile || undefined
               }
               onBack={async () => {
-                await signOut();
-                navigateWithLoader('/welcome');
+                try {
+                  await signOut();
+                  navigateWithLoader('/welcome');
+                } catch (err: any) {
+                  recordDebugError('Sign out', err);
+                }
               }}
               onContinue={handleContinueProfile}
             />
@@ -547,14 +564,15 @@ function AppContent() {
               dailyReminderEnabled={dailyReminderEnabled}
               dailyReminderTime={dailyReminderTime}
               friendAlertsEnabled={friendAlertsEnabled}
-              sessionType={sessionType}
-              userEmail={user?.email || null}
-              onSignInWithGoogle={signInWithGoogle}
               onBack={() => navigateWithLoader('/home')}
               onEditProfile={() => navigateWithLoader('/create-profile')}
               onSignOut={async () => {
-                await signOut();
-                navigateWithLoader('/welcome');
+                try {
+                  await signOut();
+                  navigateWithLoader('/welcome');
+                } catch (err: any) {
+                  recordDebugError('Sign out', err);
+                }
               }}
               onLeaveDuo={async () => {
                 await leaveDuo();
@@ -625,12 +643,6 @@ function AppContent() {
         </div>
       )}
 
-      {/* Small Debug Line at Bottom */}
-      <div className="fixed bottom-0 left-0 right-0 bg-[#17181B] text-[#FFD36F] text-[10px] font-mono py-1 px-3 flex justify-between items-center z-[99999] pointer-events-none opacity-85">
-        <span>DB: {firestoreDatabaseId}</span>
-        <span>AuthDomain: {authDomain}</span>
-      </div>
-
       {/* Welcome Back Toast */}
       {welcomeBackToast && (
         <div
@@ -659,6 +671,7 @@ export function App() {
             <EntryGuard>
               <AppContent />
             </EntryGuard>
+            <DebugPanel />
           </GameSessionProvider>
         </SessionProvider>
       </LoaderProvider>

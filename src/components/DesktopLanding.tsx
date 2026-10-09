@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ProfileAvatar } from './ProfileAvatar';
 
 interface DesktopLandingProps {
-  onGetStarted?: () => void;
+  onGetStarted?: () => void | Promise<void>;
   onContinueWithGoogle?: () => Promise<void>;
   onJoinCode?: () => void;
   forcedWidth?: number;
@@ -16,6 +16,7 @@ export const DesktopLanding: React.FC<DesktopLandingProps> = ({
   forcedWidth,
   forcedHeight,
 }) => {
+  const [isStarting, setIsStarting] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [signInError, setSignInError] = useState<string | null>(null);
 
@@ -375,7 +376,20 @@ export const DesktopLanding: React.FC<DesktopLandingProps> = ({
             {/* 1. "Get started": x 107, w 245, black pill, white text */}
             <button
               type="button"
-              onClick={onGetStarted}
+              disabled={isStarting || isSigningIn}
+              onClick={async () => {
+                if (isStarting || isSigningIn) return;
+                setIsStarting(true);
+                try {
+                  if (onGetStarted) {
+                    await Promise.resolve(onGetStarted());
+                  }
+                } catch (err) {
+                  console.warn('Get started error:', err);
+                } finally {
+                  setIsStarting(false);
+                }
+              }}
               className="cursor-pointer focus-visible:ring-2 focus-visible:ring-[#17181B] focus-visible:outline-none select-none"
               style={{
                 position: 'absolute',

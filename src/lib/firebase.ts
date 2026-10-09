@@ -5,16 +5,18 @@ import firebaseConfig from '../../firebase-applet-config.json';
 
 const resolvedConfig = {
   ...firebaseConfig,
-  authDomain: typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
-    ? window.location.hostname
-    : firebaseConfig.authDomain,
+  authDomain: `${firebaseConfig.projectId}.firebaseapp.com`,
 };
 
 const app = initializeApp(resolvedConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db =
+  !firebaseConfig.firestoreDatabaseId || firebaseConfig.firestoreDatabaseId === '(default)'
+    ? getFirestore(app)
+    : getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
-export const firestoreDatabaseId = firebaseConfig.firestoreDatabaseId;
+export const firestoreDatabaseId = firebaseConfig.firestoreDatabaseId || '(default)';
 export const authDomain = resolvedConfig.authDomain;
+export const projectId = resolvedConfig.projectId;
 
 export enum OperationType {
   CREATE = 'create',
@@ -47,8 +49,11 @@ export function handleFirestoreError(
   operationType: OperationType,
   path: string | null
 ): never {
+  const fbErr = error as { code?: string; message?: string };
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: fbErr?.message || (error instanceof Error ? error.message : String(error)),
+    operationType,
+    path,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
@@ -61,46 +66,55 @@ export function handleFirestoreError(
           email: provider.email,
         })) || [],
     },
-    operationType,
-    path,
   };
   console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  const err: any = new Error(errInfo.error);
+  err.code = fbErr?.code || 'permission-denied';
+  err.details = errInfo;
+  throw err;
 }
 
-// Ensure auth session (sign in anonymously if not authenticated)
+// Ensure auth session (sign in anonymously if not authenticated, never use fake IDs)
 export async function ensureAuthUser(): Promise<FirebaseUser> {
   if (auth.currentUser) {
     return auth.currentUser;
   }
-  return new Promise((resolve) => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+
+  // 1. Wait for initial auth state if Firebase Auth is restoring saved session
+  const initialUser = await new Promise<FirebaseUser | null>((resolve) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       unsubscribe();
+      resolve(user);
+    });
+  });
+
+  if (initialUser) {
+    return initialUser;
+  }
+
+  // 2. Not authenticated: call signInAnonymously and wait for onAuthStateChanged
+  await signInAnonymously(auth);
+
+  return new Promise<FirebaseUser>((resolve, reject) => {
+    if (auth.currentUser) {
+      resolve(auth.currentUser);
+      return;
+    }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
+        unsubscribe();
         resolve(user);
-      } else {
-        try {
-          const cred = await signInAnonymously(auth);
-          resolve(cred.user);
-        } catch (err) {
-          // Fallback to local guest user if anonymous auth is restricted or disabled
-          let guestUid = localStorage.getItem('gty_guest_uid');
-          if (!guestUid) {
-            guestUid = `guest_${Math.random().toString(36).substring(2, 10)}_${Date.now()}`;
-            localStorage.setItem('gty_guest_uid', guestUid);
-          }
-          const mockUser = {
-            uid: guestUid,
-            isAnonymous: true,
-            email: null,
-            emailVerified: false,
-            displayName: 'Guest Player',
-            providerData: [],
-          } as unknown as FirebaseUser;
-          resolve(mockUser);
-        }
       }
     });
+
+    setTimeout(() => {
+      if (auth.currentUser) {
+        resolve(auth.currentUser);
+      } else {
+        unsubscribe();
+        reject(new Error('Timed out waiting for onAuthStateChanged after sign in'));
+      }
+    }, 4000);
   });
 }
 

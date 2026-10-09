@@ -148,19 +148,26 @@ export const CreateProfileScreen: React.FC<CreateProfileScreenProps> = ({
   const handleContinue = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
-    await new Promise((r) => setTimeout(r, 400));
-    const matchingOption = AVATAR_OPTIONS.find((a) => a.id === selectedAvatarId);
-    const resolvedColor =
-      selectedColor ||
-      (matchingOption?.color === 'teal' || matchingOption?.color === 'indigo'
-        ? 'teal'
-        : 'salmon');
-    onContinue({
-      avatarId: selectedAvatarId ?? 1,
-      name: name.trim() || 'Player',
-      color: resolvedColor,
-    });
-    setIsSubmitting(false);
+    try {
+      await new Promise((r) => setTimeout(r, 400));
+      const matchingOption = AVATAR_OPTIONS.find((a) => a.id === selectedAvatarId);
+      const resolvedColor =
+        selectedColor ||
+        (matchingOption?.color === 'teal' || matchingOption?.color === 'indigo'
+          ? 'teal'
+          : 'salmon');
+      await Promise.resolve(
+        onContinue({
+          avatarId: selectedAvatarId ?? 1,
+          name: name.trim() || 'Player',
+          color: resolvedColor,
+        })
+      );
+    } catch (err) {
+      console.error('Profile continue error:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isDesktopLandscape) {

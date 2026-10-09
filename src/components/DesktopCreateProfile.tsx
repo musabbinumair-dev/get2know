@@ -91,13 +91,20 @@ export const DesktopCreateProfile: React.FC<DesktopCreateProfileProps> = ({
   const handleContinueClick = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
-    await new Promise((r) => setTimeout(r, 200));
-    onContinue({
-      avatarId: selectedAvatarId,
-      name: name.trim() || 'Player',
-      color: selectedColor,
-    });
-    setIsSubmitting(false);
+    try {
+      await new Promise((r) => setTimeout(r, 200));
+      await Promise.resolve(
+        onContinue({
+          avatarId: selectedAvatarId,
+          name: name.trim() || 'Player',
+          color: selectedColor,
+        })
+      );
+    } catch (err) {
+      console.error('Desktop profile continue error:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Group vertical position formula
