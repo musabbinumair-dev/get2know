@@ -3,9 +3,18 @@ import { getAuth, signInAnonymously, onAuthStateChanged, User as FirebaseUser } 
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-const app = initializeApp(firebaseConfig);
+const resolvedConfig = {
+  ...firebaseConfig,
+  authDomain: typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+    ? window.location.hostname
+    : firebaseConfig.authDomain,
+};
+
+const app = initializeApp(resolvedConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
+export const firestoreDatabaseId = firebaseConfig.firestoreDatabaseId;
+export const authDomain = resolvedConfig.authDomain;
 
 export enum OperationType {
   CREATE = 'create',

@@ -9,6 +9,8 @@ import React, {
 import {
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut as firebaseSignOut,
   onAuthStateChanged,
 } from 'firebase/auth';
@@ -76,6 +78,8 @@ interface SessionContextValue {
   memories: MemoryEntry[];
   pendingInviteCode: string | null;
   setPendingInviteCode: (code: string | null) => void;
+  errorBanner: string | null;
+  clearErrorBanner: () => void;
   startGuestSession: () => Promise<void>;
   signInWithGoogle: () => Promise<boolean>;
   saveProfile: (newProfile: UserProfile) => Promise<void>;
@@ -93,6 +97,9 @@ const SessionContext = createContext<SessionContextValue | undefined>(undefined)
 export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<AppUser | null>(null);
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
+  const clearErrorBanner = useCallback(() => setErrorBanner(null), []);
+
   const [profile, setProfile] = useState<UserProfile | null>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('gty_profile');
@@ -113,6 +120,28 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
   });
   const [sessionType, setSessionType] = useState<SessionType>('NEW');
   const [welcomeBackToast, setWelcomeBackToast] = useState<string | null>(null);
+
+  // Handle redirect result on load
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          const fbUser = result.user;
+          setUser({
+            uid: fbUser.uid,
+            email: fbUser.email,
+            displayName: fbUser.displayName,
+            photoURL: fbUser.photoURL,
+          });
+          setSessionType('GOOGLE');
+        }
+      })
+      .catch((err: any) => {
+        const code = err.code || 'REDIRECT_ERROR';
+        const msg = err.message || String(err);
+        setErrorBanner(`[${code}] ${msg}`);
+      });
+  }, []);
 
   // Invite code from URL e.g. ?join=ABC-123 or ?code=ABC-123
   const [pendingInviteCode, setPendingInviteCodeState] = useState<string | null>(() => {
@@ -171,18 +200,8 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
           console.warn('Could not load user profile from Firestore:', e);
         }
       } else {
-        // Sign in anonymously by default so every visitor has a real Firebase UID
-        try {
-          const anonUser = await ensureAuthUser();
-          setUser({
-            uid: anonUser.uid,
-            email: null,
-            displayName: null,
-          });
-          setSessionType('GUEST');
-        } catch (e) {
-          console.warn('Anonymous sign-in error:', e);
-        }
+        setUser(null);
+        setSessionType('NEW');
       }
       setIsLoading(false);
     });
@@ -257,16 +276,24 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [room]);
 
   const startGuestSession = useCallback(async () => {
-    const anonUser = await ensureAuthUser();
-    setUser({
-      uid: anonUser.uid,
-      email: null,
-      displayName: null,
-    });
-    setSessionType('GUEST');
-  }, []);
+    clearErrorBanner();
+    try {
+      const anonUser = await ensureAuthUser();
+      setUser({
+        uid: anonUser.uid,
+        email: null,
+        displayName: null,
+      });
+      setSessionType('GUEST');
+    } catch (err: any) {
+      const code = err.code || 'GUEST_SESSION_ERROR';
+      const msg = err.message || String(err);
+      setErrorBanner(`[${code}] ${msg}`);
+    }
+  }, [clearErrorBanner]);
 
   const signInWithGoogle = useCallback(async (): Promise<boolean> => {
+    clearErrorBanner();
     try {
       const provider = new GoogleAuthProvider();
       const cred = await signInWithPopup(auth, provider);
@@ -279,43 +306,83 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
       setUser(appUser);
       setSessionType('GOOGLE');
       return true;
-    } catch (err) {
-      console.warn('Google sign in error:', err);
-      // Fallback: stay with anonymous auth
-      await startGuestSession();
-      return true;
+    } catch (err: any) {
+      const code = err.code || 'POPUP_ERROR';
+      const msg = err.message || String(err);
+      if (
+        code === 'auth/popup-blocked' ||
+        code === 'auth/popup-closed-by-user' ||
+        code === 'auth/cancelled-popup-request' ||
+        msg.toLowerCase().includes('popup')
+      ) {
+        try {
+          const provider = new GoogleAuthProvider();
+          await signInWithRedirect(auth, provider);
+          return true;
+        } catch (redirectErr: any) {
+          const rCode = redirectErr.code || 'REDIRECT_ERROR';
+          const rMsg = redirectErr.message || String(redirectErr);
+          setErrorBanner(`[${rCode}] ${rMsg}`);
+          return false;
+        }
+      } else {
+        setErrorBanner(`[${code}] ${msg}`);
+        return false;
+      }
     }
-  }, [startGuestSession]);
+  }, [clearErrorBanner]);
 
   const saveProfile = useCallback(
     async (newProfile: UserProfile) => {
-      setProfile(newProfile);
-      localStorage.setItem('gty_profile', JSON.stringify(newProfile));
-      localStorage.setItem('user_profile', JSON.stringify(newProfile));
-      await apiSaveUserProfile(newProfile, roomCode);
+      clearErrorBanner();
+      try {
+        setProfile(newProfile);
+        localStorage.setItem('gty_profile', JSON.stringify(newProfile));
+        localStorage.setItem('user_profile', JSON.stringify(newProfile));
+        await apiSaveUserProfile(newProfile, roomCode);
+      } catch (err: any) {
+        const code = err.code || 'PROFILE_SAVE_ERROR';
+        const msg = err.message || String(err);
+        setErrorBanner(`[${code}] ${msg}`);
+        throw err;
+      }
     },
-    [roomCode]
+    [roomCode, clearErrorBanner]
   );
 
   const createRoom = useCallback(
     async (prof: UserProfile): Promise<string> => {
-      const newRoom = await apiCreateRoom(prof);
-      setRoom(newRoom);
-      setRoomCode(newRoom.code);
-      localStorage.setItem('gty_room_code', newRoom.code);
-      return newRoom.code;
+      try {
+        const newRoom = await apiCreateRoom(prof);
+        setRoom(newRoom);
+        setRoomCode(newRoom.code);
+        localStorage.setItem('gty_room_code', newRoom.code);
+        return newRoom.code;
+      } catch (err: any) {
+        const code = err.code || 'CREATE_ROOM_ERROR';
+        const msg = err.message || String(err);
+        setErrorBanner(`[${code}] ${msg}`);
+        throw err;
+      }
     },
     []
   );
 
   const joinRoom = useCallback(
     async (code: string, prof: UserProfile): Promise<RoomData> => {
-      const joined = await apiJoinRoom(code, prof);
-      setRoom(joined);
-      setRoomCode(joined.code);
-      localStorage.setItem('gty_room_code', joined.code);
-      setPendingInviteCode(null);
-      return joined;
+      try {
+        const joined = await apiJoinRoom(code, prof);
+        setRoom(joined);
+        setRoomCode(joined.code);
+        localStorage.setItem('gty_room_code', joined.code);
+        setPendingInviteCode(null);
+        return joined;
+      } catch (err: any) {
+        const code = err.code || 'JOIN_ROOM_ERROR';
+        const msg = err.message || String(err);
+        setErrorBanner(`[${code}] ${msg}`);
+        throw err;
+      }
     },
     [setPendingInviteCode]
   );
@@ -335,20 +402,34 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
     setRoom(null);
     setRoomCode(null);
     setProfile(null);
-    localStorage.removeItem('gty_room_code');
-    localStorage.removeItem('gty_profile');
-    localStorage.removeItem('user_profile');
-    localStorage.removeItem('partner_profile');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('gty_room_code');
+      localStorage.removeItem('gty_profile');
+      localStorage.removeItem('user_profile');
+      localStorage.removeItem('partner_profile');
+    }
   }, [roomCode]);
 
   const signOut = useCallback(async () => {
-    await leaveDuo();
-    await firebaseSignOut(auth);
-    setUser(null);
-    setSessionType('NEW');
-    // Re-initialize anonymous user
-    await startGuestSession();
-  }, [leaveDuo, startGuestSession]);
+    clearErrorBanner();
+    try {
+      await leaveDuo();
+      await firebaseSignOut(auth);
+      setUser(null);
+      setProfile(null);
+      setRoom(null);
+      setRoomCode(null);
+      setSessionType('NEW');
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+      }
+    } catch (err: any) {
+      const code = err.code || 'SIGNOUT_ERROR';
+      const msg = err.message || String(err);
+      setErrorBanner(`[${code}] ${msg}`);
+    }
+  }, [leaveDuo, clearErrorBanner]);
 
   return (
     <SessionContext.Provider
@@ -366,6 +447,8 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
         memories,
         pendingInviteCode,
         setPendingInviteCode,
+        errorBanner,
+        clearErrorBanner,
         startGuestSession,
         signInWithGoogle,
         saveProfile,

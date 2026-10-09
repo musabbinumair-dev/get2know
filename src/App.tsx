@@ -35,6 +35,7 @@ import { PageGate } from './components/PageGate';
 import { DebugPreloadOverlay } from './components/DebugPreloadOverlay';
 import { LoaderProvider, useAppLoader } from './services/loaderContext';
 import { normalizeRoomCode, MemoryEntry } from './services/roomService';
+import { firestoreDatabaseId, authDomain } from './lib/firebase';
 
 // ── ENTRY GUARD COMPONENT ──
 function EntryGuard({ children }: { children: React.ReactNode }) {
@@ -128,6 +129,8 @@ function AppContent() {
     leaveDuo,
     welcomeBackToast,
     dismissWelcomeBackToast,
+    errorBanner,
+    clearErrorBanner,
   } = useSession();
 
   // Real partner profile dynamically from room members
@@ -608,6 +611,25 @@ function AppContent() {
 
       {/* Interactive ?debug=1 Overlay */}
       <DebugPreloadOverlay />
+
+      {/* Error Banner */}
+      {errorBanner && (
+        <div className="fixed top-4 left-4 right-4 z-[99999] bg-red-600 text-white p-3 rounded-xl shadow-2xl flex items-center justify-between gap-3 text-[13px] font-bold font-['Nunito',sans-serif]">
+          <span>⚠️ {errorBanner}</span>
+          <button
+            onClick={clearErrorBanner}
+            className="bg-black/20 hover:bg-black/40 text-white rounded-full w-6 h-6 flex items-center justify-center shrink-0 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Small Debug Line at Bottom */}
+      <div className="fixed bottom-0 left-0 right-0 bg-[#17181B] text-[#FFD36F] text-[10px] font-mono py-1 px-3 flex justify-between items-center z-[99999] pointer-events-none opacity-85">
+        <span>DB: {firestoreDatabaseId}</span>
+        <span>AuthDomain: {authDomain}</span>
+      </div>
 
       {/* Welcome Back Toast */}
       {welcomeBackToast && (
