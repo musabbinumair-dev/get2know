@@ -64,7 +64,7 @@ export async function ensureAuthUser(): Promise<FirebaseUser> {
   if (auth.currentUser) {
     return auth.currentUser;
   }
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       unsubscribe();
       if (user) {
@@ -74,7 +74,21 @@ export async function ensureAuthUser(): Promise<FirebaseUser> {
           const cred = await signInAnonymously(auth);
           resolve(cred.user);
         } catch (err) {
-          reject(err);
+          // Fallback to local guest user if anonymous auth is restricted or disabled
+          let guestUid = localStorage.getItem('gty_guest_uid');
+          if (!guestUid) {
+            guestUid = `guest_${Math.random().toString(36).substring(2, 10)}_${Date.now()}`;
+            localStorage.setItem('gty_guest_uid', guestUid);
+          }
+          const mockUser = {
+            uid: guestUid,
+            isAnonymous: true,
+            email: null,
+            emailVerified: false,
+            displayName: 'Guest Player',
+            providerData: [],
+          } as unknown as FirebaseUser;
+          resolve(mockUser);
         }
       }
     });
