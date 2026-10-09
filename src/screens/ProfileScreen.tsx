@@ -163,10 +163,64 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   };
 
   // Toggle handlers
-  const handleToggleReminder = () => {
+  const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
+
+  const handleToggleReminder = async () => {
     const nextVal = !reminderOn;
-    setReminderOn(nextVal);
-    onToggleDailyReminder?.(nextVal);
+    if (nextVal) {
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        if (Notification.permission === 'granted') {
+          setReminderOn(true);
+          onToggleDailyReminder?.(true);
+          localStorage.setItem('daily_reminder_enabled', 'true');
+          localStorage.setItem('daily_reminder_time', reminderTime);
+          setNotificationMessage(`Daily reminder active for ${reminderTime} ⏰`);
+          setTimeout(() => setNotificationMessage(null), 3000);
+        } else if (Notification.permission === 'denied') {
+          setReminderOn(false);
+          onToggleDailyReminder?.(false);
+          localStorage.setItem('daily_reminder_enabled', 'false');
+          setNotificationMessage('Notifications blocked by browser. Please enable them in site settings.');
+          setTimeout(() => setNotificationMessage(null), 4500);
+        } else {
+          try {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+              setReminderOn(true);
+              onToggleDailyReminder?.(true);
+              localStorage.setItem('daily_reminder_enabled', 'true');
+              localStorage.setItem('daily_reminder_time', reminderTime);
+              setNotificationMessage(`Daily reminder set for ${reminderTime} ⏰`);
+              setTimeout(() => setNotificationMessage(null), 3000);
+            } else {
+              setReminderOn(false);
+              onToggleDailyReminder?.(false);
+              localStorage.setItem('daily_reminder_enabled', 'false');
+              setNotificationMessage('Notification permission was not granted.');
+              setTimeout(() => setNotificationMessage(null), 4000);
+            }
+          } catch {
+            setReminderOn(false);
+            onToggleDailyReminder?.(false);
+            localStorage.setItem('daily_reminder_enabled', 'false');
+            setNotificationMessage('Unable to request notification permission.');
+            setTimeout(() => setNotificationMessage(null), 4000);
+          }
+        }
+      } else {
+        setReminderOn(false);
+        onToggleDailyReminder?.(false);
+        localStorage.setItem('daily_reminder_enabled', 'false');
+        setNotificationMessage('Notifications are not supported in this browser.');
+        setTimeout(() => setNotificationMessage(null), 4000);
+      }
+    } else {
+      setReminderOn(false);
+      onToggleDailyReminder?.(false);
+      localStorage.setItem('daily_reminder_enabled', 'false');
+      setNotificationMessage('Daily reminder turned off.');
+      setTimeout(() => setNotificationMessage(null), 2500);
+    }
   };
 
   const handleToggleAlerts = () => {
@@ -687,10 +741,25 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           onSave={(newTime: string) => {
             setReminderTime(newTime);
             onChangeReminderTime?.(newTime);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('daily_reminder_time', newTime);
+              localStorage.setItem('gty_reminder_time', newTime);
+            }
             setShowTimePicker(false);
+            setNotificationMessage(`Daily reminder time saved: ${newTime} ⏰`);
+            setTimeout(() => setNotificationMessage(null), 3000);
           }}
           onClose={() => setShowTimePicker(false)}
         />
+      )}
+
+      {/* ---------------- NOTIFICATION / PERMISSION TOAST ---------------- */}
+      {notificationMessage && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-pop pointer-events-none">
+          <div className="bg-[#17181B] text-white px-5 py-2.5 rounded-full font-extrabold text-[13.5px] shadow-2xl flex items-center gap-2 whitespace-nowrap">
+            <span>{notificationMessage}</span>
+          </div>
+        </div>
       )}
 
       {/* ---------------- CONFIRMATION BOTTOM SHEET: LEAVE DUO ---------------- */}

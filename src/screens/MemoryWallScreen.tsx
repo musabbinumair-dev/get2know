@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Screen } from '../components/Screen';
 import {
   MemoryCard,
@@ -9,6 +9,7 @@ import {
 } from '../components/MemoryCard';
 import { BottomNav, NavTab } from '../components/BottomNav';
 import { UserProfile } from './CreateProfileScreen';
+import { useSession } from '../services/sessionContext';
 
 export interface MemoryWallScreenProps {
   onNavigateTab?: (tab: NavTab) => void;
@@ -60,7 +61,37 @@ export const MemoryWallScreen: React.FC<MemoryWallScreenProps> = ({
     }
   }, [propCards]);
 
-  const cards = localCards;
+  const { room } = useSession();
+
+  const cards = useMemo(() => {
+    const list = [...localCards];
+    if (room?.memories && room.memories.length > 0) {
+      room.memories.forEach((mem) => {
+        if (!list.some((c) => String(c.id) === String(mem.id))) {
+          list.unshift({
+            id: mem.id,
+            category: mem.category,
+            color: mem.color as any,
+            cardBg: mem.cardBg,
+            date: mem.date,
+            question: mem.question,
+            p1Answer: mem.p1Answer,
+            p2Answer: mem.p2Answer,
+            p1Name: mem.p1Name,
+            p2Name: mem.p2Name,
+            p1AvatarId: mem.p1AvatarId,
+            p2AvatarId: mem.p2AvatarId,
+            p1Color: mem.p1Color,
+            p2Color: mem.p2Color,
+            matched: mem.isMatched,
+            isMatched: mem.isMatched,
+            reactions: mem.reactions,
+          });
+        }
+      });
+    }
+    return list;
+  }, [localCards, room?.memories]);
 
   // Active user profile (from prop or localStorage)
   const [activeProfile, setActiveProfile] = useState<UserProfile>(() => {

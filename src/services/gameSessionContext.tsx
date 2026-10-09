@@ -1,12 +1,25 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useMemo, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useSession } from './sessionContext';
 import {
   TRIVIA_QUESTIONS,
   KNOW_ME_QUESTIONS,
   TriviaQuestion,
   KnowMeQuestion,
   GameQuestion,
+  generateKnowMeGuessOptions,
+  shuffleTriviaOptions,
 } from '../data/gameQuestions';
+import {
+  submitPlayerAnswer as apiSubmitAnswer,
+  submitPlayerGuess as apiSubmitGuess,
+  advanceToNextRound as apiAdvanceRound,
+  sendRoomReaction as apiSendReaction,
+  requestRematch as apiRequestRematch,
+  startRoomGame as apiStartGame,
+  RoomSettings,
+} from './roomService';
+import { triggerHaptic } from '../utils/haptics';
 
 export type GameMode = 'Trivia' | 'Know Me' | 'Mixed';
 export type RoundType = 'trivia' | 'know-me';
@@ -36,24 +49,40 @@ export interface GameSessionState {
   timer: number;
   isTimerActive: boolean;
   currentQuestion: GameQuestion;
+  currentTriviaOptions?: { id: 'pink' | 'yellow' | 'cream' | 'green'; text: string }[];
+  currentTriviaCorrectId?: 'pink' | 'yellow' | 'cream' | 'green';
+  currentKnowMeOptions?: { id: 'pink' | 'yellow' | 'cream' | 'green'; text: string }[];
+  currentKnowMeCorrectId?: 'pink' | 'yellow' | 'cream' | 'green';
   myAnswer: string;
   friendAnswer: string;
   myGuess: string;
+  friendGuess: string;
+  isMyAnswerLocked: boolean;
+  isFriendAnswerLocked: boolean;
+  isMyGuessLocked: boolean;
+  isFriendGuessLocked: boolean;
   isCorrect: boolean;
   isMatched: boolean;
   myScore: number;
   friendScore: number;
+  myRoundPoints: number;
+  friendRoundPoints: number;
   streak: number;
   matchesCount: number;
   history: RoundResult[];
+  reactions: Array<{ id: string; emoji: string; fromUid: string; timestamp: number }>;
+  rematchVotes: Record<string, boolean>;
+  countdownStartTime?: number;
+  partnerDisconnected: boolean;
   // Actions
-  startNewGame: (overrideMode?: GameMode, overrideRounds?: number) => void;
-  submitAnswer: (answer: string) => void;
-  submitGuess: (optionId: 'pink' | 'yellow' | 'cream' | 'green', optionText: string) => void;
+  startNewGame: (overrideMode?: GameMode, overrideRounds?: number) => Promise<void>;
+  submitAnswer: (answerText: string, optionId?: string) => Promise<void>;
+  submitGuess: (optionId: 'pink' | 'yellow' | 'cream' | 'green', optionText: string) => Promise<void>;
   advanceFromWaiting: () => void;
-  nextRound: () => void;
-  restartGame: () => void;
+  nextRound: () => Promise<void>;
+  restartGame: () => Promise<void>;
   exitGame: () => void;
+  sendReaction: (emoji: string) => Promise<void>;
   setTimer: React.Dispatch<React.SetStateAction<number>>;
   pauseTimer: () => void;
   resumeTimer: () => void;
@@ -63,187 +92,166 @@ const GameSessionContext = createContext<GameSessionState | undefined>(undefined
 
 export const GameSessionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { room, roomCode, user } = useSession();
 
-  const getGameSettings = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('gty_game_settings');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          return {
-            mode: (parsed.mode === 'know-me' ? 'Know Me' : parsed.mode === 'mixed' ? 'Mixed' : 'Trivia') as GameMode,
-            categories: parsed.categories || [],
-            difficulty: parsed.difficulty || 'Medium',
-            timer: parsed.timer || '20s',
-            rounds: parsed.rounds || 10,
-            speedBonus: parsed.speedBonus ?? true,
-            soundEffects: parsed.soundEffects ?? true,
-          };
-        } catch {}
-      }
-    }
-    return {
-      mode: 'Trivia' as GameMode,
-      categories: [],
-      difficulty: 'Medium',
-      timer: '20s',
-      rounds: 10,
-      speedBonus: true,
-      soundEffects: true,
-    };
-  }, []);
-
-  const getTimerSeconds = (timerSetting: string) => {
+  const getTimerSecondsFromSetting = (timerSetting?: string, difficulty?: string) => {
     if (timerSetting === '10s') return 10;
     if (timerSetting === '20s') return 20;
     if (timerSetting === '30s') return 30;
-    return -1; // Off
+    if (timerSetting === 'Off') return -1;
+    // Default by difficulty if not explicitly set
+    if (difficulty === 'Easy') return 20;
+    if (difficulty === 'Hard') return 10;
+    return 15;
   };
 
-  const isTimerEnabled = (timerSetting: string) => {
-    return timerSetting !== 'Off';
-  };
+  const gs = room?.gameState;
+  const isRoomGameActive = Boolean(
+    room &&
+    gs &&
+    gs.status !== 'lobby'
+  );
 
-  // Mode and rounds initialized from localStorage settings
-  const [mode, setMode] = useState<GameMode>(() => {
-    const s = getGameSettings();
-    return s.mode as GameMode;
-  });
+  // Determine active partner UID
+  const partnerUid = useMemo(() => {
+    if (!room || !user) return null;
+    return room.playerUids.find((id) => id !== user.uid) || null;
+  }, [room, user]);
 
-  const [totalRounds, setTotalRounds] = useState<number>(() => {
-    const s = getGameSettings();
-    return s.rounds;
-  });
-
-  const [isActive, setIsActive] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('gty_active_game') === 'true';
-    }
+  // Partner disconnected status
+  const partnerDisconnected = useMemo(() => {
+    if (!room || !partnerUid) return false;
+    const p = room.players[partnerUid];
+    if (!p) return true;
+    if (p.online === false) return true;
+    if (p.lastSeen && Date.now() - p.lastSeen > 45000) return true;
     return false;
-  });
+  }, [room, partnerUid]);
 
-  const [currentRound, setCurrentRound] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      const r = localStorage.getItem('gty_game_round');
-      if (r) return parseInt(r, 10) || 1;
+  // Current mode
+  const mode: GameMode = useMemo(() => {
+    if (gs?.mode) {
+      if (gs.mode === 'know-me') return 'Know Me';
+      if (gs.mode === 'mixed') return 'Mixed';
+      return 'Trivia';
     }
-    return 1;
-  });
+    return 'Trivia';
+  }, [gs?.mode]);
 
-  // Determine round type for current round
-  const getRoundTypeForRound = useCallback(
-    (roundNum: number, gameMode: GameMode): RoundType => {
-      if (gameMode === 'Trivia') return 'trivia';
-      if (gameMode === 'Know Me') return 'know-me';
-      // Mixed: alternate. Round 1: Trivia, Round 2: Know Me, Round 3: Trivia...
-      return roundNum % 2 === 1 ? 'trivia' : 'know-me';
-    },
-    []
-  );
+  const totalRounds = gs?.totalRounds || room?.settings?.rounds || 10;
+  const currentRound = gs?.round || 1;
+  const currentRoundType: RoundType = gs?.roundType || 'trivia';
 
-  const [currentRoundType, setCurrentRoundType] = useState<RoundType>(() =>
-    getRoundTypeForRound(currentRound, mode)
-  );
-
-  const [currentStep, setCurrentStep] = useState<GameStep>(() => {
-    if (typeof window !== 'undefined') {
-      const step = localStorage.getItem('gty_game_step') as GameStep;
-      if (step) return step;
+  // Current Question
+  const currentQuestion = useMemo<GameQuestion>(() => {
+    if (gs?.questionId) {
+      const foundTrivia = TRIVIA_QUESTIONS.find((q) => q.id === gs.questionId);
+      if (foundTrivia) return foundTrivia;
+      const foundKnowMe = KNOW_ME_QUESTIONS.find((q) => q.id === gs.questionId);
+      if (foundKnowMe) return foundKnowMe;
     }
-    return 'countdown';
-  });
+    return currentRoundType === 'trivia' ? TRIVIA_QUESTIONS[0] : KNOW_ME_QUESTIONS[0];
+  }, [gs?.questionId, currentRoundType]);
 
-  // Timer state
-  const [timer, setTimer] = useState<number>(() => {
-    const s = getGameSettings();
-    return getTimerSeconds(s.timer);
-  });
-  const [isTimerActive, setIsTimerActive] = useState<boolean>(() => {
-    const s = getGameSettings();
-    return isTimerEnabled(s.timer);
-  });
+  // Shuffled Trivia options for current round
+  const triviaOptionsData = useMemo(() => {
+    if (currentRoundType !== 'trivia' || currentQuestion.type !== 'trivia') return null;
+    const seed = `${gs?.seed || 12345}-r${currentRound}`;
+    return shuffleTriviaOptions(currentQuestion as TriviaQuestion, seed);
+  }, [currentRoundType, currentQuestion, gs?.seed, currentRound]);
 
-  // Scores & Streak
-  const [myScore, setMyScore] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      const s = localStorage.getItem('gty_game_myscore');
-      if (s) return parseInt(s, 10) || 0;
-    }
-    return 0;
-  });
+  // Scores
+  const myScore = (user && gs?.scores ? gs.scores[user.uid] : 0) || 0;
+  const friendScore = (partnerUid && gs?.scores ? gs.scores[partnerUid] : 0) || 0;
+  const myRoundPoints = (user && gs?.roundPointsEarned ? gs.roundPointsEarned[user.uid] : 0) || 0;
+  const friendRoundPoints = (partnerUid && gs?.roundPointsEarned ? gs.roundPointsEarned[partnerUid] : 0) || 0;
 
-  const [friendScore, setFriendScore] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      const s = localStorage.getItem('gty_game_friendscore');
-      if (s) return parseInt(s, 10) || 0;
-    }
-    return 0;
-  });
+  // Answers & lock states
+  const myAnsObj = user && gs?.answers ? gs.answers[user.uid] : null;
+  const friendAnsObj = partnerUid && gs?.answers ? gs.answers[partnerUid] : null;
 
-  const [streak] = useState<number>(12);
-  const [matchesCount, setMatchesCount] = useState<number>(0);
+  const isMyAnswerLocked = Boolean(myAnsObj?.locked);
+  const isFriendAnswerLocked = Boolean(friendAnsObj?.locked);
 
-  // Current answers & guesses
-  const [myAnswer, setMyAnswer] = useState<string>('');
-  const [friendAnswer, setFriendAnswer] = useState<string>('');
-  const [myGuess, setMyGuess] = useState<string>('');
-  const [isCorrect, setIsCorrect] = useState<boolean>(false);
-  const [isMatched, setIsMatched] = useState<boolean>(false);
+  const myAnswer = myAnsObj?.text || '';
+  // Friend's answer is only revealed when both have locked in!
+  const friendAnswer = isMyAnswerLocked && isFriendAnswerLocked ? (friendAnsObj?.text || '') : '';
 
-  // Round history
-  const [history, setHistory] = useState<RoundResult[]>(() => {
-    if (typeof window !== 'undefined') {
-      const h = localStorage.getItem('gty_game_history');
-      if (h) {
-        try {
-          return JSON.parse(h);
-        } catch {}
-      }
-    }
-    return [];
-  });
+  // Guesses & lock states
+  const myGuessObj = user && gs?.guesses ? gs.guesses[user.uid] : null;
+  const friendGuessObj = partnerUid && gs?.guesses ? gs.guesses[partnerUid] : null;
 
-  // Filtered question pools based on selected categories
-  const filteredTrivia = useMemo(() => {
-    const s = getGameSettings();
-    if (!s.categories || s.categories.length === 0) return TRIVIA_QUESTIONS;
-    const matched = TRIVIA_QUESTIONS.filter((q) => s.categories.includes(q.category));
-    return matched.length > 0 ? matched : TRIVIA_QUESTIONS;
-  }, [getGameSettings]);
+  const isMyGuessLocked = Boolean(myGuessObj?.locked);
+  const isFriendGuessLocked = Boolean(friendGuessObj?.locked);
 
-  const filteredKnowMe = useMemo(() => {
-    const s = getGameSettings();
-    if (!s.categories || s.categories.length === 0) return KNOW_ME_QUESTIONS;
-    const matched = KNOW_ME_QUESTIONS.filter((q) => s.categories.includes(q.category));
-    return matched.length > 0 ? matched : KNOW_ME_QUESTIONS;
-  }, [getGameSettings]);
+  const myGuess = myGuessObj?.text || '';
+  const friendGuess = isMyGuessLocked && isFriendGuessLocked ? (friendGuessObj?.text || '') : '';
 
-  // Fetch question for current round
-  const currentQuestion = React.useMemo<GameQuestion>(() => {
-    const idx = (currentRound - 1);
+  // Options for Know Me guessing phase (for me guessing partner's answer)
+  const knowMeGuessOptionsData = useMemo(() => {
+    if (currentRoundType !== 'know-me' || currentQuestion.type !== 'know-me') return null;
+    // To guess partner's answer, we need partner's real answer
+    const partnerAns = friendAnsObj?.text || (currentQuestion as KnowMeQuestion).player2Answer;
+    const seed = `${gs?.seed || 12345}-guess-for-${partnerUid || 'partner'}-r${currentRound}`;
+    return generateKnowMeGuessOptions(currentQuestion as KnowMeQuestion, partnerAns, seed);
+  }, [currentRoundType, currentQuestion, friendAnsObj?.text, gs?.seed, partnerUid, currentRound]);
+
+  // Results for current round
+  const isCorrect = useMemo(() => {
     if (currentRoundType === 'trivia') {
-      return filteredTrivia[idx % filteredTrivia.length];
+      if (!triviaOptionsData || !myAnsObj?.optionId) return false;
+      return myAnsObj.optionId === triviaOptionsData.correctOptionId;
     } else {
-      return filteredKnowMe[idx % filteredKnowMe.length];
+      if (!knowMeGuessOptionsData || !myGuessObj?.optionId) return false;
+      return myGuessObj.optionId === knowMeGuessOptionsData.correctOptionId;
     }
-  }, [currentRound, currentRoundType, filteredTrivia, filteredKnowMe]);
+  }, [currentRoundType, triviaOptionsData, knowMeGuessOptionsData, myAnsObj?.optionId, myGuessObj?.optionId]);
 
-  // Persist session markers
+  const isMatched = useMemo(() => {
+    return isCorrect && Boolean(friendRoundPoints > 0);
+  }, [isCorrect, friendRoundPoints]);
+
+  // Current Step
+  const currentStep: GameStep = useMemo(() => {
+    if (!gs || gs.status === 'lobby') return 'countdown';
+    if (gs.status === 'countdown') return 'countdown';
+    if (gs.status === 'question') {
+      if (isMyAnswerLocked) return 'waiting';
+      return 'question';
+    }
+    if (gs.status === 'guess') {
+      if (isMyGuessLocked) return 'waiting';
+      return 'guess';
+    }
+    if (gs.status === 'reveal') return 'reveal';
+    if (gs.status === 'final') return 'final';
+    return 'countdown';
+  }, [gs, isMyAnswerLocked, isMyGuessLocked]);
+
+  // Timer logic
+  const initialTimerSecs = useMemo(() => {
+    const timerSetting = room?.settings?.timer || '20s';
+    const diff = room?.settings?.difficulty || 'Medium';
+    return getTimerSecondsFromSetting(timerSetting, diff);
+  }, [room?.settings?.timer, room?.settings?.difficulty]);
+
+  const [timer, setTimer] = useState<number>(initialTimerSecs);
+  const [isTimerActive, setIsTimerActive] = useState<boolean>(initialTimerSecs > 0);
+
+  // Reset timer on new question or guess step
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('gty_active_game', isActive ? 'true' : 'false');
-      localStorage.setItem('gty_game_round', currentRound.toString());
-      localStorage.setItem('gty_game_step', currentStep);
-      localStorage.setItem('gty_game_myscore', myScore.toString());
-      localStorage.setItem('gty_game_friendscore', friendScore.toString());
-      localStorage.setItem('gty_game_history', JSON.stringify(history));
+    if (currentStep === 'question' || currentStep === 'guess') {
+      setTimer(initialTimerSecs);
+      setIsTimerActive(initialTimerSecs > 0);
+    } else {
+      setIsTimerActive(false);
     }
-  }, [isActive, currentRound, currentStep, myScore, friendScore, history]);
+  }, [currentStep, currentRound, initialTimerSecs]);
 
-  // Timer tick down
+  // Timer countdown
   useEffect(() => {
     if (!isTimerActive || timer <= 0) return;
-
     const interval = setInterval(() => {
       setTimer((prev) => {
         if (prev <= 1) {
@@ -253,233 +261,151 @@ export const GameSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
         return prev - 1;
       });
     }, 1000);
-
     return () => clearInterval(interval);
   }, [isTimerActive, timer]);
 
-  // Start new game
-  const startNewGame = useCallback(
-    (overrideMode?: GameMode, overrideRounds?: number) => {
-      const s = getGameSettings();
-      const activeMode = overrideMode || s.mode;
-      const activeRounds = overrideRounds || s.rounds;
-      const timerSecs = getTimerSeconds(s.timer);
-      const timerActive = isTimerEnabled(s.timer);
+  // Auto-navigation driven by real-time Firestore room state
+  const prevStatusRef = useRef<string | null>(null);
 
-      setMode(activeMode);
-      setTotalRounds(activeRounds);
-      setCurrentRound(1);
-      const rType = getRoundTypeForRound(1, activeMode);
-      setCurrentRoundType(rType);
-      setIsActive(true);
-      setMyScore(0);
-      setFriendScore(0);
-      setMatchesCount(0);
-      setHistory([]);
-      setMyAnswer('');
-      setFriendAnswer('');
-      setMyGuess('');
-      setIsCorrect(false);
-      setIsMatched(false);
+  useEffect(() => {
+    if (!roomCode || !gs) return;
+    const currentPath = location.pathname;
+    const serverStatus = gs.status;
 
-      if (rType === 'trivia') {
-        setCurrentStep('guess');
-        setTimer(timerSecs);
-        setIsTimerActive(timerActive);
-        navigate('/guess');
-      } else {
-        setCurrentStep('question');
-        setTimer(timerSecs);
-        setIsTimerActive(timerActive);
-        navigate('/today-question');
+    if (prevStatusRef.current === serverStatus) return;
+    prevStatusRef.current = serverStatus;
+
+    if (serverStatus === 'countdown') {
+      if (currentPath !== '/countdown') {
+        navigate('/countdown');
       }
+    } else if (serverStatus === 'question') {
+      if (!isMyAnswerLocked) {
+        if (gs.roundType === 'trivia') {
+          if (currentPath !== '/trivia-question' && currentPath !== '/guess') {
+            navigate('/trivia-question');
+          }
+        } else {
+          if (currentPath !== '/today-question') {
+            navigate('/today-question');
+          }
+        }
+      }
+    } else if (serverStatus === 'guess') {
+      if (!isMyGuessLocked && currentPath !== '/guess') {
+        navigate('/guess');
+      }
+    } else if (serverStatus === 'reveal') {
+      if (currentPath !== '/reveal') {
+        navigate('/reveal');
+      }
+    } else if (serverStatus === 'final') {
+      if (currentPath !== '/game-final') {
+        navigate('/game-final');
+      }
+    }
+  }, [gs?.status, gs?.round, gs?.roundType, roomCode, location.pathname, isMyAnswerLocked, isMyGuessLocked, navigate]);
+
+  // Handle Nudge received in real-time
+  const lastNudgeTimeRef = useRef<number>(0);
+  useEffect(() => {
+    if (!room?.nudge || !user) return;
+    if (room.nudge.toUid === user.uid && room.nudge.timestamp > lastNudgeTimeRef.current) {
+      lastNudgeTimeRef.current = room.nudge.timestamp;
+      // Only fire if nudge was sent recently (last 10 seconds)
+      if (Date.now() - room.nudge.timestamp < 10000) {
+        triggerHaptic(35);
+      }
+    }
+  }, [room?.nudge, user]);
+
+  // Actions
+  const startNewGame = useCallback(
+    async (overrideMode?: GameMode, overrideRounds?: number) => {
+      if (!roomCode) {
+        // Local mode fallback
+        return;
+      }
+      const newSettings: Partial<RoomSettings> = {};
+      if (overrideMode) {
+        newSettings.mode = (overrideMode === 'Know Me' ? 'know-me' : overrideMode === 'Mixed' ? 'mixed' : 'trivia');
+      }
+      if (overrideRounds) {
+        newSettings.rounds = overrideRounds;
+      }
+      await apiStartGame(roomCode, newSettings);
     },
-    [getGameSettings, getRoundTypeForRound, navigate]
+    [roomCode]
   );
 
-  // Know Me: Submit my answer
   const submitAnswer = useCallback(
-    (answerText: string) => {
-      setMyAnswer(answerText);
+    async (answerText: string, optionId?: string) => {
       setIsTimerActive(false);
-
-      const knowMeQ = currentQuestion as KnowMeQuestion;
-      const fAns = knowMeQ.player2Answer || 'Done is better than perfect.';
-      setFriendAnswer(fAns);
-
-      setCurrentStep('waiting');
+      if (roomCode) {
+        await apiSubmitAnswer(roomCode, {
+          text: answerText,
+          optionId,
+          timeRemaining: timer,
+        });
+      }
       navigate('/locked');
     },
-    [currentQuestion, navigate]
+    [roomCode, timer, navigate]
   );
 
-  // Waiting: Advance after both answered
-  const advanceFromWaiting = useCallback(() => {
-    const s = getGameSettings();
-    const timerSecs = getTimerSeconds(s.timer);
-    const timerActive = isTimerEnabled(s.timer);
-
-    if (currentRoundType === 'trivia') {
-      setCurrentStep('reveal');
-      navigate('/reveal');
-    } else {
-      setCurrentStep('guess');
-      setTimer(timerSecs);
-      setIsTimerActive(timerActive);
-      navigate('/guess');
-    }
-  }, [currentRoundType, getGameSettings, navigate]);
-
-  // Guess: Submit guess
   const submitGuess = useCallback(
-    (optionId: 'pink' | 'yellow' | 'cream' | 'green', optionText: string) => {
-      setMyGuess(optionText);
+    async (optionId: 'pink' | 'yellow' | 'cream' | 'green', optionText: string) => {
       setIsTimerActive(false);
-
-      const s = getGameSettings();
-      let correct = false;
-      let matched = false;
-      let earned = 0;
-
-      let basePoints = currentRoundType === 'trivia' ? 10 : 15;
-      if (s.difficulty === 'Easy') basePoints += 5;
-      if (s.difficulty === 'Hard') basePoints = Math.max(5, basePoints - 5);
-
-      let speedBonus = 0;
-      if (s.speedBonus && s.timer !== 'Off' && timer > 0) {
-        speedBonus = Math.floor(timer / 3);
+      if (roomCode) {
+        await apiSubmitGuess(roomCode, {
+          optionId,
+          text: optionText,
+        });
       }
-
-      const totalPointsEarned = basePoints + speedBonus;
-
-      if (currentRoundType === 'trivia') {
-        const triviaQ = currentQuestion as TriviaQuestion;
-        correct = optionId === triviaQ.correctOptionId;
-        earned = correct ? totalPointsEarned : 0;
-
-        const friendCorrect = Math.random() > 0.25;
-        if (correct) setMyScore((prev) => prev + totalPointsEarned);
-        if (friendCorrect) setFriendScore((prev) => prev + totalPointsEarned);
-
-        if (correct && friendCorrect) {
-          matched = true;
-          setMatchesCount((m) => m + 1);
-        }
-
-        setIsCorrect(correct);
-        setIsMatched(matched);
-
-        const result: RoundResult = {
-          round: currentRound,
-          type: 'trivia',
-          question: currentQuestion.question,
-          myGuess: optionText,
-          isCorrect: correct,
-          isMatched: matched,
-          pointsEarned: earned,
-          correctAnswerText:
-            triviaQ.options.find((o) => o.id === triviaQ.correctOptionId)?.text || '',
-        };
-        setHistory((h) => [...h, result]);
-
-        setCurrentStep('waiting');
+      // If waiting for partner, navigate to locked/waiting
+      if (!isFriendGuessLocked) {
         navigate('/locked');
       } else {
-        const knowMeQ = currentQuestion as KnowMeQuestion;
-        correct = optionId === knowMeQ.correctOptionId;
-        earned = correct ? totalPointsEarned : 0;
-
-        matched =
-          myAnswer.trim().toLowerCase() === knowMeQ.player2Answer.trim().toLowerCase() ||
-          correct;
-
-        if (correct) setMyScore((prev) => prev + totalPointsEarned);
-        const friendGuessedRight = Math.random() > 0.3;
-        if (friendGuessedRight) setFriendScore((prev) => prev + totalPointsEarned);
-
-        if (matched) {
-          setMatchesCount((m) => m + 1);
-        }
-
-        setIsCorrect(correct);
-        setIsMatched(matched);
-
-        const result: RoundResult = {
-          round: currentRound,
-          type: 'know-me',
-          question: currentQuestion.question,
-          myAnswer: myAnswer || knowMeQ.player1DefaultAnswer,
-          friendAnswer: knowMeQ.player2Answer,
-          myGuess: optionText,
-          isCorrect: correct,
-          isMatched: matched,
-          pointsEarned: earned,
-          correctAnswerText: knowMeQ.player2Answer,
-        };
-        setHistory((h) => [...h, result]);
-
-        setCurrentStep('reveal');
         navigate('/reveal');
       }
     },
-    [currentQuestion, currentRound, currentRoundType, myAnswer, getGameSettings, timer, navigate]
+    [roomCode, isFriendGuessLocked, navigate]
   );
 
-  // Advance to Next Round (or Final Screen if last round)
-  const nextRound = useCallback(() => {
-    if (currentRound >= totalRounds) {
-      setCurrentStep('final');
-      navigate('/game-final');
-      return;
-    }
-
-    const nextR = currentRound + 1;
-    setCurrentRound(nextR);
-    const nextType = getRoundTypeForRound(nextR, mode);
-    setCurrentRoundType(nextType);
-    setMyAnswer('');
-    setFriendAnswer('');
-    setMyGuess('');
-    setIsCorrect(false);
-    setIsMatched(false);
-
-    const s = getGameSettings();
-    const timerSecs = getTimerSeconds(s.timer);
-    const timerActive = isTimerEnabled(s.timer);
-
-    if (nextType === 'trivia') {
-      setCurrentStep('guess');
-      setTimer(timerSecs);
-      setIsTimerActive(timerActive);
-      navigate('/guess');
+  const advanceFromWaiting = useCallback(() => {
+    if (currentRoundType === 'trivia') {
+      navigate('/reveal');
     } else {
-      setCurrentStep('question');
-      setTimer(timerSecs);
-      setIsTimerActive(timerActive);
-      navigate('/today-question');
+      navigate('/guess');
     }
-  }, [currentRound, totalRounds, mode, getRoundTypeForRound, getGameSettings, navigate]);
+  }, [currentRoundType, navigate]);
 
-  // Restart Game (Rematch)
-  const restartGame = useCallback(() => {
-    setIsActive(true);
-    setCurrentRound(1);
-    setMyScore(0);
-    setFriendScore(0);
-    setMatchesCount(0);
-    setHistory([]);
-    navigate('/countdown');
-  }, [navigate]);
+  const nextRound = useCallback(async () => {
+    if (roomCode) {
+      await apiAdvanceRound(roomCode);
+    }
+  }, [roomCode]);
 
-  // Exit Game back to Home
+  const restartGame = useCallback(async () => {
+    if (roomCode) {
+      await apiRequestRematch(roomCode);
+    } else {
+      navigate('/countdown');
+    }
+  }, [roomCode, navigate]);
+
   const exitGame = useCallback(() => {
-    setIsActive(false);
-    setCurrentStep('countdown');
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('gty_active_game', 'false');
-    }
     navigate('/home');
   }, [navigate]);
+
+  const sendReaction = useCallback(
+    async (emoji: string) => {
+      if (roomCode) {
+        await apiSendReaction(roomCode, emoji);
+      }
+    },
+    [roomCode]
+  );
 
   const pauseTimer = useCallback(() => setIsTimerActive(false), []);
   const resumeTimer = useCallback(() => setIsTimerActive(true), []);
@@ -487,7 +413,7 @@ export const GameSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
   return (
     <GameSessionContext.Provider
       value={{
-        isActive,
+        isActive: isRoomGameActive,
         mode,
         totalRounds,
         currentRound,
@@ -496,16 +422,31 @@ export const GameSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
         timer,
         isTimerActive,
         currentQuestion,
+        currentTriviaOptions: triviaOptionsData?.options,
+        currentTriviaCorrectId: triviaOptionsData?.correctOptionId,
+        currentKnowMeOptions: knowMeGuessOptionsData?.options,
+        currentKnowMeCorrectId: knowMeGuessOptionsData?.correctOptionId,
         myAnswer,
         friendAnswer,
         myGuess,
+        friendGuess,
+        isMyAnswerLocked,
+        isFriendAnswerLocked,
+        isMyGuessLocked,
+        isFriendGuessLocked,
         isCorrect,
         isMatched,
         myScore,
         friendScore,
-        streak,
-        matchesCount,
-        history,
+        myRoundPoints,
+        friendRoundPoints,
+        streak: room?.stats?.streak || 0,
+        matchesCount: room?.stats?.matches || 0,
+        history: [],
+        reactions: gs?.reactions || [],
+        rematchVotes: gs?.rematchVotes || {},
+        countdownStartTime: gs?.countdownStartTime,
+        partnerDisconnected,
         startNewGame,
         submitAnswer,
         submitGuess,
@@ -513,6 +454,7 @@ export const GameSessionProvider: React.FC<{ children: ReactNode }> = ({ childre
         nextRound,
         restartGame,
         exitGame,
+        sendReaction,
         setTimer,
         pauseTimer,
         resumeTimer,

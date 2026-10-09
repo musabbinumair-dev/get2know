@@ -73,12 +73,14 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
   const p2BlobConfig = getBlobConfig(p2Color, p2AvatarId);
 
   // Options configuration matching the 4 pills in mockup
-  const rawOptions = activeTriviaQ?.options || [
-    { id: 'pink' as const, text: 'Japan' },
-    { id: 'yellow' as const, text: 'China' },
-    { id: 'cream' as const, text: 'Korea' },
-    { id: 'green' as const, text: 'Thailand' },
-  ];
+  const rawOptions = (isInGame && gameSession.currentTriviaOptions)
+    ? gameSession.currentTriviaOptions
+    : (activeTriviaQ?.options || [
+        { id: 'pink' as const, text: 'Japan' },
+        { id: 'yellow' as const, text: 'China' },
+        { id: 'cream' as const, text: 'Korea' },
+        { id: 'green' as const, text: 'Thailand' },
+      ]);
 
   // Default selected is the first option ('pink') like in mockup
   const [selectedOptionId, setSelectedOptionId] = useState<string>('pink');
@@ -190,13 +192,20 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
       localStorage.setItem('trivia_player1_option_id', chosenPill.id);
     }
     if (isInGame) {
-      gameSession.submitGuess(chosenPill.id as any, chosenPill.text);
+      gameSession.submitAnswer(chosenPill.text, chosenPill.id);
     } else if (onLockAnswer) {
       onLockAnswer(chosenPill.id, chosenPill.text);
     } else {
       navigate('/locked');
     }
   };
+
+  // Auto-lock when timer ends in Trivia mode
+  useEffect(() => {
+    if (isInGame && gameSession.isTimerActive && gameSession.timer === 0 && !gameSession.isMyAnswerLocked) {
+      handleLockIn();
+    }
+  }, [isInGame, gameSession.isTimerActive, gameSession.timer, gameSession.isMyAnswerLocked]);
 
   return (
     <div className="relative w-full min-h-[100dvh] overflow-hidden bg-[#B3BF8A] font-['Nunito',sans-serif] select-none">

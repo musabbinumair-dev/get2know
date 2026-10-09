@@ -28,6 +28,10 @@ function getAudioContext(): AudioContext | null {
 export function isSoundEnabled(): boolean {
   if (typeof window === 'undefined') return true;
   try {
+    const direct = localStorage.getItem('gty_sound_effects');
+    if (direct !== null) {
+      return direct === 'true';
+    }
     const raw = localStorage.getItem('gty_game_settings');
     if (raw) {
       const parsed = JSON.parse(raw);

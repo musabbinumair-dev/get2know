@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useSession } from '../services/sessionContext';
-import { useGameSession } from '../services/gameSessionContext';
 import { usePageVisible } from '../context/PageVisibilityContext';
 import { AVATAR_OPTIONS } from '../screens/CreateProfileScreen';
 import { playCountdownTick, playCountdownGo } from '../lib/soundEffects';
@@ -332,7 +331,9 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
   initialRounds,
 }) => {
   const location = useLocation();
-  const { profile, partnerProfile } = useSession();
+  const { profile, partnerProfile, room } = useSession();
+  const serverStartTime = room?.gameState?.countdownStartTime;
+  const localStartRef = useRef<number>(Date.now());
 
   // ── URL PARAMETERS FOR DEBUG MODE: ONLY SHOW DEV BAR IF ?debug=1 ──
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
@@ -378,6 +379,16 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
 
   const [mode, setMode] = useState<'Trivia' | 'Know Me' | 'Mixed'>(() => {
     if (initialMode) return initialMode;
+    if (room?.gameState?.mode) {
+      if (room.gameState.mode === 'know-me') return 'Know Me';
+      if (room.gameState.mode === 'mixed') return 'Mixed';
+      return 'Trivia';
+    }
+    if (room?.settings?.mode) {
+      if (room.settings.mode === 'know-me') return 'Know Me';
+      if (room.settings.mode === 'mixed') return 'Mixed';
+      return 'Trivia';
+    }
     if (typeof window !== 'undefined') {
       const savedSettings = localStorage.getItem('gty_game_settings');
       if (savedSettings) {
@@ -394,6 +405,8 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
 
   const [rounds, setRounds] = useState<number>(() => {
     if (initialRounds) return initialRounds;
+    if (room?.gameState?.totalRounds) return room.gameState.totalRounds;
+    if (room?.settings?.rounds) return room.settings.rounds;
     if (typeof window !== 'undefined') {
       const savedSettings = localStorage.getItem('gty_game_settings');
       if (savedSettings) {
@@ -500,15 +513,20 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
     return false;
   });
 
-  const { startNewGame } = useGameSession();
+  const navigate = useNavigate();
 
   const handleCountdownDone = useCallback(() => {
     if (onCountdownComplete) {
       onCountdownComplete();
-    } else {
-      startNewGame(mode, rounds);
+      return;
     }
-  }, [onCountdownComplete, startNewGame, mode, rounds]);
+    const rType = room?.gameState?.roundType || (mode === 'Know Me' ? 'know-me' : 'trivia');
+    if (rType === 'know-me') {
+      navigate('/today-question');
+    } else {
+      navigate('/trivia-question');
+    }
+  }, [onCountdownComplete, room?.gameState?.roundType, mode, navigate]);
 
   const isPageVisible = usePageVisible();
   const [countdownStarted, setCountdownStarted] = useState<boolean>(false);
@@ -518,26 +536,30 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
     if (isPageVisible && !countdownStarted) {
       setStep(0);
       setCountdownStarted(true);
+      localStartRef.current = Date.now();
     }
   }, [isPageVisible, countdownStarted]);
 
-  // Step advancement timer (0.8s per step) - strictly starts ONLY when page is visible and loader is completely hidden
+  // Synchronized step advancement timer (0.8s per step) using serverStartTime if present
   useEffect(() => {
     if (isPaused || !isPageVisible || !countdownStarted) return;
 
-    if (step < 3) {
-      const timer = setTimeout(() => {
-        setStep((prev) => prev + 1);
-      }, 800);
-      return () => clearTimeout(timer);
-    } else {
-      // Step 3 is "Go!"
-      const finishTimer = setTimeout(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const startTime = serverStartTime || localStartRef.current;
+      const elapsed = Math.max(0, now - startTime);
+      const calculatedStep = Math.min(3, Math.floor(elapsed / 800));
+
+      setStep(calculatedStep);
+
+      if (elapsed >= 3200) {
+        clearInterval(interval);
         handleCountdownDone();
-      }, 800);
-      return () => clearTimeout(finishTimer);
-    }
-  }, [step, isPaused, isPageVisible, countdownStarted, handleCountdownDone]);
+      }
+    }, 80);
+
+    return () => clearInterval(interval);
+  }, [serverStartTime, isPaused, isPageVisible, countdownStarted, handleCountdownDone]);
 
   // Sound effects on countdown steps (3, 2, 1, Go!)
   useEffect(() => {

@@ -244,7 +244,7 @@ export const SessionProvider: React.FC<{ children: ReactNode }> = ({ children })
           streak: room.stats.streak || 0,
           syncScore: room.stats.syncScore || 0,
           matches: room.stats.matches || 0,
-          guessWins: 0,
+          guessWins: room.stats.guessWins || 0,
           gamesPlayed: room.stats.gamesPlayed || 0,
         },
       };
