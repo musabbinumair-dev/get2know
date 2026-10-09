@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSession } from '../services/sessionContext';
 
 interface GameSettingsScreenProps {
   onBack: () => void;
@@ -22,6 +23,8 @@ interface DebugItem {
 }
 
 export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack, onCreateGame }) => {
+  const { partnerProfile } = useSession();
+  const friendName = partnerProfile?.name?.trim() || 'Your partner';
   // 1) Viewport tracking
   const [viewport, setViewport] = useState({
     w: typeof window !== 'undefined' ? window.innerWidth : 390,
@@ -486,7 +489,7 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({ onBack, 
           s={s}
           k={k}
         >
-          You're the host. Sam sees this in the lobby.
+          {`You're the host. ${friendName} sees this in the lobby.`}
         </FitText>
 
         {/* =========================================================================

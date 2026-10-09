@@ -329,29 +329,13 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
     session.profile?.name ||
     session.user?.displayName ||
     (player1Name && player1Name !== 'Player 1' && player1Name !== 'Your Pick' ? player1Name : '') ||
-    (typeof window !== 'undefined'
-      ? (() => {
-          try {
-            return JSON.parse(localStorage.getItem('gty_profile') || '{}').name;
-          } catch {
-            return null;
-          }
-        })()
-      : null) ||
-    'Musab';
+    session.profile?.name ||
+    'You';
 
   const partnerUsername =
-    player2Name && player2Name !== 'Player 2'
-      ? player2Name
-      : (typeof window !== 'undefined'
-          ? (() => {
-              try {
-                return JSON.parse(localStorage.getItem('partner_profile') || '{}').name;
-              } catch {
-                return null;
-              }
-            })()
-          : null) || 'Alex';
+    session.partnerProfile?.name ||
+    (player2Name && player2Name !== 'Player 2' && player2Name !== 'Alex' ? player2Name : null) ||
+    'Your friend';
 
   const p1LabelText = currentUsername;
   const p2LabelText = isTriviaRound ? partnerUsername : partnerUsername;

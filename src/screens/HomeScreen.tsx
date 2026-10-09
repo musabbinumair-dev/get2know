@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { Screen } from '../components/Screen';
 import { BottomNav, NavTab } from '../components/BottomNav';
-import { mockData } from '../mockData';
+import { useSession } from '../services/sessionContext';
+import { ProfileAvatar } from '../components/ProfileAvatar';
 
 interface HomeScreenProps {
   onOpenSettings?: () => void;
@@ -20,6 +21,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onStartKnowMe,
   onStartTrivia,
 }) => {
+  const { profile, partnerProfile, room, history } = useSession();
+  const userName = profile?.name?.trim() || 'You';
+  const friendName = partnerProfile?.name?.trim() || 'Your partner';
+  const streak = room?.stats?.streak ?? history?.stats?.streak ?? 0;
+  const gamesPlayed = room?.stats?.gamesPlayed ?? history?.stats?.gamesPlayed ?? 0;
+  const recordText =
+    gamesPlayed > 0 ? `${gamesPlayed} game${gamesPlayed === 1 ? '' : 's'}` : 'No games played yet';
+  const lastGame = room?.lastGame || {
+    title: 'First game',
+    category: 'Pick a mode below',
+    result: 'Ready',
+    score: '0 - 0',
+  };
+
   // Sync background color
   useEffect(() => {
     const prevHtmlBg = document.documentElement.style.backgroundColor;
@@ -148,7 +163,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               draggable={false}
             />
             <span className="text-white font-black text-[19px] leading-none tracking-tight">
-              {mockData.streak}
+              {streak}
             </span>
           </div>
 
@@ -181,7 +196,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           Ready to play?
         </p>
         <h1 className="absolute top-[130px] left-[33px] text-[43px] font-black text-[#191D21] tracking-[-0.03em] leading-none z-10 m-0">
-          Let&apos;s play, {mockData.userName}!
+          Let&apos;s play, {userName}!
         </h1>
 
         {/* 3. HERO CARD (Shifted a little above) */}
@@ -201,21 +216,31 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           draggable={false}
         />
 
-        {/* Alex Avatar (Boy on pink blob) */}
-        <img
-          src="/avatar-alex-pink-blob-boy.webp"
-          alt="Alex"
-          className="absolute top-[206px] left-[60.8px] w-[106.5px] h-[112.5px] object-contain pointer-events-none select-none z-20"
-          draggable={false}
-        />
+        {/* Left Player Avatar (User) */}
+        <div className="absolute top-[206px] left-[60.8px] w-[106.5px] h-[112.5px] z-20 flex items-center justify-center">
+          <ProfileAvatar
+            avatarId={profile?.avatarId || 1}
+            blobId={profile?.color || 'salmon'}
+            size={106}
+            useNewBlob={true}
+          />
+        </div>
 
-        {/* Sam Avatar (Girl on blue blob) */}
-        <img
-          src="/avatar-sam-blue-blob-girl.webp"
-          alt="Sam"
-          className="absolute top-[211px] left-[220.8px] w-[109.3px] h-[109.3px] object-contain pointer-events-none select-none z-20"
-          draggable={false}
-        />
+        {/* Right Player Avatar (Partner) */}
+        <div className="absolute top-[211px] left-[220.8px] w-[109.3px] h-[109.3px] z-20 flex items-center justify-center">
+          {partnerProfile ? (
+            <ProfileAvatar
+              avatarId={partnerProfile.avatarId}
+              blobId={partnerProfile.color}
+              size={106}
+              useNewBlob={true}
+            />
+          ) : (
+            <div className="w-[96px] h-[96px] rounded-full border-2 border-dashed border-[#191D21]/30 flex items-center justify-center">
+              <span className="text-3xl font-black text-[#191D21]/40">?</span>
+            </div>
+          )}
+        </div>
 
         {/* VS Starburst Badge */}
         <img
@@ -231,20 +256,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           VS
         </span>
 
-        {/* "Alex vs Sam" Text */}
+        {/* "{userName} vs {friendName}" Text */}
         <h2
           className="absolute top-[322.7px] left-0 w-full text-center font-black text-[25px] text-[#191D21] tracking-tight pointer-events-none select-none z-20 m-0"
           style={{ lineHeight: 1.1 }}
         >
-          {mockData.userName} vs {mockData.friendName}
+          {userName} vs {friendName}
         </h2>
 
-        {/* "All-time: 7 - 5" Text */}
+        {/* "All-time: record" Text */}
         <p
           className="absolute top-[352.7px] left-0 w-full text-center font-bold text-[15px] text-[#191D21]/60 tracking-tight pointer-events-none select-none z-20 m-0"
           style={{ lineHeight: 1 }}
         >
-          All-time: {mockData.record}
+          All-time: {recordText}
         </p>
 
         {/* "Start a game" Button */}
@@ -350,10 +375,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             />
             <div className="flex flex-col">
               <span className="font-extrabold text-[17px] text-[#191D21] tracking-tight leading-tight">
-                {mockData.lastGame.title}
+                {lastGame.title}
               </span>
               <span className="font-semibold text-[14px] text-[#191D21]/60 tracking-tight leading-tight mt-0.5">
-                {mockData.lastGame.category}
+                {lastGame.category}
               </span>
             </div>
           </div>
@@ -364,10 +389,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           {/* Result & Score */}
           <div className="flex flex-col items-start min-w-[70px]">
             <span className="font-semibold text-[14.5px] text-[#191D21]/60 tracking-tight leading-tight">
-              {mockData.lastGame.result}
+              {lastGame.result}
             </span>
             <span className="font-black text-[25px] text-[#191D21] tracking-tight leading-none mt-0.5">
-              {mockData.lastGame.score}
+              {lastGame.score}
             </span>
           </div>
         </div>
@@ -754,7 +779,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 className="text-white font-black leading-none tracking-tight"
                 style={{ fontSize: 'calc(38 * var(--u))' }}
               >
-                {mockData.streak}
+                {streak}
               </span>
             </div>
           </div>
@@ -811,7 +836,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               maxWidth: 'calc(658 * var(--u))',
             }}
           >
-            Let&apos;s play, {mockData.userName}!
+            Let&apos;s play, {userName}!
           </h1>
 
           {/* Yellow card: starts at x=112 (aligned with heading left edge), y=322 (~36px gap from heading), 658w x 466h, radius 40 */}
@@ -842,19 +867,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             />
 
             {/* Avatars: 190 diameter each, VS 130 sitting BETWEEN them, center y=133 inside card */}
-            {/* Pink blob (Alex) left */}
-            <img
-              src="/avatar-alex-pink-blob-boy.webp"
-              alt="Alex"
-              className="absolute object-contain pointer-events-none select-none z-20"
+            {/* Player 1 blob left */}
+            <div
+              className="absolute pointer-events-none select-none z-20 flex items-center justify-center"
               style={{
                 left: 'calc(58 * var(--u))',
                 top: 'calc(38 * var(--u))',
                 width: 'calc(190 * var(--u))',
                 height: 'calc(190 * var(--u))',
               }}
-              draggable={false}
-            />
+            >
+              <ProfileAvatar
+                avatarId={profile?.avatarId ?? 1}
+                blobId={profile?.color ?? 'salmon'}
+                size={180}
+              />
+            </div>
 
             {/* VS burst ~130 sitting between the avatars */}
             <div
@@ -884,21 +912,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               </span>
             </div>
 
-            {/* Blue blob (Sam) right */}
-            <img
-              src="/avatar-sam-blue-blob-girl.webp"
-              alt="Sam"
-              className="absolute object-contain pointer-events-none select-none z-20"
+            {/* Player 2 blob right */}
+            <div
+              className="absolute pointer-events-none select-none z-20 flex items-center justify-center"
               style={{
                 right: 'calc(58 * var(--u))',
                 top: 'calc(38 * var(--u))',
                 width: 'calc(190 * var(--u))',
                 height: 'calc(190 * var(--u))',
               }}
-              draggable={false}
-            />
+            >
+              <ProfileAvatar
+                avatarId={partnerProfile?.avatarId ?? 2}
+                blobId={partnerProfile?.color ?? 'teal'}
+                size={180}
+              />
+            </div>
 
-            {/* "Alex vs Sam" font 48 bold, center y=268 inside card */}
+            {/* User vs Friend names */}
             <h2
               className="absolute left-0 w-full text-center font-black text-[#191D21] tracking-tight pointer-events-none select-none z-20 m-0"
               style={{
@@ -908,10 +939,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 lineHeight: 1,
               }}
             >
-              {mockData.userName} vs {mockData.friendName}
+              {userName} vs {friendName}
             </h2>
 
-            {/* "All-time: 7 - 5" font 29, center y=315 inside card */}
+            {/* All-time record */}
             <p
               className="absolute left-0 w-full text-center font-bold text-[#191D21]/60 tracking-tight pointer-events-none select-none z-20 m-0"
               style={{
@@ -921,7 +952,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 lineHeight: 1,
               }}
             >
-              All-time: {mockData.record}
+              All-time: {recordText}
             </p>
 
             {/* Black pill button: 602w x 80h, font 38, centered horizontally in card */}
@@ -1120,7 +1151,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   className="font-extrabold text-[#191D21] tracking-tight leading-tight"
                   style={{ fontSize: 'calc(32 * var(--u))' }}
                 >
-                  {mockData.lastGame.title}
+                  {lastGame.title}
                 </span>
                 <span
                   className="font-semibold text-[#191D21]/60 tracking-tight leading-tight"
@@ -1129,7 +1160,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                     marginTop: 'calc(4 * var(--u))',
                   }}
                 >
-                  {mockData.lastGame.category}
+                  {lastGame.category}
                 </span>
               </div>
             </div>
@@ -1153,7 +1184,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 className="font-semibold text-[#191D21]/60 tracking-tight leading-tight"
                 style={{ fontSize: 'calc(30 * var(--u))' }}
               >
-                {mockData.lastGame.result}
+                {lastGame.result}
               </span>
               <span
                 className="font-black text-[#191D21] tracking-tight leading-none"
@@ -1162,7 +1193,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   marginTop: 'calc(4 * var(--u))',
                 }}
               >
-                {mockData.lastGame.score}
+                {lastGame.score}
               </span>
             </div>
           </div>

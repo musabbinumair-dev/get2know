@@ -18,101 +18,11 @@ export interface MemoryWallScreenProps {
 
 export type FilterCategory = 'all' | 'funny' | 'deep' | 'matched';
 
-export const INITIAL_CARDS: MemoryCardProps[] = [
-  {
-    id: 1,
-    date: 'May 18',
-    color: 'pink',
-    question: 'Worst food you’ve tried?',
-    p1Answer: 'Fried crickets',
-    p2Answer: 'Anchovies',
-    matched: true,
-    reactions: 'laugh',
-    category: 'funny',
-  },
-  {
-    id: 2,
-    date: 'May 16',
-    color: 'blue',
-    question: 'A fear you’d never tell anyone?',
-    p1Answer: 'Deep water',
-    p2Answer: 'Being forgotten',
-    deco: 'moon',
-    reactions: 'heart',
-    category: 'deep',
-  },
-  {
-    id: 3,
-    date: 'May 14',
-    color: 'yellow',
-    question: 'Your dream city?',
-    p1Answer: 'Tokyo',
-    p2Answer: 'Lisbon',
-    deco: 'star',
-    reactions: 'smile',
-    category: 'other',
-  },
-  {
-    id: 4,
-    date: 'May 12',
-    color: 'pink',
-    question: 'What’s your biggest guilty pleasure?',
-    p1Answer: 'Anime marathons',
-    p2Answer: 'Late night snacks',
-    matched: true,
-    reactions: 'smirk',
-    category: 'funny',
-  },
-  {
-    id: 5,
-    date: 'May 10',
-    color: 'blue',
-    question: 'If you could have any superpower, what would it be?',
-    p1Answer: 'Teleportation',
-    p2Answer: 'Mind reading',
-    deco: 'cross',
-    reactions: 'surprised',
-    category: 'funny',
-  },
-  {
-    id: 6,
-    date: 'May 08',
-    color: 'yellow',
-    question: 'What’s your ideal weekend?',
-    p1Answer: 'Gaming + food',
-    p2Answer: 'Nature + chill',
-    deco: 'heart',
-    reactions: 'heart',
-    category: 'other',
-  },
-  {
-    id: 7,
-    date: 'May 06',
-    color: 'pink',
-    question: 'Which fictional character are you most like?',
-    p1Answer: 'Luffy',
-    p2Answer: 'Gojo',
-    deco: 'star',
-    decoOffset: { top: 13, w: 31 },
-    reactions: 'laugh',
-    category: 'funny',
-  },
-  {
-    id: 8,
-    date: 'May 04',
-    color: 'olive',
-    question: 'What’s something you think about more than you should?',
-    p1Answer: 'The future',
-    p2Answer: 'Past mistakes',
-    deco: 'moon',
-    reactions: 'cry',
-    category: 'deep',
-  },
-];
+export const INITIAL_CARDS: MemoryCardProps[] = [];
 
 export const MemoryWallScreen: React.FC<MemoryWallScreenProps> = ({
   onNavigateTab,
-  cards: propCards = INITIAL_CARDS,
+  cards: propCards = [],
   userProfile,
 }) => {
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('all');
@@ -339,7 +249,7 @@ export const MemoryWallScreen: React.FC<MemoryWallScreenProps> = ({
         {filteredCards.length === 0 ? (
           <div className="flex flex-col items-center justify-center pt-24 text-center">
             <span className="text-[15px] font-bold text-[#17181B]/55">
-              No memories here yet
+              No memories yet
             </span>
           </div>
         ) : (

@@ -59,41 +59,15 @@ export const TriviaQuestionScreen: React.FC<TriviaQuestionScreenProps> = ({
   const category = activeTriviaQ?.category || 'Food';
 
   // Player profiles & dynamic avatars
-  const p1Name = session.profile?.name && session.profile.name !== 'Player 1'
-    ? session.profile.name
-    : 'Musab';
+  const p1Name = session.profile?.name?.trim() || 'You';
   const p1AvatarId = session.profile?.avatarId || 1;
-  const p1Color = session.profile?.color || 'pink';
-  const p1Score = isInGame ? gameSession.myScore || 45 : 45;
+  const p1Color = session.profile?.color || 'salmon';
+  const p1Score = isInGame ? gameSession.myScore || 0 : 0;
 
-  const p2Name = (() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = JSON.parse(localStorage.getItem('partner_profile') || '{}');
-        if (saved.name) return saved.name;
-      } catch {}
-    }
-    return 'Alex';
-  })();
-  const p2AvatarId = (() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = JSON.parse(localStorage.getItem('partner_profile') || '{}');
-        if (saved.avatarId) return saved.avatarId;
-      } catch {}
-    }
-    return 2;
-  })();
-  const p2Color = (() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = JSON.parse(localStorage.getItem('partner_profile') || '{}');
-        if (saved.color) return saved.color;
-      } catch {}
-    }
-    return 'blue';
-  })();
-  const p2Score = isInGame ? gameSession.friendScore || 30 : 30;
+  const p2Name = session.partnerProfile?.name?.trim() || 'Your friend';
+  const p2AvatarId = session.partnerProfile?.avatarId || 2;
+  const p2Color = session.partnerProfile?.color || 'teal';
+  const p2Score = isInGame ? gameSession.friendScore || 0 : 0;
 
   const p1BlobConfig = getBlobConfig(p1Color, p1AvatarId);
   const p2BlobConfig = getBlobConfig(p2Color, p2AvatarId);

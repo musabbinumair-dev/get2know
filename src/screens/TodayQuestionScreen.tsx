@@ -62,7 +62,7 @@ export const TodayQuestionScreen: React.FC<TodayQuestionScreenProps> = ({
         if (savedGuest) return JSON.parse(savedGuest);
       } catch {}
     }
-    return { avatarId: 1, name: 'Player 1', color: 'salmon' };
+    return { avatarId: 1, name: 'You', color: 'salmon' };
   })();
 
   const userAvatarId = resolvedUser.avatarId || 1;

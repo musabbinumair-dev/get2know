@@ -20,14 +20,14 @@ export interface FriendProfileScreenProps {
 }
 
 const DEFAULT_FRIEND: FriendProfileData = {
-  name: 'Alex',
-  subtitle: 'Teal player, joined Sep 12',
+  name: 'Your friend',
+  subtitle: 'Waiting for them to join',
   avatarId: 2,
   color: 'teal',
-  streakDays: 12,
-  matchesCount: 38,
-  guessWinsCount: 21,
-  lastAnsweredTime: 'today, 8:42 PM',
+  streakDays: 0,
+  matchesCount: 0,
+  guessWinsCount: 0,
+  lastAnsweredTime: 'Not joined yet',
 };
 
 const STAT_ASSETS = [

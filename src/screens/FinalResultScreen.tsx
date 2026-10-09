@@ -16,30 +16,19 @@ export const FinalResultScreen: React.FC = () => {
     exitGame,
   } = useGameSession();
 
-  const { profile } = useSession();
+  const { profile, partnerProfile } = useSession();
   const [toastMessage, setToastMessage] = useState<string>('');
 
   // Get player profiles
-  const myName = profile?.name && profile.name !== 'Player 1' ? profile.name : 'Alex';
+  const myName = profile?.name?.trim() || 'You';
   const myAvatarId = profile?.avatarId ?? 1;
   const myColor = profile?.color || 'salmon';
 
-  const friendData = (() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('partner_profile');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          return {
-            name: parsed.name && parsed.name !== 'Alex' ? parsed.name : 'Sam',
-            avatarId: parsed.avatarId ?? 2,
-            color: parsed.color || 'teal',
-          };
-        } catch {}
-      }
-    }
-    return { name: 'Sam', avatarId: 2, color: 'teal' };
-  })();
+  const friendData = partnerProfile || {
+    name: 'Your friend',
+    avatarId: 2,
+    color: 'teal',
+  };
 
   const myAvatar = getAvatarFromProfile(myAvatarId, myColor);
   const friendAvatar = getAvatarFromProfile(friendData.avatarId, friendData.color);

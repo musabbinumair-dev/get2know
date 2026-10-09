@@ -33,18 +33,18 @@ export interface ProfileScreenProps {
 }
 
 function formatDuoDate(timestamp?: number | string): string {
-  if (!timestamp) return 'Sep 14';
+  if (!timestamp) return 'Today';
   const date = new Date(timestamp);
-  if (isNaN(date.getTime())) return 'Sep 14';
+  if (isNaN(date.getTime())) return 'Today';
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return `${months[date.getMonth()]} ${date.getDate()}`;
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
-  userProfile = { avatarId: 1, name: 'Player 1', color: 'salmon' },
-  partnerProfile = { avatarId: 2, name: 'Alex', color: 'teal' },
-  duoCreatedAt = '2024-09-14',
-  inviteCode = 'K7X-92P',
+  userProfile = { avatarId: 1, name: 'You', color: 'salmon' },
+  partnerProfile,
+  duoCreatedAt,
+  inviteCode = '',
   dailyReminderEnabled = true,
   dailyReminderTime = '9:00 PM',
   friendAlertsEnabled = true,
@@ -369,8 +369,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Right Avatar (partner) */}
           <div className="relative flex-shrink-0">
             <ProfileAvatar
-              avatarId={partnerProfile.avatarId}
-              blobId={partnerProfile.color}
+              avatarId={partnerProfile?.avatarId ?? 2}
+              blobId={partnerProfile?.color ?? 'teal'}
               size={isCompact ? 48 : 55}
             />
           </div>
@@ -383,7 +383,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 isCompact ? 'text-[16px] max-w-[160px]' : 'text-[18px] max-w-[170px]'
               }`}
             >
-              You + {partnerProfile.name || 'Alex'}
+              You + {partnerProfile?.name || 'Your friend'}
             </div>
 
             {/* "Together since {date}" */}

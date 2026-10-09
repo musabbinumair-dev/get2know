@@ -332,7 +332,7 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
   initialRounds,
 }) => {
   const location = useLocation();
-  const { profile } = useSession();
+  const { profile, partnerProfile } = useSession();
 
   // ── URL PARAMETERS FOR DEBUG MODE: ONLY SHOW DEV BAR IF ?debug=1 ──
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
@@ -343,7 +343,7 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
   const [me, setMe] = useState(() => {
     if (initialMe) return initialMe;
     return {
-      name: profile?.name && profile.name !== 'Player 1' ? profile.name : 'Alex',
+      name: profile?.name?.trim() || 'You',
       avatarId: profile?.avatarId ?? 1,
       color: profile?.color || 'salmon',
     };
@@ -351,12 +351,19 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
 
   const [friend, setFriend] = useState(() => {
     if (initialFriend) return initialFriend;
+    if (partnerProfile) {
+      return {
+        name: partnerProfile.name,
+        avatarId: partnerProfile.avatarId ?? 2,
+        color: partnerProfile.color || 'teal',
+      };
+    }
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('partner_profile');
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          if (parsed.name && parsed.name !== 'Alex') {
+          if (parsed.name) {
             return {
               name: parsed.name,
               avatarId: parsed.avatarId ?? 2,
@@ -366,7 +373,7 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
         } catch {}
       }
     }
-    return { name: 'Sam', avatarId: 2, color: 'teal' };
+    return { name: 'Your friend', avatarId: 2, color: 'teal' };
   });
 
   const [mode, setMode] = useState<'Trivia' | 'Know Me' | 'Mixed'>(() => {
@@ -557,8 +564,8 @@ export const CountdownScreen: React.FC<CountdownScreenProps> = ({
   const isDefaultPillText = mode === 'Trivia' && rounds === 10;
   const pillText = `${mode} · ${rounds} rounds`;
 
-  const isDefaultMeName = me.name === 'Alex';
-  const isDefaultFriendName = friend.name === 'Sam';
+  const isDefaultMeName = me.name === 'You';
+  const isDefaultFriendName = friend.name === 'Your friend';
   const displayMeName = me.name.length > 10 ? me.name.slice(0, 10) + '…' : me.name;
   const displayFriendName = friend.name.length > 10 ? friend.name.slice(0, 10) + '…' : friend.name;
 

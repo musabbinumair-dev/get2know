@@ -1,0 +1,68 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and settings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Auth UID" },
+        "name": { "type": "string", "maxLength": 50, "description": "Display name" },
+        "avatarId": { "type": "number", "description": "Avatar preset ID" },
+        "color": { "type": "string", "maxLength": 30, "description": "Color name or hex" },
+        "roomCode": { "type": "string", "maxLength": 10, "description": "Currently joined room code" },
+        "settings": {
+          "type": "object",
+          "description": "User preferences"
+        },
+        "updatedAt": { "type": "string", "description": "ISO timestamp" }
+      },
+      "required": ["uid", "name", "avatarId", "color"]
+    },
+    "Room": {
+      "title": "Room",
+      "description": "Two-player game room",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "maxLength": 10, "description": "Room code ABC-123" },
+        "createdAt": { "type": "string", "description": "ISO timestamp" },
+        "hostUid": { "type": "string", "description": "Host player UID" },
+        "status": { "type": "string", "enum": ["waiting", "active", "finished"], "description": "Room status" },
+        "playerUids": {
+          "type": "array",
+          "description": "List of player UIDs in this room (max 2)"
+        },
+        "players": {
+          "type": "object",
+          "description": "Player map keyed by UID"
+        },
+        "settings": {
+          "type": "object",
+          "description": "Game settings (mode, category, difficulty, rounds)"
+        },
+        "gameState": {
+          "type": "object",
+          "description": "Current game state"
+        },
+        "stats": {
+          "type": "object",
+          "description": "Streak, sync score, and game stats"
+        },
+        "memories": {
+          "type": "array",
+          "description": "Shared memory wall entries"
+        }
+      },
+      "required": ["code", "createdAt", "hostUid", "status", "playerUids", "players"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "User private profile document"
+    },
+    "/rooms/{code}": {
+      "schema": "Room",
+      "description": "Two-player room document"
+    }
+  }
+}

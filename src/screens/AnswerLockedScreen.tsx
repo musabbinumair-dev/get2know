@@ -4,7 +4,6 @@ import { useGameSession } from '../services/gameSessionContext';
 import { TopBar } from '../components/TopBar';
 import { ProfileAvatar } from '../components/ProfileAvatar';
 import { NavTab } from '../components/BottomNav';
-import { mockData } from '../mockData';
 import { playPartnerAnsweredSound, playNudgeSound, playTapSound } from '../lib/soundEffects';
 
 interface AnswerLockedScreenProps {
@@ -46,7 +45,7 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
       }
     }
     return {
-      name: 'Sam',
+      name: 'Your friend',
       avatarId: 2,
       color: 'teal',
       blobId: 'teal',
@@ -54,14 +53,14 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
   }, []);
 
   const resolvedFriendName =
-    friendName && friendName !== 'Player 2'
+    friendName && friendName !== 'Player 2' && friendName !== 'Sam'
       ? friendName
-      : partnerProfile.name || mockData.friendName || 'Sam';
+      : partnerProfile.name || 'Your friend';
 
   const resolvedAvatarId = friendAvatarId || partnerProfile.avatarId || 2;
   const resolvedBlobId =
     friendBlobId || partnerProfile.blobId || partnerProfile.color || 'teal';
-  const resolvedStreak = streak ?? mockData.streak ?? 12;
+  const resolvedStreak = streak ?? 0;
 
   const [toastMessage, setToastMessage] = useState<string>('');
   const [nudgeCooldown, setNudgeCooldown] = useState<number>(0);
@@ -115,17 +114,6 @@ export const AnswerLockedScreen: React.FC<AnswerLockedScreenProps> = ({
     }, 1200);
     simulationTimers.current.push(t2);
   };
-
-  // Auto-progress simulation: if partner has not answered, answer after 4 seconds
-  useEffect(() => {
-    const autoTimer = setTimeout(() => {
-      if (!isAnswerLocked) {
-        handleAvatarClick();
-      }
-    }, 4000);
-    simulationTimers.current.push(autoTimer);
-    return () => clearTimeout(autoTimer);
-  }, [isAnswerLocked]);
 
   // Cooldown countdown effect for Nudge button
   useEffect(() => {

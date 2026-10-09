@@ -60,7 +60,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   initialSettings,
 }) => {
   const navigate = useNavigate();
-  const { profile } = useSession();
+  const { profile, partnerProfile: sessionPartner } = useSession();
 
   // Saved or initial game settings from GameSettings page
   const [gameSettings, setGameSettings] = useState<GameSettingsState>(() => {
@@ -84,8 +84,9 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
     };
   });
 
-  // Partner Profile state from storage
+  // Partner Profile state from session or storage
   const [partnerProfile, setPartnerProfile] = useState(() => {
+    if (sessionPartner) return sessionPartner;
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('partner_profile') || localStorage.getItem('gty_partner_profile');
       if (saved) {
@@ -96,21 +97,27 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
     }
     return {
       avatarId: 2,
-      name: 'Sam',
+      name: 'Your friend',
       color: 'teal',
     };
   });
 
+  useEffect(() => {
+    if (sessionPartner) {
+      setPartnerProfile(sessionPartner);
+    }
+  }, [sessionPartner]);
+
   // Dynamic user data from profile (updates immediately when profile changes)
   const currentUser = useMemo(() => {
     return {
-      name: profile?.name || 'Alex',
+      name: profile?.name || 'You',
       avatarId: profile?.avatarId ?? 1,
       color: profile?.color || 'salmon',
     };
   }, [profile]);
 
-  const friendName = partnerProfile.name || 'Sam';
+  const friendName = partnerProfile.name || 'Your friend';
 
   // 1. DEFAULT STATE: BOTH READY
   const [isUserReady, setIsUserReady] = useState<boolean>(true);
@@ -1807,13 +1814,13 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
                 onClick={() => setIsUserReady((r) => !r)}
                 className="px-2 py-0.5 rounded bg-blue-600 text-white font-sans text-[10px]"
               >
-                Toggle Alex ({isUserReady ? 'Ready' : 'Not ready'})
+                Toggle {currentUser.name} ({isUserReady ? 'Ready' : 'Not ready'})
               </button>
               <button
                 onClick={() => setIsFriendReady((r) => !r)}
                 className="px-2 py-0.5 rounded bg-green-600 text-white font-sans text-[10px]"
               >
-                Toggle Sam ({isFriendReady ? 'Ready' : 'Waiting'})
+                Toggle {friendName} ({isFriendReady ? 'Ready' : 'Waiting'})
               </button>
             </div>
           </div>
