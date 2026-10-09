@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/__/auth/:path*",
-      "destination": "https://eastern-sentry-746tg.firebaseapp.com/__/auth/:path*"
+      "destination": "https://get2knowgame.firebaseapp.com/__/auth/:path*"
     }
   ]
 }
