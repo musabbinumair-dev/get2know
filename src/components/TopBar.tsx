@@ -28,7 +28,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 
   return (
     <div
-      className={`relative w-full max-w-[390px] mx-auto h-[44px] px-6 flex items-center justify-between select-none z-20 flex-shrink-0 ${className}`}
+      className={`relative w-full max-w-[390px] mx-auto h-[44px] px-6 sm:px-7 flex items-center justify-between select-none z-20 flex-shrink-0 ${className}`}
     >
       {/* Left: Duo Logo Asset (tappable -> Friend Profile) */}
       <button

@@ -222,9 +222,9 @@ export const MemoryWallScreen: React.FC<MemoryWallScreenProps> = ({
   return (
     <Screen bg="#9BAE6F" className="h-full min-h-[100dvh]">
       {/* ---------------- PINNED HEADER LAYER (DOES NOT SCROLL) ---------------- */}
-      <div className="relative w-full z-20 flex-shrink-0 bg-[#9BAE6F] pt-6 sm:pt-8 px-5 sm:px-6 select-none">
+      <div className="relative w-full z-20 flex-shrink-0 bg-[#9BAE6F] pt-7 sm:pt-9 px-6 sm:px-7 select-none">
         {/* Top Bar: Title "Memory wall" & Search Button */}
-        <div className="flex items-center justify-between h-[44px]">
+        <div className="relative w-full max-w-[390px] mx-auto h-[44px] flex items-center justify-between select-none z-20 flex-shrink-0">
           <h1 className="text-[28px] sm:text-[32px] font-black text-[#17181B] leading-none tracking-[-0.025em]">
             Memory wall
           </h1>
@@ -242,7 +242,7 @@ export const MemoryWallScreen: React.FC<MemoryWallScreenProps> = ({
               viewBox="0 0 24 24"
               fill="none"
               stroke="#17181B"
-              strokeWidth="2.3"
+              strokeWidth="2.2"
               strokeLinecap="round"
               strokeLinejoin="round"
             >
