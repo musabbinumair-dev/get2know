@@ -50,7 +50,28 @@ export const FinalResultScreen: React.FC = () => {
   const [heldEmojiId, setHeldEmojiId] = useState<string | null>(null);
   const holdIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Sync background color with Reveal pastel pink #F5CCE2
+  // Responsive aspect ratio tracking for zero-scroll on short screens
+  const [windowDimensions, setWindowDimensions] = useState<{ w: number; h: number }>({
+    w: typeof window !== 'undefined' ? window.innerWidth : 390,
+    h: typeof window !== 'undefined' ? window.innerHeight : 844,
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowDimensions({
+        w: window.innerWidth,
+        h: window.innerHeight,
+      });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const aspectRatio = windowDimensions.h / (windowDimensions.w || 1);
+  const isShortScreen = aspectRatio < 1.75 || windowDimensions.h < 700;
+  const isUltraShort = aspectRatio < 1.55 || windowDimensions.h < 600;
+
+  // Background sync
   useEffect(() => {
     const prevBodyBg = document.body.style.backgroundColor;
     const prevHtmlBg = document.documentElement.style.backgroundColor;
@@ -70,12 +91,11 @@ export const FinalResultScreen: React.FC = () => {
     };
   }, []);
 
-  // Player 1 (Me) details
-  const myName = profile?.name && profile.name !== 'Player 1' ? profile.name : 'Alex';
+  // Player profiles
+  const myName = profile?.name && profile.name !== 'Player 1' ? profile.name : 'Musab';
   const myAvatarId = profile?.avatarId ?? 1;
   const p1AvatarSrc = `/assets/avatars/avatar-${myAvatarId}.png`;
 
-  // Player 2 (Friend) details
   const friendData = useMemo(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('partner_profile');
@@ -83,47 +103,41 @@ export const FinalResultScreen: React.FC = () => {
         try {
           const parsed = JSON.parse(saved);
           return {
-            name: parsed.name && parsed.name !== 'Alex' ? parsed.name : 'Sam',
+            name: parsed.name && parsed.name !== 'Alex' ? parsed.name : 'Alex',
             avatarId: parsed.avatarId ?? 2,
           };
         } catch {}
       }
     }
-    return { name: 'Sam', avatarId: 2 };
+    return { name: 'Alex', avatarId: 2 };
   }, []);
   const p2AvatarSrc = `/assets/avatars/avatar-${friendData.avatarId}.png`;
 
   const isKnowMe = mode === 'Know Me';
   const effectiveTotalRounds = totalRounds > 0 ? totalRounds : Math.max(10, history.length);
 
-  // Score & Outcome calculation
+  // Scores
   const p1Score = myScore > 0 || history.length > 0 ? myScore : 80;
   const p2Score = friendScore > 0 || history.length > 0 ? friendScore : 65;
   const isTie = p1Score === p2Score;
   const isMeWinner = p1Score > p2Score;
 
-  // Starburst text
-  const starburstText = useMemo(() => {
-    if (isKnowMe) {
-      return { line1: 'In', line2: 'sync!' };
-    }
-    if (isTie) {
-      return { line1: 'Tie!', line2: '' };
-    }
-    if (isMeWinner) {
-      return { line1: 'You', line2: 'won!' };
-    }
+  // Center burst text
+  const burstText = useMemo(() => {
+    if (isKnowMe) return { line1: 'In', line2: 'sync!' };
+    if (isTie) return { line1: 'Tie!', line2: '' };
+    if (isMeWinner) return { line1: 'You', line2: 'won!' };
     return { line1: 'They', line2: 'won!' };
   }, [isKnowMe, isTie, isMeWinner]);
 
   // Sync Percentage for Know Me mode
   const syncPercentage = useMemo(() => {
-    if (effectiveTotalRounds <= 0) return 80;
+    if (effectiveTotalRounds <= 0) return 86;
     const raw = Math.round((matchesCount / effectiveTotalRounds) * 100);
     return Math.min(100, Math.max(0, raw || 86));
   }, [matchesCount, effectiveTotalRounds]);
 
-  // Dynamic correct count from real gameplay history
+  // Correct rounds count
   const correctCount = useMemo(() => {
     if (history.length > 0) {
       return history.filter((h) => h.isCorrect).length;
@@ -131,7 +145,7 @@ export const FinalResultScreen: React.FC = () => {
     return 7;
   }, [history]);
 
-  // Best category calculation for Know Me
+  // Best category for Know Me mode
   const bestCategory = useMemo(() => {
     if (history.length > 0) {
       const catCount: Record<string, number> = {};
@@ -150,7 +164,7 @@ export const FinalResultScreen: React.FC = () => {
     return 'Food';
   }, [history]);
 
-  // Round by round chart bars - only completed rounds dynamically
+  // Round by round bar chart data
   const roundBars = useMemo(() => {
     if (history.length > 0) {
       return history.map((h, i) => {
@@ -159,23 +173,36 @@ export const FinalResultScreen: React.FC = () => {
           ? (h.isMatched ?? false)
           : ((h as any).friendIsCorrect ?? (h.isCorrect ? i % 2 === 0 : true));
         return {
-          round: h.round || i + 1,
-          pH: p1Correct ? 34 : 10,
-          bH: p2Correct ? 34 : 10,
+          round: i + 1, // Strictly 1, 2, 3... with NO duplicates
+          pH: p1Correct ? 94 : 44,
+          bH: p2Correct ? 86 : 44,
         };
       });
     }
-    // Fallback if accessed directly with empty history
+    // Default 10 rounds matching mockup
     return [
-      { round: 1, pH: 34, bH: 10 },
-      { round: 2, pH: 10, bH: 34 },
-      { round: 3, pH: 34, bH: 34 },
-      { round: 4, pH: 34, bH: 10 },
-      { round: 5, pH: 10, bH: 34 },
+      { round: 1, pH: 92, bH: 58 },
+      { round: 2, pH: 46, bH: 58 },
+      { round: 3, pH: 92, bH: 82 },
+      { round: 4, pH: 46, bH: 58 },
+      { round: 5, pH: 92, bH: 82 },
+      { round: 6, pH: 92, bH: 58 },
+      { round: 7, pH: 96, bH: 88 },
+      { round: 8, pH: 92, bH: 58 },
+      { round: 9, pH: 92, bH: 82 },
+      { round: 10, pH: 96, bH: 88 },
     ];
   }, [history, isKnowMe]);
 
-  // Instagram-style floating reaction particles
+  const showChart = !isShortScreen && roundBars.length >= 2;
+  const showEmojiRow = !isUltraShort;
+
+  // Design Canvas adjustments for short screens
+  const chartOffset = showChart ? 0 : 255;
+  const emojiOffset = showEmojiRow ? 0 : 95;
+  const designCanvasHeight = 1846 - chartOffset - emojiOffset;
+
+  // Floating reactions
   const spawnParticle = useCallback((emojiChar: string, originX?: number) => {
     const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 390;
     const startX = originX !== undefined ? originX : screenWidth / 2 + (Math.random() - 0.5) * 80;
@@ -282,29 +309,60 @@ export const FinalResultScreen: React.FC = () => {
     navigate('/home');
   };
 
+  // Determine pair positions across x=72 to 787
+  const chartPairs = useMemo(() => {
+    const n = roundBars.length;
+    if (n === 0) return [];
+    const pairWidth = 52; // 24 + 4 + 24
+    const totalSpan = 715; // 787 - 72
+    const gap = n > 1 ? (totalSpan - n * pairWidth) / (n - 1) : 0;
+    return roundBars.map((b, idx) => {
+      const leftX = 72 + idx * (pairWidth + gap);
+      const centerX = leftX + pairWidth / 2;
+      return {
+        ...b,
+        leftX,
+        centerX,
+      };
+    });
+  }, [roundBars]);
+
   return (
     <div
-      className="relative w-full h-[100dvh] max-h-[100dvh] bg-[#F5CCE2] select-none font-['Nunito',sans-serif] overflow-hidden flex flex-col justify-between"
+      className="relative w-full h-[100dvh] max-h-[100dvh] bg-[#F5CCE2] select-none font-['Nunito',sans-serif] overflow-hidden flex items-center justify-center"
       style={{ backgroundColor: '#F5CCE2' }}
     >
-      <style>{`
-        @media (max-height: 720px) {
-          .final-chart-section {
-            display: none !important;
-          }
-          .final-player-blob-box {
-            max-width: 130px !important;
-          }
-          .final-stat-box {
-            max-width: 78px !important;
-          }
-        }
-        @media (max-height: 640px) {
-          .final-emoji-row-section {
-            display: none !important;
-          }
-        }
-      `}</style>
+      {/* Fixed Corner Decorations (vw units only, anchored to viewport corners, cropped by screen edge) */}
+      <div className="fixed inset-0 pointer-events-none select-none z-0 overflow-hidden">
+        <img
+          src="/assets/heart-pink-top-left.webp"
+          alt=""
+          className="absolute top-0 left-0 pointer-events-none select-none"
+          style={{ width: '10.8vw' }}
+          draggable={false}
+        />
+        <img
+          src="/assets/star-blue-top-right.webp"
+          alt=""
+          className="absolute top-0 right-0 pointer-events-none select-none"
+          style={{ width: '13.7vw' }}
+          draggable={false}
+        />
+        <img
+          src="/assets/moon-yellow-bottom-left.webp"
+          alt=""
+          className="absolute bottom-0 left-0 pointer-events-none select-none"
+          style={{ width: '13.5vw' }}
+          draggable={false}
+        />
+        <img
+          src="/assets/cross-green-bottom-right.webp"
+          alt=""
+          className="absolute bottom-0 right-0 pointer-events-none select-none"
+          style={{ width: '12.2vw' }}
+          draggable={false}
+        />
+      </div>
 
       {/* Floating Instagram-style Particle Overlay */}
       <div
@@ -341,304 +399,524 @@ export const FinalResultScreen: React.FC = () => {
         </div>
       )}
 
-      {/* Fixed Viewport Corner Decorations (reused from Reveal) */}
-      <img
-        src="/assets/reveal/crescent-yellow.webp"
-        alt=""
-        className="fixed -top-1 -left-1 w-[42px] h-[46px] sm:w-[50px] sm:h-[54px] object-contain pointer-events-none select-none z-0"
-        draggable={false}
-      />
-      <img
-        src="/assets/reveal/heart-pink-small.webp"
-        alt=""
-        className="fixed -top-1 -right-1 w-[46px] h-[44px] sm:w-[54px] sm:h-[52px] object-contain pointer-events-none select-none z-0"
-        draggable={false}
-      />
-      <img
-        src="/assets/reveal/deco-bottom-left.webp"
-        alt=""
-        className="fixed -bottom-2 -left-2 w-[44px] h-[42px] sm:w-[50px] sm:h-[48px] object-contain pointer-events-none select-none z-0"
-        draggable={false}
-      />
-      <img
-        src="/assets/reveal/cross-olive.webp"
-        alt=""
-        className="fixed -bottom-2 -right-2 w-[44px] h-[44px] sm:w-[50px] sm:h-[50px] object-contain pointer-events-none select-none z-0"
-        draggable={false}
-      />
-
-      {/* Main Single-Screen Responsive Stage */}
-      <div className="relative z-10 w-full max-w-[390px] mx-auto h-full flex flex-col justify-between items-center px-5 pt-3 pb-3 overflow-hidden">
-        {/* 1. Shared TopBar: Back button on left, "Results" in center */}
-        <div className="w-full h-[40px] flex items-center justify-between select-none z-20 flex-shrink-0">
-          <button
-            type="button"
-            onClick={handleBackHome}
-            aria-label="Back"
-            className="w-[36px] h-[36px] rounded-full border-[1.6px] border-dashed border-[#17181B] flex items-center justify-center bg-transparent hover:bg-[#17181B]/5 active:scale-95 transition-all cursor-pointer focus:outline-none"
+      {/* 852 x 1846 Proportional Stage Canvas */}
+      <div
+        className="relative z-10 select-none overflow-hidden flex-shrink-0"
+        style={{
+          ['--u' as any]: `min(calc(100vw / 852), calc(100dvh / ${designCanvasHeight}))`,
+          width: 'calc(852 * var(--u))',
+          height: `calc(${designCanvasHeight} * var(--u))`,
+        }}
+      >
+        {/* 1. Shared TopBar (Back button + Results title) */}
+        {/* Back button on left */}
+        <button
+          type="button"
+          onClick={handleBackHome}
+          aria-label="Back"
+          className="btn-press absolute rounded-full border-[2.8px] border-dashed border-[#17181B] flex items-center justify-center bg-transparent hover:bg-[#17181B]/5 active:scale-95 transition-all cursor-pointer focus:outline-none z-30"
+          style={{
+            left: 'calc(65 * var(--u))',
+            top: 'calc(100 * var(--u))',
+            width: 'calc(78 * var(--u))',
+            height: 'calc(78 * var(--u))',
+          }}
+        >
+          <svg
+            style={{ width: 'calc(34 * var(--u))', height: 'calc(34 * var(--u))' }}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#17181B"
+            strokeWidth="2.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#17181B"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+            <path d="M19 12H5" />
+            <path d="M12 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        {/* Results title centered */}
+        <h1
+          className="absolute font-black text-[#17181B] leading-none tracking-tight text-center pointer-events-none"
+          style={{
+            left: '0',
+            right: '0',
+            top: 'calc(110 * var(--u))',
+            fontSize: 'calc(58 * var(--u))',
+          }}
+        >
+          Results
+        </h1>
+
+        {/* 2. Tag Pill: "Trivia · 10 rounds" (x=302 to 550, y=187 to 228) */}
+        <div
+          className="absolute rounded-full flex items-center justify-center shadow-2xs pointer-events-none"
+          style={{
+            left: 'calc(302 * var(--u))',
+            top: 'calc(187 * var(--u))',
+            width: 'calc(248 * var(--u))',
+            height: 'calc(41 * var(--u))',
+            backgroundColor: '#FED982',
+            borderRadius: 'calc(21 * var(--u))',
+          }}
+        >
+          <span
+            className="font-extrabold text-[#17181B] tracking-tight leading-none"
+            style={{ fontSize: 'calc(24 * var(--u))' }}
+          >
+            {isKnowMe ? 'Know Me' : 'Trivia'} · {effectiveTotalRounds} rounds
+          </span>
+        </div>
+
+        {/* 3. Player Blobs & Winner Crown */}
+        {/* Winner Crown on Winner's Blob (x=175 to 238, y=244 to 290) */}
+        {!isTie && !isKnowMe && isMeWinner && (
+          <img
+            src="/assets/crown-yellow.webp"
+            alt=""
+            className="absolute pointer-events-none select-none z-25"
+            style={{
+              left: 'calc(175 * var(--u))',
+              top: 'calc(244 * var(--u))',
+              width: 'calc(63 * var(--u))',
+              height: 'calc(46 * var(--u))',
+            }}
+            draggable={false}
+          />
+        )}
+        {!isTie && !isKnowMe && !isMeWinner && (
+          <img
+            src="/assets/crown-yellow.webp"
+            alt=""
+            className="absolute pointer-events-none select-none z-25"
+            style={{
+              left: 'calc(615 * var(--u))',
+              top: 'calc(244 * var(--u))',
+              width: 'calc(63 * var(--u))',
+              height: 'calc(46 * var(--u))',
+            }}
+            draggable={false}
+          />
+        )}
+
+        {/* Left Blob (Pink): x=75 to 370, y=265 to 570 */}
+        <div
+          className="absolute flex flex-col items-center justify-center z-15"
+          style={{
+            left: 'calc(75 * var(--u))',
+            top: 'calc(265 * var(--u))',
+            width: 'calc(295 * var(--u))',
+            height: 'calc(305 * var(--u))',
+          }}
+        >
+          <img
+            src="/assets/reveal/card-blob-pink.webp"
+            alt=""
+            className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
+            draggable={false}
+          />
+          <div className="relative z-10 flex flex-col items-center justify-center w-full h-full pointer-events-none pt-2">
+            <img
+              src={p1AvatarSrc}
+              alt={myName}
+              className="object-contain mb-1 flex-shrink-0"
+              style={{
+                width: 'calc(146 * var(--u))',
+                height: 'calc(146 * var(--u))',
+                marginTop: 'calc(-10 * var(--u))',
+              }}
+              draggable={false}
+            />
+            <span
+              className="font-black text-[#17181B] tracking-tight leading-none truncate max-w-[90%]"
+              style={{
+                fontSize: 'calc(36 * var(--u))',
+                marginTop: 'calc(10 * var(--u))',
+              }}
             >
-              <path d="M19 12H5" />
-              <path d="M12 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <h1 className="text-[21px] sm:text-[23px] font-black text-[#17181B] leading-none tracking-tight">
-            Results
-          </h1>
-          <div className="w-[36px]" />
-        </div>
-
-        {/* 2. Small Tag Pill: "Trivia · 10 rounds" (or "Know Me · 10 rounds") */}
-        <div className="flex items-center justify-center my-0.5 z-10 flex-shrink-0">
-          <div className="rounded-full bg-[#FED982] px-3.5 py-1 flex items-center justify-center shadow-2xs">
-            <span className="font-extrabold text-[13px] sm:text-[14px] text-[#1B1D20] tracking-tight leading-none">
-              {isKnowMe ? 'Know Me' : 'Trivia'} · {effectiveTotalRounds} rounds
+              {myName}
             </span>
           </div>
         </div>
 
-        {/* 3. Two Player Blobs (Pink + Blue) + Reveal Starburst in center */}
-        <div className="relative w-full flex items-center justify-between my-0.5 z-10 flex-shrink-0">
-          {/* Left Player: Pink Blob (Me) */}
-          <div
-            className={`final-player-blob-box relative w-[47%] max-w-[155px] aspect-[456/468] flex flex-col items-center justify-center p-2 transition-transform duration-200 ${
-              !isTie && !isKnowMe && isMeWinner ? 'scale-105 z-15' : 'scale-100 z-10'
-            }`}
-          >
+        {/* Center Burst: you-won-rays around it + you-won-burst (x=345 to 510, y=335 to 495) */}
+        <div
+          className="absolute pointer-events-none select-none z-10 flex items-center justify-center"
+          style={{
+            left: 'calc(287 * var(--u))',
+            top: 'calc(275 * var(--u))',
+            width: 'calc(280 * var(--u))',
+            height: 'calc(280 * var(--u))',
+          }}
+        >
+          <img
+            src="/assets/you-won-rays.webp"
+            alt=""
+            className="w-full h-full object-contain pointer-events-none select-none"
+            draggable={false}
+          />
+        </div>
+
+        <div
+          className="absolute pointer-events-none select-none z-20 flex items-center justify-center"
+          style={{
+            left: 'calc(345 * var(--u))',
+            top: 'calc(335 * var(--u))',
+            width: 'calc(165 * var(--u))',
+            height: 'calc(160 * var(--u))',
+          }}
+        >
+          <img
+            src="/assets/you-won-burst.webp"
+            alt=""
+            className="w-full h-full object-contain pointer-events-none select-none"
+            draggable={false}
+          />
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-1 pt-1 text-[#17181B]">
+            <span
+              className="font-black leading-[1.05] tracking-tight"
+              style={{ fontSize: 'calc(36 * var(--u))' }}
+            >
+              {burstText.line1}
+            </span>
+            {burstText.line2 && (
+              <span
+                className="font-black leading-[1.05] tracking-tight"
+                style={{ fontSize: 'calc(36 * var(--u))' }}
+              >
+                {burstText.line2}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Right Blob (Blue): x=515 to 782, y=298 to 565 */}
+        <div
+          className="absolute flex flex-col items-center justify-center z-15"
+          style={{
+            left: 'calc(515 * var(--u))',
+            top: 'calc(298 * var(--u))',
+            width: 'calc(267 * var(--u))',
+            height: 'calc(267 * var(--u))',
+          }}
+        >
+          <img
+            src="/assets/reveal/card-blob-blue.webp"
+            alt=""
+            className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
+            draggable={false}
+          />
+          <div className="relative z-10 flex flex-col items-center justify-center w-full h-full pointer-events-none pt-2">
             <img
-              src="/assets/reveal/card-blob-pink.webp"
-              alt=""
-              className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
+              src={p2AvatarSrc}
+              alt={friendData.name}
+              className="object-contain mb-1 flex-shrink-0"
+              style={{
+                width: 'calc(138 * var(--u))',
+                height: 'calc(138 * var(--u))',
+                marginTop: 'calc(-8 * var(--u))',
+              }}
               draggable={false}
             />
-            <div className="relative z-10 flex flex-col items-center justify-center text-center w-full h-full pointer-events-none px-1">
-              <img
-                src={p1AvatarSrc}
-                alt={myName}
-                className="w-[42px] h-[42px] sm:w-[46px] sm:h-[46px] object-contain mb-1 flex-shrink-0"
-                draggable={false}
-              />
-              <span className="text-[14px] sm:text-[15px] font-black text-[#1B1D20] tracking-tight leading-tight truncate max-w-[110px]">
-                {myName}
-              </span>
-              <div className="text-[17px] sm:text-[19px] font-black text-[#1B1D20] leading-none mt-0.5">
-                {p1Score}
-                <span className="text-[11px] font-bold text-[#1B1D20]/60 ml-0.5">pts</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Center Starburst: "You won!" / "They won!" / "Tie!" (Know Me: "In sync!") */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[76px] sm:w-[84px] aspect-square z-20 pointer-events-none select-none flex items-center justify-center">
-            <img
-              src="/assets/reveal/match-starburst.webp"
-              alt=""
-              className="w-full h-full object-contain pointer-events-none select-none"
-              draggable={false}
-            />
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-1 pt-0.5 text-[#1B1D20]">
-              <span className="text-[12px] sm:text-[13px] font-black leading-[1.05] tracking-tight">
-                {starburstText.line1}
-              </span>
-              {starburstText.line2 && (
-                <span className="text-[12px] sm:text-[13px] font-black leading-[1.05] tracking-tight">
-                  {starburstText.line2}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Right Player: Blue Blob (Friend) */}
-          <div
-            className={`final-player-blob-box relative w-[47%] max-w-[155px] aspect-[456/468] flex flex-col items-center justify-center p-2 transition-transform duration-200 ${
-              !isTie && !isKnowMe && !isMeWinner ? 'scale-105 z-15' : 'scale-100 z-10'
-            }`}
-          >
-            <img
-              src="/assets/reveal/card-blob-blue.webp"
-              alt=""
-              className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
-              draggable={false}
-            />
-            <div className="relative z-10 flex flex-col items-center justify-center text-center w-full h-full pointer-events-none px-1">
-              <img
-                src={p2AvatarSrc}
-                alt={friendData.name}
-                className="w-[42px] h-[42px] sm:w-[46px] sm:h-[46px] object-contain mb-1 flex-shrink-0"
-                draggable={false}
-              />
-              <span className="text-[14px] sm:text-[15px] font-black text-[#1B1D20] tracking-tight leading-tight truncate max-w-[110px]">
-                {friendData.name}
-              </span>
-              <div className="text-[17px] sm:text-[19px] font-black text-[#1B1D20] leading-none mt-0.5">
-                {p2Score}
-                <span className="text-[11px] font-bold text-[#1B1D20]/60 ml-0.5">pts</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 4. Score Block styled like Scores sync score */}
-        <div className="w-full flex flex-col items-center select-none my-0.5 z-10 flex-shrink-0">
-          <p className="text-[12px] sm:text-[13px] font-bold text-[#17181B]/55 tracking-tight leading-none mb-0.5">
-            {isKnowMe ? 'Sync score' : 'Final score'}
-          </p>
-          <div className="flex items-center justify-center">
-            <span className="text-[32px] sm:text-[38px] font-black text-[#17181B] leading-none tracking-[-0.03em] select-none">
-              {isKnowMe ? `${syncPercentage}%` : `${p1Score} - ${p2Score}`}
-            </span>
-          </div>
-          <p className="text-[12px] sm:text-[13px] font-semibold text-[#17181B]/55 tracking-tight text-center leading-none mt-0.5">
-            {isKnowMe
-              ? `You matched ${matchesCount} of ${effectiveTotalRounds}`
-              : 'Great game, you two'}
-          </p>
-        </div>
-
-        {/* 5. Three Stat Blobs using Scores shapes (starburst, drop, cross) */}
-        <div className="w-full max-w-[340px] mx-auto grid grid-cols-3 gap-2 my-0.5 z-10 flex-shrink-0">
-          {/* Stat 1: Trivia -> Correct (7/10) | Know Me -> Matches */}
-          <div className="flex flex-col items-center">
-            <div className="final-stat-box relative w-full aspect-square max-w-[86px] sm:max-w-[92px] flex items-center justify-center">
-              <img
-                src="/assets/scores/stat-teardrop-blue-matches.webp"
-                alt=""
-                className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
-                draggable={false}
-              />
-              <div className="relative z-10 flex flex-col items-center justify-center leading-none select-none pt-1">
-                <span className="text-[20px] sm:text-[23px] font-black text-[#17181B] leading-none tracking-tight">
-                  {isKnowMe ? matchesCount : `${correctCount}/${effectiveTotalRounds}`}
-                </span>
-              </div>
-            </div>
-            <span className="text-[11.5px] sm:text-[12.5px] font-bold text-[#17181B]/55 mt-0.5 tracking-tight leading-none text-center">
-              {isKnowMe ? 'Matches' : 'Correct'}
-            </span>
-          </div>
-
-          {/* Stat 2: Trivia -> Streak | Know Me -> Best category */}
-          <div className="flex flex-col items-center">
-            <div className="final-stat-box relative w-full aspect-square max-w-[86px] sm:max-w-[92px] flex items-center justify-center">
-              <img
-                src={
-                  isKnowMe
-                    ? '/assets/scores/stat-cross-olive-guess-wins.webp'
-                    : '/assets/scores/stat-starburst-yellow-streak.webp'
-                }
-                alt=""
-                className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
-                draggable={false}
-              />
-              <div className="relative z-10 flex flex-col items-center justify-center leading-none select-none">
-                <span className="text-[18px] sm:text-[22px] font-black text-[#17181B] leading-none tracking-tight truncate max-w-[68px] text-center">
-                  {isKnowMe ? bestCategory : streak || 12}
-                </span>
-                {!isKnowMe && (
-                  <span className="text-[10px] font-extrabold text-[#17181B] leading-none mt-0.5">
-                    days
-                  </span>
-                )}
-              </div>
-            </div>
-            <span className="text-[11.5px] sm:text-[12.5px] font-bold text-[#17181B]/55 mt-0.5 tracking-tight leading-none text-center">
-              {isKnowMe ? 'Best category' : 'Streak'}
-            </span>
-          </div>
-
-          {/* Stat 3: Trivia -> Streak Badge | Know Me -> Streak */}
-          <div className="flex flex-col items-center">
-            <div className="final-stat-box relative w-full aspect-square max-w-[86px] sm:max-w-[92px] flex items-center justify-center">
-              <img
-                src={
-                  isKnowMe
-                    ? '/assets/scores/stat-starburst-yellow-streak.webp'
-                    : '/assets/scores/stat-cross-olive-guess-wins.webp'
-                }
-                alt=""
-                className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
-                draggable={false}
-              />
-              <div className="relative z-10 flex flex-col items-center justify-center leading-none select-none">
-                <span className="text-[19px] sm:text-[22px] font-black text-[#17181B] leading-none tracking-tight">
-                  {isKnowMe ? streak || 12 : p1Score > 0 ? '+15' : '0'}
-                </span>
-                {isKnowMe && (
-                  <span className="text-[10px] font-extrabold text-[#17181B] leading-none mt-0.5">
-                    days
-                  </span>
-                )}
-              </div>
-            </div>
-            <span className="text-[11.5px] sm:text-[12.5px] font-bold text-[#17181B]/55 mt-0.5 tracking-tight leading-none text-center">
-              {isKnowMe ? 'Streak' : 'Points/win'}
+            <span
+              className="font-black text-[#17181B] tracking-tight leading-none truncate max-w-[90%]"
+              style={{
+                fontSize: 'calc(36 * var(--u))',
+                marginTop: 'calc(8 * var(--u))',
+              }}
+            >
+              {friendData.name}
             </span>
           </div>
         </div>
 
-        {/* 6. Chart "Round by round" (Auto-hidden on short screens) */}
-        <div className="final-chart-section w-full max-w-[340px] mx-auto my-0.5 z-10 flex-shrink-0">
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="text-[15px] sm:text-[16px] font-black text-[#17181B] tracking-tight leading-none">
+        {/* 4. Score Block */}
+        {/* "Final score" y=598 font 30 gray */}
+        <div
+          className="absolute left-0 right-0 text-center font-bold text-[#7A757D] pointer-events-none"
+          style={{
+            top: 'calc(598 * var(--u))',
+            fontSize: 'calc(30 * var(--u))',
+            lineHeight: 1,
+          }}
+        >
+          {isKnowMe ? 'Sync score' : 'Final score'}
+        </div>
+
+        {/* "80 - 65" y=678 font 140 weight 900 */}
+        <div
+          className="absolute left-0 right-0 text-center font-black text-[#17181B] tracking-[-0.03em] leading-none pointer-events-none"
+          style={{
+            top: 'calc(650 * var(--u))',
+            fontSize: 'calc(140 * var(--u))',
+          }}
+        >
+          {isKnowMe ? `${syncPercentage}%` : `${p1Score} - ${p2Score}`}
+        </div>
+
+        {/* "Great game, you two" y=762 font 29 gray */}
+        <div
+          className="absolute left-0 right-0 text-center font-bold text-[#7A757D] pointer-events-none"
+          style={{
+            top: 'calc(762 * var(--u))',
+            fontSize: 'calc(29 * var(--u))',
+            lineHeight: 1,
+          }}
+        >
+          {isKnowMe
+            ? `You matched ${matchesCount} of ${effectiveTotalRounds}`
+            : 'Great game, you two'}
+        </div>
+
+        {/* 5. Stats Blobs */}
+        {/* Stat 1: Starburst (x=93 to 282, y=812 to 1000) */}
+        <div
+          className="absolute flex items-center justify-center z-10"
+          style={{
+            left: 'calc(93 * var(--u))',
+            top: 'calc(812 * var(--u))',
+            width: 'calc(189 * var(--u))',
+            height: 'calc(188 * var(--u))',
+          }}
+        >
+          <img
+            src="/assets/stat-starburst-yellow.webp"
+            alt=""
+            className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
+            draggable={false}
+          />
+          <div className="relative z-10 flex flex-col items-center justify-center select-none pt-1">
+            <span
+              className="font-black text-[#17181B] leading-none tracking-tight"
+              style={{ fontSize: 'calc(56 * var(--u))' }}
+            >
+              {streak || 13}
+            </span>
+          </div>
+        </div>
+        <div
+          className="absolute text-center font-bold text-[#7A757D] pointer-events-none"
+          style={{
+            left: 'calc(93 * var(--u))',
+            width: 'calc(189 * var(--u))',
+            top: 'calc(1025 * var(--u))',
+            fontSize: 'calc(26 * var(--u))',
+            lineHeight: 1,
+          }}
+        >
+          Streak
+        </div>
+
+        {/* Stat 2: Drop (x=347 to 505, y=815 to 995) */}
+        <div
+          className="absolute flex items-center justify-center z-10"
+          style={{
+            left: 'calc(347 * var(--u))',
+            top: 'calc(815 * var(--u))',
+            width: 'calc(158 * var(--u))',
+            height: 'calc(180 * var(--u))',
+          }}
+        >
+          <img
+            src="/assets/stat-drop-blue.webp"
+            alt=""
+            className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
+            draggable={false}
+          />
+          <div className="relative z-10 flex flex-col items-center justify-center select-none pt-3">
+            <span
+              className="font-black text-[#17181B] leading-none tracking-tight"
+              style={{ fontSize: 'calc(56 * var(--u))' }}
+            >
+              {isKnowMe ? matchesCount || 7 : `${correctCount}/${effectiveTotalRounds}`}
+            </span>
+          </div>
+        </div>
+        <div
+          className="absolute text-center font-bold text-[#7A757D] pointer-events-none"
+          style={{
+            left: 'calc(331 * var(--u))',
+            width: 'calc(190 * var(--u))',
+            top: 'calc(1025 * var(--u))',
+            fontSize: 'calc(26 * var(--u))',
+            lineHeight: 1,
+          }}
+        >
+          {isKnowMe ? 'Matches' : 'Correct'}
+        </div>
+
+        {/* Stat 3: Cross (x=573 to 757, y=818 to 998) */}
+        <div
+          className="absolute flex items-center justify-center z-10"
+          style={{
+            left: 'calc(573 * var(--u))',
+            top: 'calc(818 * var(--u))',
+            width: 'calc(184 * var(--u))',
+            height: 'calc(180 * var(--u))',
+          }}
+        >
+          <img
+            src="/assets/stat-cross-green.webp"
+            alt=""
+            className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none z-0"
+            draggable={false}
+          />
+          <div className="relative z-10 flex flex-col items-center justify-center select-none">
+            <span
+              className="font-black text-[#17181B] leading-none tracking-tight truncate max-w-[90%]"
+              style={{ fontSize: 'calc(56 * var(--u))' }}
+            >
+              {isKnowMe ? bestCategory : '3.2s'}
+            </span>
+          </div>
+        </div>
+        <div
+          className="absolute text-center font-bold text-[#7A757D] pointer-events-none"
+          style={{
+            left: 'calc(570 * var(--u))',
+            width: 'calc(190 * var(--u))',
+            top: 'calc(1025 * var(--u))',
+            fontSize: 'calc(26 * var(--u))',
+            lineHeight: 1,
+          }}
+        >
+          {isKnowMe ? 'Best category' : 'Fastest'}
+        </div>
+
+        {/* 6. "Round by round" Bar Chart (Shown on normal and tall screens) */}
+        {showChart && (
+          <>
+            {/* Title: x=68, y=1100, font 44 weight 900 */}
+            <h2
+              className="absolute font-black text-[#17181B] tracking-tight leading-none"
+              style={{
+                left: 'calc(68 * var(--u))',
+                top: 'calc(1100 * var(--u))',
+                fontSize: 'calc(44 * var(--u))',
+              }}
+            >
               Round by round
             </h2>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-[#FCA0D1]" />
-                <span className="text-[10.5px] font-bold text-[#17181B]/70">{myName}</span>
+
+            {/* Bars Area: y=1145 to 1260, pairs spread across x=72 to 787 */}
+            {chartPairs.map((pair) => (
+              <React.Fragment key={pair.round}>
+                {/* Bar pair positioned at pair.leftX */}
+                <div
+                  className="absolute flex items-end justify-between"
+                  style={{
+                    left: `calc(${pair.leftX} * var(--u))`,
+                    top: 'calc(1145 * var(--u))',
+                    width: 'calc(52 * var(--u))',
+                    height: 'calc(115 * var(--u))',
+                  }}
+                >
+                  {/* Pink bar (Me) */}
+                  <div
+                    style={{
+                      width: 'calc(24 * var(--u))',
+                      height: `calc(${pair.pH} * var(--u))`,
+                      backgroundColor: '#FCA0D1',
+                      borderRadius: 'calc(12 * var(--u))',
+                    }}
+                  />
+                  {/* Blue bar (Friend) */}
+                  <div
+                    style={{
+                      width: 'calc(24 * var(--u))',
+                      height: `calc(${pair.bH} * var(--u))`,
+                      backgroundColor: '#8EAFFD',
+                      borderRadius: 'calc(12 * var(--u))',
+                    }}
+                  />
+                </div>
+
+                {/* Round label at y=1280 font 22 gray */}
+                <div
+                  className="absolute text-center font-bold text-[#7A757D]"
+                  style={{
+                    left: `calc(${pair.centerX - 24} * var(--u))`,
+                    width: 'calc(48 * var(--u))',
+                    top: 'calc(1280 * var(--u))',
+                    fontSize: 'calc(22 * var(--u))',
+                    lineHeight: 1,
+                  }}
+                >
+                  {pair.round}
+                </div>
+              </React.Fragment>
+            ))}
+
+            {/* Legend centered at y=1338: (pink dot name, blue dot name) font 24 */}
+            <div
+              className="absolute left-0 right-0 flex items-center justify-center pointer-events-none"
+              style={{
+                top: 'calc(1338 * var(--u))',
+                gap: 'calc(36 * var(--u))',
+              }}
+            >
+              <div
+                className="flex items-center"
+                style={{ gap: 'calc(10 * var(--u))' }}
+              >
+                <div
+                  style={{
+                    width: 'calc(18 * var(--u))',
+                    height: 'calc(18 * var(--u))',
+                    backgroundColor: '#FCA0D1',
+                    borderRadius: '50%',
+                  }}
+                />
+                <span
+                  className="font-bold text-[#7A757D]"
+                  style={{ fontSize: 'calc(24 * var(--u))' }}
+                >
+                  {myName}
+                </span>
               </div>
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-[#8EAFFD]" />
-                <span className="text-[10.5px] font-bold text-[#17181B]/70">
+              <div
+                className="flex items-center"
+                style={{ gap: 'calc(10 * var(--u))' }}
+              >
+                <div
+                  style={{
+                    width: 'calc(18 * var(--u))',
+                    height: 'calc(18 * var(--u))',
+                    backgroundColor: '#8EAFFD',
+                    borderRadius: '50%',
+                  }}
+                />
+                <span
+                  className="font-bold text-[#7A757D]"
+                  style={{ fontSize: 'calc(24 * var(--u))' }}
+                >
                   {friendData.name}
                 </span>
               </div>
             </div>
-          </div>
+          </>
+        )}
 
-          {/* Bar Pairs */}
-          <div className="w-full flex items-end justify-between px-1 h-[48px] sm:h-[54px] border-b border-[#17181B]/10 pb-0.5">
-            {roundBars.map((b) => (
-              <div key={b.round} className="flex flex-col items-center gap-0.5">
-                <div className="flex items-end gap-1">
-                  <div
-                    style={{ height: `${b.pH}px` }}
-                    className="w-[8px] sm:w-[9px] bg-[#FCA0D1] rounded-full transition-all"
-                  />
-                  <div
-                    style={{ height: `${b.bH}px` }}
-                    className="w-[8px] sm:w-[9px] bg-[#8EAFFD] rounded-full transition-all"
-                  />
-                </div>
-                <span className="text-[9.5px] font-bold text-[#17181B]/50 tracking-wider">
-                  R{b.round}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* 7. Emoji Reaction Row: 6 dashed circles, 92 diameter, centered y=1443, x from 126 to 726 */}
+        {showEmojiRow && (
+          <div
+            className="absolute flex items-center justify-between z-20"
+            style={{
+              left: 'calc(126 * var(--u))',
+              width: 'calc(600 * var(--u))',
+              top: `calc(${1443 - chartOffset} * var(--u))`,
+              transform: 'translateY(-50%)',
+            }}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            {REACTION_EMOJIS.map((emoji) => {
+              const isSelected = activeReaction === emoji.id;
+              const isHeld = heldEmojiId === emoji.id;
 
-        {/* 7. Emoji Reaction Row from Reveal */}
-        <div
-          className="final-emoji-row-section w-full flex items-center justify-between px-1 my-0.5 z-10 relative flex-shrink-0"
-          onContextMenu={(e) => e.preventDefault()}
-        >
-          {REACTION_EMOJIS.map((emoji) => {
-            const isSelected = activeReaction === emoji.id;
-            const isHeld = heldEmojiId === emoji.id;
-
-            return (
-              <div key={emoji.id} className="relative flex items-center justify-center">
+              return (
                 <button
+                  key={emoji.id}
                   type="button"
                   onPointerDown={(e) => handlePointerDown(e, emoji.id)}
                   onPointerUp={handlePointerUp}
@@ -648,67 +926,119 @@ export const FinalResultScreen: React.FC = () => {
                   onClick={(e) => e.preventDefault()}
                   aria-label={emoji.alt}
                   aria-pressed={isSelected}
-                  className={`w-[40px] h-[40px] sm:w-[44px] sm:h-[44px] rounded-full border-[1.5px] border-dashed flex items-center justify-center cursor-pointer transition-transform duration-150 ease-out focus:outline-none p-0 bg-transparent select-none touch-manipulation ${
+                  className={`rounded-full border-[2.6px] border-dashed flex items-center justify-center cursor-pointer transition-transform duration-150 ease-out focus:outline-none p-0 bg-transparent select-none touch-manipulation ${
                     isSelected
-                      ? 'border-[#1B1D20] bg-white/40'
-                      : 'border-[#1B1D20]/45 hover:border-[#1B1D20]/75'
+                      ? 'border-[#17181B] bg-white/40'
+                      : 'border-[#17181B]/40 hover:border-[#17181B]/70'
                   } ${isHeld ? 'scale-[0.92]' : isSelected ? 'scale-105' : 'scale-100 hover:scale-105'}`}
+                  style={{
+                    width: 'calc(92 * var(--u))',
+                    height: 'calc(92 * var(--u))',
+                  }}
                 >
                   <img
                     src={emoji.file}
                     alt={emoji.alt}
-                    className={`w-[23px] h-[23px] sm:w-[25px] sm:h-[25px] object-contain pointer-events-none select-none transition-transform duration-150 ${
+                    className={`object-contain pointer-events-none select-none transition-transform duration-150 ${
                       isSelected ? 'scale-110' : ''
                     }`}
+                    style={{
+                      width: 'calc(52 * var(--u))',
+                      height: 'calc(52 * var(--u))',
+                    }}
                     draggable={false}
                   />
                 </button>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
-        {/* 8. Action Buttons: Black pill "Rematch", Black pill with bookmark icon "Save to memory wall", Underlined link "Back to home" */}
-        <div className="w-full flex flex-col gap-2 pt-1 z-10 flex-shrink-0">
-          {/* Button 1: Rematch */}
-          <button
-            type="button"
-            onClick={handleRematch}
-            className="btn-press w-full h-[46px] sm:h-[50px] rounded-full bg-[#1B1D20] hover:bg-[#282B30] text-white font-extrabold text-[15.5px] sm:text-[16.5px] tracking-tight flex items-center justify-center cursor-pointer shadow-md focus:outline-none active:scale-[0.98] transition-transform"
+        {/* 8. Action Buttons */}
+        {/* "Rematch" button (with refresh icon): x=70 to 782, y=1525 to 1605 */}
+        <button
+          type="button"
+          onClick={handleRematch}
+          className="btn-press absolute rounded-full bg-[#1B1D20] hover:bg-[#282B30] text-white flex items-center justify-center cursor-pointer shadow-md focus:outline-none active:scale-[0.98] transition-transform z-20"
+          style={{
+            left: 'calc(70 * var(--u))',
+            width: 'calc(712 * var(--u))',
+            top: `calc(${1525 - chartOffset - emojiOffset} * var(--u))`,
+            height: 'calc(80 * var(--u))',
+            borderRadius: 'calc(40 * var(--u))',
+            gap: 'calc(16 * var(--u))',
+          }}
+        >
+          {/* Refresh icon */}
+          <svg
+            style={{ width: 'calc(32 * var(--u))', height: 'calc(32 * var(--u))' }}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            <span>Rematch</span>
-          </button>
+            <path d="M21 2v6h-6" />
+            <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+            <path d="M3 22v-6h6" />
+            <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+          </svg>
+          <span
+            className="font-extrabold tracking-tight leading-none"
+            style={{ fontSize: 'calc(36 * var(--u))' }}
+          >
+            Rematch
+          </span>
+        </button>
 
-          {/* Button 2: Save to memory wall */}
-          <button
-            type="button"
-            onClick={handleSaveToMemoryWall}
-            className="btn-press w-full h-[46px] sm:h-[50px] rounded-full bg-[#1B1D20] hover:bg-[#282B30] text-white font-extrabold text-[15.5px] sm:text-[16.5px] tracking-tight flex items-center justify-center gap-2 cursor-pointer shadow-md focus:outline-none active:scale-[0.98] transition-transform"
+        {/* "Save to memory wall" (bookmark icon): y=1622 to 1703 */}
+        <button
+          type="button"
+          onClick={handleSaveToMemoryWall}
+          className="btn-press absolute rounded-full bg-[#1B1D20] hover:bg-[#282B30] text-white flex items-center justify-center cursor-pointer shadow-md focus:outline-none active:scale-[0.98] transition-transform z-20"
+          style={{
+            left: 'calc(70 * var(--u))',
+            width: 'calc(712 * var(--u))',
+            top: `calc(${1622 - chartOffset - emojiOffset} * var(--u))`,
+            height: 'calc(81 * var(--u))',
+            borderRadius: 'calc(40.5 * var(--u))',
+            gap: 'calc(16 * var(--u))',
+          }}
+        >
+          {/* Bookmark icon */}
+          <svg
+            style={{ width: 'calc(30 * var(--u))', height: 'calc(30 * var(--u))' }}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-            </svg>
-            <span>Save to memory wall</span>
-          </button>
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+          </svg>
+          <span
+            className="font-extrabold tracking-tight leading-none"
+            style={{ fontSize: 'calc(36 * var(--u))' }}
+          >
+            Save to memory wall
+          </span>
+        </button>
 
-          {/* Link: Back to home */}
-          <button
-            type="button"
-            onClick={handleBackHome}
-            className="text-[13.5px] sm:text-[14px] font-bold underline text-[#17181B]/70 hover:text-[#17181B] active:opacity-75 transition-colors cursor-pointer text-center py-0.5"
-          >
-            Back to home
-          </button>
-        </div>
+        {/* "Back to home" underlined link, centered y=1745, font 25 */}
+        <button
+          type="button"
+          onClick={handleBackHome}
+          className="absolute left-0 right-0 text-center font-bold underline text-[#7A757D] hover:text-[#17181B] active:opacity-75 transition-colors cursor-pointer z-20"
+          style={{
+            top: `calc(${1745 - chartOffset - emojiOffset} * var(--u))`,
+            fontSize: 'calc(25 * var(--u))',
+            lineHeight: 1,
+          }}
+        >
+          Back to home
+        </button>
       </div>
     </div>
   );

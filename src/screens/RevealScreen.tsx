@@ -996,6 +996,14 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
                   : 'Next question ✨'}
               </span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/game-final')}
+              className="text-[13px] font-bold text-[#17181B]/60 hover:text-[#17181B] underline cursor-pointer text-center mt-1.5 transition-colors"
+            >
+              Skip to Final Results 🏆
+            </button>
           </div>
 
           {/* Bottom Peripheral Decorations */}
@@ -1777,6 +1785,14 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
                         : 'Next question ✨'}
                     </span>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate('/game-final')}
+                    className="text-[14px] font-bold text-[#17181B]/60 hover:text-[#17181B] underline cursor-pointer text-center mt-2 transition-colors"
+                  >
+                    Skip to Final Results 🏆
+                  </button>
                 </div>
               </div>
             </div>
@@ -2054,6 +2070,14 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
                     : 'See final results 🏆 ✨'
                   : 'Next question ✨'}
               </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/game-final')}
+              className="text-[13px] font-bold text-[#17181B]/60 hover:text-[#17181B] underline cursor-pointer text-center mt-1.5 transition-colors"
+            >
+              Skip to Final Results 🏆
             </button>
           </div>
 
