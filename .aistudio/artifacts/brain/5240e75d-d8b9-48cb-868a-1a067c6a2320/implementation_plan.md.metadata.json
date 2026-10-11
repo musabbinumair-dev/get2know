@@ -1,0 +1,6 @@
+{
+  "summary":  "Implementation plan for the Final Results Screen at the end of a game. Reuses assets, components, and decorations from Reveal and Scores, respecting zero-scroll responsive layout across all phone viewport heights.",
+  "updatedAt":  "2026-10-11T17:27:17.388825959Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}
