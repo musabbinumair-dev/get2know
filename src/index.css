@@ -366,3 +366,53 @@ p, span, input, textarea, label, button, .font-body {
   }
 }
 
+/* Results Screen: Switch between Tall (852x1846) and Compact (940x1672) */
+.results-stage-tall {
+  display: block;
+}
+.results-stage-compact {
+  display: none;
+}
+.results-decorations-tall {
+  display: block;
+}
+.results-decorations-compact {
+  display: none;
+}
+
+/* Mobile under 768px:
+   Compact when height/width < 1.9 OR height < 760px.
+   Otherwise tall (height/width >= 1.9 AND height >= 760px).
+*/
+@media (max-width: 767.98px) {
+  /* Default on mobile is compact */
+  .results-stage-tall {
+    display: none !important;
+  }
+  .results-stage-compact {
+    display: block !important;
+  }
+  .results-decorations-tall {
+    display: none !important;
+  }
+  .results-decorations-compact {
+    display: block !important;
+  }
+}
+
+/* Tall layout override on mobile: when height >= 760px AND height/width >= 1.9 (i.e. max-aspect-ratio: 10/19) */
+@media (max-width: 767.98px) and (min-height: 760px) and (max-aspect-ratio: 10/19) {
+  .results-stage-tall {
+    display: block !important;
+  }
+  .results-stage-compact {
+    display: none !important;
+  }
+  .results-decorations-tall {
+    display: block !important;
+  }
+  .results-decorations-compact {
+    display: none !important;
+  }
+}
+
